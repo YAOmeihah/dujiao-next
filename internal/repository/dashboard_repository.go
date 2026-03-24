@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -119,6 +120,40 @@ func onlinePaymentBase(db *gorm.DB, startAt, endAt time.Time) *gorm.DB {
 		Where("created_at >= ? AND created_at < ? AND provider_type <> ?", startAt, endAt, constants.PaymentProviderWallet)
 }
 
+func dashboardDayKey(value time.Time, location *time.Location) string {
+	if location == nil {
+		location = time.UTC
+	}
+	return value.In(location).Format("2006-01-02")
+}
+
+func resolveDashboardManualAvailableStock(product models.Product) (int64, bool) {
+	activeSKUs := activeProductSKUs(product.SKUs)
+	if len(activeSKUs) == 0 {
+		if product.ManualStockTotal == constants.ManualStockUnlimited {
+			return 0, true
+		}
+		available := int64(product.ManualStockTotal)
+		if available < 0 {
+			available = 0
+		}
+		return available, false
+	}
+
+	total := int64(0)
+	for _, sku := range activeSKUs {
+		if sku.ManualStockTotal == constants.ManualStockUnlimited {
+			return 0, true
+		}
+		available := int64(sku.ManualStockTotal)
+		if available < 0 {
+			available = 0
+		}
+		total += available
+	}
+	return total, false
+}
+
 // GetOverview 获取总览统计
 func (r *GormDashboardRepository) GetOverview(startAt, endAt time.Time) (DashboardOverviewRow, error) {
 	result := DashboardOverviewRow{}
@@ -153,7 +188,7 @@ func (r *GormDashboardRepository) GetOverview(startAt, endAt time.Time) (Dashboa
 	}
 
 	if err := r.db.Model(&models.Order{}).
-		Where("parent_id IS NULL AND paid_at IS NOT NULL AND paid_at >= ? AND paid_at < ? AND status IN ?", startAt, endAt, paidStatuses).
+		Where("parent_id IS NULL AND created_at >= ? AND created_at < ? AND status IN ?", startAt, endAt, paidStatuses).
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&result.GMVPaid).Error; err != nil {
 		return result, err
@@ -195,135 +230,91 @@ func (r *GormDashboardRepository) GetOverview(startAt, endAt time.Time) (Dashboa
 
 // GetOrderTrends 获取订单趋势
 func (r *GormDashboardRepository) GetOrderTrends(startAt, endAt time.Time) ([]DashboardOrderTrendRow, error) {
-	type totalRow struct {
-		Day   string
-		Total int64
-	}
-	type paidRow struct {
-		Day  string
-		Paid int64
+	type orderRow struct {
+		CreatedAt time.Time
+		Status    string
 	}
 
-	var totals []totalRow
-	dayExpr := "CAST(date(created_at) AS TEXT)"
+	rows := make([]orderRow, 0)
 	if err := r.db.Model(&models.Order{}).
-		Select(fmt.Sprintf("%s as day, COUNT(*) as total", dayExpr)).
+		Select("created_at, status").
 		Where("parent_id IS NULL AND created_at >= ? AND created_at < ?", startAt, endAt).
-		Group(dayExpr).
-		Order("day asc").
-		Scan(&totals).Error; err != nil {
+		Order("created_at asc").
+		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	var paids []paidRow
-	if err := r.db.Model(&models.Order{}).
-		Select(fmt.Sprintf("%s as day, COUNT(*) as paid", dayExpr)).
-		Where("parent_id IS NULL AND created_at >= ? AND created_at < ? AND status IN ?", startAt, endAt, paidOrderStatuses()).
-		Group(dayExpr).
-		Order("day asc").
-		Scan(&paids).Error; err != nil {
-		return nil, err
+	paidStatuses := make(map[string]struct{}, len(paidOrderStatuses()))
+	for _, status := range paidOrderStatuses() {
+		paidStatuses[status] = struct{}{}
 	}
 
-	paidMap := make(map[string]int64, len(paids))
-	for _, item := range paids {
-		paidMap[item.Day] = item.Paid
+	location := startAt.Location()
+	grouped := make(map[string]*DashboardOrderTrendRow, len(rows))
+	for _, row := range rows {
+		day := dashboardDayKey(row.CreatedAt, location)
+		point := grouped[day]
+		if point == nil {
+			point = &DashboardOrderTrendRow{Day: day}
+			grouped[day] = point
+		}
+		point.OrdersTotal += 1
+		if _, ok := paidStatuses[row.Status]; ok {
+			point.OrdersPaid += 1
+		}
 	}
 
-	result := make([]DashboardOrderTrendRow, 0, len(totals))
-	for _, item := range totals {
-		result = append(result, DashboardOrderTrendRow{
-			Day:         item.Day,
-			OrdersTotal: item.Total,
-			OrdersPaid:  paidMap[item.Day],
-		})
+	result := make([]DashboardOrderTrendRow, 0, len(grouped))
+	for _, item := range grouped {
+		result = append(result, *item)
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Day < result[j].Day
+	})
 	return result, nil
 }
 
 // GetPaymentTrends 获取支付趋势
 func (r *GormDashboardRepository) GetPaymentTrends(startAt, endAt time.Time) ([]DashboardPaymentTrendRow, error) {
-	type countRow struct {
-		Day   string
-		Total int64
-	}
-	type amountRow struct {
-		Day   string
-		Total float64
+	type paymentRow struct {
+		CreatedAt time.Time
+		Status    string
+		Amount    float64
 	}
 
-	dayExpr := "CAST(date(created_at) AS TEXT)"
-
-	var successRows []countRow
+	rows := make([]paymentRow, 0)
 	if err := onlinePaymentBase(r.db, startAt, endAt).
-		Select(fmt.Sprintf("%s as day, COUNT(*) as total", dayExpr)).
-		Where("status = ?", constants.PaymentStatusSuccess).
-		Group(dayExpr).
-		Order("day asc").
-		Scan(&successRows).Error; err != nil {
+		Select("created_at, status, amount").
+		Order("created_at asc").
+		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	var failedRows []countRow
-	if err := onlinePaymentBase(r.db, startAt, endAt).
-		Select(fmt.Sprintf("%s as day, COUNT(*) as total", dayExpr)).
-		Where("status = ?", constants.PaymentStatusFailed).
-		Group(dayExpr).
-		Order("day asc").
-		Scan(&failedRows).Error; err != nil {
-		return nil, err
-	}
-
-	var amountRows []amountRow
-	if err := onlinePaymentBase(r.db, startAt, endAt).
-		Select(fmt.Sprintf("%s as day, COALESCE(SUM(amount), 0) as total", dayExpr)).
-		Where("status = ?", constants.PaymentStatusSuccess).
-		Group(dayExpr).
-		Order("day asc").
-		Scan(&amountRows).Error; err != nil {
-		return nil, err
-	}
-
-	successMap := make(map[string]int64, len(successRows))
-	for _, item := range successRows {
-		successMap[item.Day] = item.Total
-	}
-	failedMap := make(map[string]int64, len(failedRows))
-	for _, item := range failedRows {
-		failedMap[item.Day] = item.Total
-	}
-	amountMap := make(map[string]float64, len(amountRows))
-	for _, item := range amountRows {
-		amountMap[item.Day] = item.Total
-	}
-
-	seen := make(map[string]struct{}, len(successRows)+len(failedRows)+len(amountRows))
-	result := make([]DashboardPaymentTrendRow, 0)
-	push := func(day string) {
-		if day == "" {
-			return
+	location := startAt.Location()
+	grouped := make(map[string]*DashboardPaymentTrendRow, len(rows))
+	for _, row := range rows {
+		day := dashboardDayKey(row.CreatedAt, location)
+		point := grouped[day]
+		if point == nil {
+			point = &DashboardPaymentTrendRow{Day: day}
+			grouped[day] = point
 		}
-		if _, ok := seen[day]; ok {
-			return
+		switch row.Status {
+		case constants.PaymentStatusSuccess:
+			point.PaymentsSuccess += 1
+			point.GMVPaid += row.Amount
+		case constants.PaymentStatusFailed:
+			point.PaymentsFailed += 1
 		}
-		seen[day] = struct{}{}
-		result = append(result, DashboardPaymentTrendRow{
-			Day:             day,
-			PaymentsSuccess: successMap[day],
-			PaymentsFailed:  failedMap[day],
-			GMVPaid:         amountMap[day],
-		})
-	}
-	for _, item := range successRows {
-		push(item.Day)
-	}
-	for _, item := range failedRows {
-		push(item.Day)
-	}
-	for _, item := range amountRows {
-		push(item.Day)
 	}
 
+	result := make([]DashboardPaymentTrendRow, 0, len(grouped))
+	for _, item := range grouped {
+		result = append(result, *item)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Day < result[j].Day
+	})
 	return result, nil
 }
 
@@ -331,41 +322,35 @@ func (r *GormDashboardRepository) GetPaymentTrends(startAt, endAt time.Time) ([]
 func (r *GormDashboardRepository) GetStockStats(lowStockThreshold int64) (DashboardStockStatsRow, error) {
 	result := DashboardStockStatsRow{}
 
-	type stockProductRow struct {
-		ID                uint
-		FulfillmentType   string
-		ManualStockTotal  int64
-		ManualStockLocked int64
-		ManualStockSold   int64
-	}
-	var products []stockProductRow
-	if err := r.db.Model(&models.Product{}).
-		Select("id, fulfillment_type, manual_stock_total, manual_stock_locked, manual_stock_sold").
+	products := make([]models.Product, 0)
+	if err := r.db.
+		Preload("SKUs", func(db *gorm.DB) *gorm.DB {
+			return db.Where("is_active = ?", true).Order("sort_order DESC, created_at ASC")
+		}).
 		Where("is_active = ?", true).
-		Scan(&products).Error; err != nil {
+		Find(&products).Error; err != nil {
 		return result, err
 	}
 
 	autoProductIDs := make([]uint, 0)
 	for _, product := range products {
-		if product.FulfillmentType == constants.FulfillmentTypeAuto {
+		fulfillmentType := strings.TrimSpace(product.FulfillmentType)
+		if fulfillmentType == constants.FulfillmentTypeAuto {
 			autoProductIDs = append(autoProductIDs, product.ID)
 			continue
 		}
-		if product.FulfillmentType != constants.FulfillmentTypeManual {
+		if fulfillmentType != constants.FulfillmentTypeManual {
 			continue
 		}
-		if product.ManualStockTotal == int64(constants.ManualStockUnlimited) {
+		available, unlimited := resolveDashboardManualAvailableStock(product)
+		if unlimited {
 			continue
-		}
-		available := product.ManualStockTotal
-		if available < 0 {
-			available = 0
 		}
 		result.ManualAvailableUnits += available
-		if available <= 0 {
+		switch classifyInventoryAlertType(available, lowStockThreshold) {
+		case constants.NotificationAlertTypeOutOfStockProducts:
 			result.OutOfStockProducts += 1
-		} else if available <= lowStockThreshold {
+		case constants.NotificationAlertTypeLowStockProducts:
 			result.LowStockProducts += 1
 		}
 	}

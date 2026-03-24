@@ -190,7 +190,7 @@ func (s *DashboardService) GetOverview(ctx context.Context, input DashboardQuery
 
 	paymentConversionRate := 0.0
 	if overview.OrdersTotal > 0 {
-		paymentConversionRate = float64(overview.PaymentsSuccess) / float64(overview.OrdersTotal) * 100
+		paymentConversionRate = float64(overview.PaidOrders) / float64(overview.OrdersTotal) * 100
 	}
 
 	completionRate := 0.0
