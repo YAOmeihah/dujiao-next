@@ -242,8 +242,8 @@ func (s *NotificationService) dispatchExceptionAlertCheck(ctx context.Context, s
 			data = map[string]interface{}{}
 		}
 		alertType := strings.TrimSpace(alert.Type)
-		data["alert_type"] = alertType
-		data["alert_type_label"] = alertTypeLabelByType(alertLocale, alertType)
+		data["alert_type"] = alertTypeLabelByType(alertLocale, alertType)
+		data["alert_type_label"] = data["alert_type"]
 		data["alert_level"] = strings.TrimSpace(alert.Level)
 		data["alert_value"] = fmt.Sprintf("%d", alert.Value)
 		data["alert_threshold"] = fmt.Sprintf("%d", thresholdValueByAlertType(dashboardSetting.Alert, alertType))
@@ -639,8 +639,8 @@ func buildInventoryAlertDispatchPayloads(
 		if data == nil {
 			data = map[string]interface{}{}
 		}
-		data["alert_type"] = alertType
-		data["alert_type_label"] = alertTypeLabelByType(locale, alertType)
+		data["alert_type"] = alertTypeLabelByType(locale, alertType)
+		data["alert_type_label"] = data["alert_type"]
 		data["alert_level"] = inventoryAlertLevel(alertType)
 		data["alert_value"] = fmt.Sprintf("%d", len(group))
 		data["alert_threshold"] = fmt.Sprintf("%d", thresholdValueByAlertType(dashboardSetting.Alert, alertType))
@@ -856,7 +856,8 @@ func buildNotificationTestVariables(scene, locale string) map[string]interface{}
 		}
 	default:
 		return map[string]interface{}{
-			"alert_type":             constants.NotificationAlertTypeLowStockProducts,
+			"alert_type":             alertTypeLabelByType(locale, constants.NotificationAlertTypeLowStockProducts),
+			"alert_type_label":       alertTypeLabelByType(locale, constants.NotificationAlertTypeLowStockProducts),
 			"alert_level":            "warning",
 			"alert_value":            "2",
 			"alert_threshold":        "5",
