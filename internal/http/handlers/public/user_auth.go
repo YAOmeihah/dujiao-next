@@ -32,6 +32,17 @@ func (h *Handler) SendUserVerifyCode(c *gin.Context) {
 
 	purpose := strings.ToLower(strings.TrimSpace(req.Purpose))
 
+	// 检查邮箱验证开关（总开关）
+	emailVerificationEnabled, err := h.SettingService.GetEmailVerificationEnabled(true)
+	if err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.send_verify_code_failed", err)
+		return
+	}
+	if !emailVerificationEnabled {
+		shared.RespondError(c, response.CodeForbidden, "error.email_verification_disabled", nil)
+		return
+	}
+
 	// 当 purpose 为 register 时，检查注册是否开启
 	if purpose == constants.VerifyPurposeRegister {
 		registrationEnabled, err := h.SettingService.GetRegistrationEnabled(true)
@@ -425,6 +436,17 @@ type UserResetPasswordRequest struct {
 
 // UserForgotPassword 忘记密码重置
 func (h *Handler) UserForgotPassword(c *gin.Context) {
+	// 邮箱验证关闭时，禁止密码重置，提示联系管理员
+	emailVerificationEnabled, err := h.SettingService.GetEmailVerificationEnabled(true)
+	if err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.reset_failed", err)
+		return
+	}
+	if !emailVerificationEnabled {
+		shared.RespondError(c, response.CodeForbidden, "error.password_reset_disabled", nil)
+		return
+	}
+
 	var req UserResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		shared.RespondBindError(c, err)

@@ -193,7 +193,9 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	}
 	data["affiliate"] = service.AffiliateSettingToMap(affiliateSetting)
 
-	// 注册配置
+	// 邮件与注册配置
+	smtpSetting, _ := h.SettingService.GetSMTPSetting(h.Config.Email)
+	data["smtp_enabled"] = smtpSetting.Enabled
 	registrationEnabled, _ := h.SettingService.GetRegistrationEnabled(true)
 	emailVerificationEnabled, _ := h.SettingService.GetEmailVerificationEnabled(true)
 	data["registration_enabled"] = registrationEnabled

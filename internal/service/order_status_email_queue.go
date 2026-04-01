@@ -30,6 +30,9 @@ func enqueueOrderStatusEmailTaskIfEligible(
 		if !smtpSetting.Enabled {
 			return true, nil
 		}
+		if !smtpSetting.OrderNotificationEnabled {
+			return true, nil
+		}
 	}
 	if orderRepo == nil {
 		if err := queueClient.EnqueueOrderStatusEmail(queue.OrderStatusEmailPayload{

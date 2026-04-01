@@ -44,16 +44,17 @@ type SMTPVerifyCodeSetting struct {
 
 // SMTPSetting SMTP 配置实体
 type SMTPSetting struct {
-	Enabled    bool                  `json:"enabled"`
-	Host       string                `json:"host"`
-	Port       int                   `json:"port"`
-	Username   string                `json:"username"`
-	Password   string                `json:"password"`
-	From       string                `json:"from"`
-	FromName   string                `json:"from_name"`
-	UseTLS     bool                  `json:"use_tls"`
-	UseSSL     bool                  `json:"use_ssl"`
-	VerifyCode SMTPVerifyCodeSetting `json:"verify_code"`
+	Enabled                  bool                  `json:"enabled"`
+	Host                     string                `json:"host"`
+	Port                     int                   `json:"port"`
+	Username                 string                `json:"username"`
+	Password                 string                `json:"password"`
+	From                     string                `json:"from"`
+	FromName                 string                `json:"from_name"`
+	UseTLS                   bool                  `json:"use_tls"`
+	UseSSL                   bool                  `json:"use_ssl"`
+	OrderNotificationEnabled bool                  `json:"order_notification_enabled"`
+	VerifyCode               SMTPVerifyCodeSetting `json:"verify_code"`
 }
 
 // SMTPVerifyCodePatch SMTP 验证码配置补丁
@@ -66,30 +67,32 @@ type SMTPVerifyCodePatch struct {
 
 // SMTPSettingPatch SMTP 配置补丁（支持部分更新）
 type SMTPSettingPatch struct {
-	Enabled    *bool                `json:"enabled"`
-	Host       *string              `json:"host"`
-	Port       *int                 `json:"port"`
-	Username   *string              `json:"username"`
-	Password   *string              `json:"password"`
-	From       *string              `json:"from"`
-	FromName   *string              `json:"from_name"`
-	UseTLS     *bool                `json:"use_tls"`
-	UseSSL     *bool                `json:"use_ssl"`
-	VerifyCode *SMTPVerifyCodePatch `json:"verify_code"`
+	Enabled                  *bool                `json:"enabled"`
+	Host                     *string              `json:"host"`
+	Port                     *int                 `json:"port"`
+	Username                 *string              `json:"username"`
+	Password                 *string              `json:"password"`
+	From                     *string              `json:"from"`
+	FromName                 *string              `json:"from_name"`
+	UseTLS                   *bool                `json:"use_tls"`
+	UseSSL                   *bool                `json:"use_ssl"`
+	OrderNotificationEnabled *bool                `json:"order_notification_enabled"`
+	VerifyCode               *SMTPVerifyCodePatch `json:"verify_code"`
 }
 
 // SMTPDefaultSetting 根据静态配置生成默认 SMTP 设置
 func SMTPDefaultSetting(cfg config.EmailConfig) SMTPSetting {
 	setting := SMTPSetting{
-		Enabled:  cfg.Enabled,
-		Host:     strings.TrimSpace(cfg.Host),
-		Port:     cfg.Port,
-		Username: strings.TrimSpace(cfg.Username),
-		Password: strings.TrimSpace(cfg.Password),
-		From:     strings.TrimSpace(cfg.From),
-		FromName: strings.TrimSpace(cfg.FromName),
-		UseTLS:   cfg.UseTLS,
-		UseSSL:   cfg.UseSSL,
+		Enabled:                  cfg.Enabled,
+		Host:                     strings.TrimSpace(cfg.Host),
+		Port:                     cfg.Port,
+		Username:                 strings.TrimSpace(cfg.Username),
+		Password:                 strings.TrimSpace(cfg.Password),
+		From:                     strings.TrimSpace(cfg.From),
+		FromName:                 strings.TrimSpace(cfg.FromName),
+		UseTLS:                   cfg.UseTLS,
+		UseSSL:                   cfg.UseSSL,
+		OrderNotificationEnabled: true,
 		VerifyCode: SMTPVerifyCodeSetting{
 			ExpireMinutes:       cfg.VerifyCode.ExpireMinutes,
 			SendIntervalSeconds: cfg.VerifyCode.SendIntervalSeconds,
@@ -189,15 +192,16 @@ func SMTPSettingToConfig(setting SMTPSetting) config.EmailConfig {
 func SMTPSettingToMap(setting SMTPSetting) map[string]interface{} {
 	normalized := NormalizeSMTPSetting(setting)
 	return map[string]interface{}{
-		"enabled":   normalized.Enabled,
-		"host":      normalized.Host,
-		"port":      normalized.Port,
-		"username":  normalized.Username,
-		"password":  normalized.Password,
-		"from":      normalized.From,
-		"from_name": normalized.FromName,
-		"use_tls":   normalized.UseTLS,
-		"use_ssl":   normalized.UseSSL,
+		"enabled":                    normalized.Enabled,
+		"host":                       normalized.Host,
+		"port":                       normalized.Port,
+		"username":                   normalized.Username,
+		"password":                   normalized.Password,
+		"from":                       normalized.From,
+		"from_name":                  normalized.FromName,
+		"use_tls":                    normalized.UseTLS,
+		"use_ssl":                    normalized.UseSSL,
+		"order_notification_enabled": normalized.OrderNotificationEnabled,
 		"verify_code": map[string]interface{}{
 			"expire_minutes":        normalized.VerifyCode.ExpireMinutes,
 			"send_interval_seconds": normalized.VerifyCode.SendIntervalSeconds,
@@ -211,16 +215,17 @@ func SMTPSettingToMap(setting SMTPSetting) map[string]interface{} {
 func MaskSMTPSettingForAdmin(setting SMTPSetting) models.JSON {
 	normalized := NormalizeSMTPSetting(setting)
 	return models.JSON{
-		"enabled":      normalized.Enabled,
-		"host":         normalized.Host,
-		"port":         normalized.Port,
-		"username":     normalized.Username,
-		"password":     "",
-		"has_password": normalized.Password != "",
-		"from":         normalized.From,
-		"from_name":    normalized.FromName,
-		"use_tls":      normalized.UseTLS,
-		"use_ssl":      normalized.UseSSL,
+		"enabled":                    normalized.Enabled,
+		"host":                       normalized.Host,
+		"port":                       normalized.Port,
+		"username":                   normalized.Username,
+		"password":                   "",
+		"has_password":               normalized.Password != "",
+		"from":                       normalized.From,
+		"from_name":                  normalized.FromName,
+		"use_tls":                    normalized.UseTLS,
+		"use_ssl":                    normalized.UseSSL,
+		"order_notification_enabled": normalized.OrderNotificationEnabled,
 		"verify_code": map[string]interface{}{
 			"expire_minutes":        normalized.VerifyCode.ExpireMinutes,
 			"send_interval_seconds": normalized.VerifyCode.SendIntervalSeconds,
@@ -282,6 +287,9 @@ func (s *SettingService) PatchSMTPSetting(defaultCfg config.EmailConfig, patch S
 	if patch.UseSSL != nil {
 		next.UseSSL = *patch.UseSSL
 	}
+	if patch.OrderNotificationEnabled != nil {
+		next.OrderNotificationEnabled = *patch.OrderNotificationEnabled
+	}
 	if patch.VerifyCode != nil {
 		if patch.VerifyCode.ExpireMinutes != nil {
 			next.VerifyCode.ExpireMinutes = *patch.VerifyCode.ExpireMinutes
@@ -323,6 +331,7 @@ func smtpSettingFromJSON(raw models.JSON, fallback SMTPSetting) SMTPSetting {
 	next.FromName = readString(raw, "from_name", next.FromName)
 	next.UseTLS = readBool(raw, "use_tls", next.UseTLS)
 	next.UseSSL = readBool(raw, "use_ssl", next.UseSSL)
+	next.OrderNotificationEnabled = readBool(raw, "order_notification_enabled", next.OrderNotificationEnabled)
 
 	verifyRaw, ok := raw["verify_code"]
 	if ok {
