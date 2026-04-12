@@ -6,8 +6,12 @@ uploads
 *.db
 *.log
 .env
+.env.development
 .DS_Store
 */node_modules/
 */dist/
+dujiao-next
+dujiao-api
+*.exe
 # Added by goreleaser init:
 dist/
