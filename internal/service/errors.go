@@ -68,6 +68,8 @@ var (
 	ErrManualFormFieldInvalid              = errors.New("manual form field invalid")
 	ErrManualFormTypeInvalid               = errors.New("manual form type invalid")
 	ErrManualFormOptionInvalid             = errors.New("manual form option invalid")
+	ErrShippingAddressRequired             = errors.New("shipping address required")
+	ErrShippingAddressInvalid              = errors.New("shipping address invalid")
 	ErrProductFetchFailed                  = errors.New("product fetch failed")
 	ErrProductNotFound                     = errors.New("product not found")
 	ErrProductSKURequired                  = errors.New("product sku required")

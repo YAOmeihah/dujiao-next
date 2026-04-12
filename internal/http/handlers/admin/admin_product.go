@@ -92,26 +92,27 @@ type ProductSKURequest struct {
 
 // CreateProductRequest 创建商品请求
 type CreateProductRequest struct {
-	CategoryID          uint                   `json:"category_id" binding:"required"`
-	Slug                string                 `json:"slug" binding:"required"`
-	SeoMetaJSON         map[string]interface{} `json:"seo_meta"`
-	TitleJSON           map[string]interface{} `json:"title" binding:"required"`
-	DescriptionJSON     map[string]interface{} `json:"description"`
-	ContentJSON         map[string]interface{} `json:"content"`
-	ManualFormSchema    map[string]interface{} `json:"manual_form_schema"`
-	PriceAmount         float64                `json:"price_amount" binding:"required"`
-	CostPriceAmount     float64                `json:"cost_price_amount"`
-	Images              []string               `json:"images"`
-	Tags                []string               `json:"tags"`
-	PurchaseType        string                 `json:"purchase_type"`
-	MaxPurchaseQuantity *int                   `json:"max_purchase_quantity"`
-	FulfillmentType     string                 `json:"fulfillment_type"`
-	ManualStockTotal    *int                   `json:"manual_stock_total"`
-	SKUs                []ProductSKURequest    `json:"skus"`
-	PaymentChannelIDs   []uint                 `json:"payment_channel_ids"`
-	IsAffiliateEnabled  *bool                  `json:"is_affiliate_enabled"`
-	IsActive            *bool                  `json:"is_active"`
-	SortOrder           int                    `json:"sort_order"`
+	CategoryID              uint                   `json:"category_id" binding:"required"`
+	Slug                    string                 `json:"slug" binding:"required"`
+	SeoMetaJSON             map[string]interface{} `json:"seo_meta"`
+	TitleJSON               map[string]interface{} `json:"title" binding:"required"`
+	DescriptionJSON         map[string]interface{} `json:"description"`
+	ContentJSON             map[string]interface{} `json:"content"`
+	ManualFormSchema        map[string]interface{} `json:"manual_form_schema"`
+	PriceAmount             float64                `json:"price_amount" binding:"required"`
+	CostPriceAmount         float64                `json:"cost_price_amount"`
+	Images                  []string               `json:"images"`
+	Tags                    []string               `json:"tags"`
+	PurchaseType            string                 `json:"purchase_type"`
+	MaxPurchaseQuantity     *int                   `json:"max_purchase_quantity"`
+	FulfillmentType         string                 `json:"fulfillment_type"`
+	ManualStockTotal        *int                   `json:"manual_stock_total"`
+	SKUs                    []ProductSKURequest    `json:"skus"`
+	PaymentChannelIDs       []uint                 `json:"payment_channel_ids"`
+	IsAffiliateEnabled      *bool                  `json:"is_affiliate_enabled"`
+	RequiresShippingAddress *bool                  `json:"requires_shipping_address"`
+	IsActive                *bool                  `json:"is_active"`
+	SortOrder               int                    `json:"sort_order"`
 }
 
 func toProductSKUInputs(items []ProductSKURequest) []service.ProductSKUInput {
@@ -143,26 +144,27 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	}
 
 	product, err := h.ProductService.Create(service.CreateProductInput{
-		CategoryID:           req.CategoryID,
-		Slug:                 req.Slug,
-		SeoMetaJSON:          req.SeoMetaJSON,
-		TitleJSON:            req.TitleJSON,
-		DescriptionJSON:      req.DescriptionJSON,
-		ContentJSON:          req.ContentJSON,
-		ManualFormSchemaJSON: req.ManualFormSchema,
-		PriceAmount:          decimal.NewFromFloat(req.PriceAmount),
-		CostPriceAmount:      decimal.NewFromFloat(req.CostPriceAmount),
-		Images:               req.Images,
-		Tags:                 req.Tags,
-		PurchaseType:         req.PurchaseType,
-		MaxPurchaseQuantity:  req.MaxPurchaseQuantity,
-		FulfillmentType:      req.FulfillmentType,
-		ManualStockTotal:     req.ManualStockTotal,
-		SKUs:                 toProductSKUInputs(req.SKUs),
-		PaymentChannelIDs:    req.PaymentChannelIDs,
-		IsAffiliateEnabled:   req.IsAffiliateEnabled,
-		IsActive:             req.IsActive,
-		SortOrder:            req.SortOrder,
+		CategoryID:              req.CategoryID,
+		Slug:                    req.Slug,
+		SeoMetaJSON:             req.SeoMetaJSON,
+		TitleJSON:               req.TitleJSON,
+		DescriptionJSON:         req.DescriptionJSON,
+		ContentJSON:             req.ContentJSON,
+		ManualFormSchemaJSON:    req.ManualFormSchema,
+		PriceAmount:             decimal.NewFromFloat(req.PriceAmount),
+		CostPriceAmount:         decimal.NewFromFloat(req.CostPriceAmount),
+		Images:                  req.Images,
+		Tags:                    req.Tags,
+		PurchaseType:            req.PurchaseType,
+		MaxPurchaseQuantity:     req.MaxPurchaseQuantity,
+		FulfillmentType:         req.FulfillmentType,
+		ManualStockTotal:        req.ManualStockTotal,
+		SKUs:                    toProductSKUInputs(req.SKUs),
+		PaymentChannelIDs:       req.PaymentChannelIDs,
+		IsAffiliateEnabled:      req.IsAffiliateEnabled,
+		RequiresShippingAddress: req.RequiresShippingAddress,
+		IsActive:                req.IsActive,
+		SortOrder:               req.SortOrder,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrSlugExists) {
@@ -219,26 +221,27 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 	}
 
 	product, err := h.ProductService.Update(id, service.CreateProductInput{
-		CategoryID:           req.CategoryID,
-		Slug:                 req.Slug,
-		SeoMetaJSON:          req.SeoMetaJSON,
-		TitleJSON:            req.TitleJSON,
-		DescriptionJSON:      req.DescriptionJSON,
-		ContentJSON:          req.ContentJSON,
-		ManualFormSchemaJSON: req.ManualFormSchema,
-		PriceAmount:          decimal.NewFromFloat(req.PriceAmount),
-		CostPriceAmount:      decimal.NewFromFloat(req.CostPriceAmount),
-		Images:               req.Images,
-		Tags:                 req.Tags,
-		PurchaseType:         req.PurchaseType,
-		MaxPurchaseQuantity:  req.MaxPurchaseQuantity,
-		FulfillmentType:      req.FulfillmentType,
-		ManualStockTotal:     req.ManualStockTotal,
-		SKUs:                 toProductSKUInputs(req.SKUs),
-		PaymentChannelIDs:    req.PaymentChannelIDs,
-		IsAffiliateEnabled:   req.IsAffiliateEnabled,
-		IsActive:             req.IsActive,
-		SortOrder:            req.SortOrder,
+		CategoryID:              req.CategoryID,
+		Slug:                    req.Slug,
+		SeoMetaJSON:             req.SeoMetaJSON,
+		TitleJSON:               req.TitleJSON,
+		DescriptionJSON:         req.DescriptionJSON,
+		ContentJSON:             req.ContentJSON,
+		ManualFormSchemaJSON:    req.ManualFormSchema,
+		PriceAmount:             decimal.NewFromFloat(req.PriceAmount),
+		CostPriceAmount:         decimal.NewFromFloat(req.CostPriceAmount),
+		Images:                  req.Images,
+		Tags:                    req.Tags,
+		PurchaseType:            req.PurchaseType,
+		MaxPurchaseQuantity:     req.MaxPurchaseQuantity,
+		FulfillmentType:         req.FulfillmentType,
+		ManualStockTotal:        req.ManualStockTotal,
+		SKUs:                    toProductSKUInputs(req.SKUs),
+		PaymentChannelIDs:       req.PaymentChannelIDs,
+		IsAffiliateEnabled:      req.IsAffiliateEnabled,
+		RequiresShippingAddress: req.RequiresShippingAddress,
+		IsActive:                req.IsActive,
+		SortOrder:               req.SortOrder,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {

@@ -167,3 +167,18 @@ func TestNewOrderDetailNilSafety(t *testing.T) {
 		t.Error("expected nil items")
 	}
 }
+
+func TestOrderDetailIncludesShippingAddress(t *testing.T) {
+	order := &models.Order{
+		OrderNo: "ORD-ADDR-001",
+		ShippingAddressJSON: models.JSON{
+			"receiver_name": "张三",
+			"city":          "杭州市",
+		},
+	}
+
+	detail := NewOrderDetail(order)
+	if detail.ShippingAddress["receiver_name"] != "张三" {
+		t.Fatalf("expected shipping address to be exposed, got %+v", detail.ShippingAddress)
+	}
+}

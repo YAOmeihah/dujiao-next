@@ -111,6 +111,7 @@ type CreateOrderRequest struct {
 	AffiliateCode       string                 `json:"affiliate_code"`
 	AffiliateVisitorKey string                 `json:"affiliate_visitor_key"`
 	ManualFormData      map[string]models.JSON `json:"manual_form_data"`
+	ShippingAddress     models.JSON            `json:"shipping_address"`
 }
 
 // OrderPaymentChannelsRequest 查询订单可用支付渠道请求
@@ -151,6 +152,7 @@ func (h *Handler) PreviewOrder(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondUserOrderPreviewError(c, err)
@@ -276,6 +278,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondUserOrderCreateError(c, err)
@@ -294,6 +297,7 @@ type CreateOrderAndPayRequest struct {
 	AffiliateCode       string                 `json:"affiliate_code"`
 	AffiliateVisitorKey string                 `json:"affiliate_visitor_key"`
 	ManualFormData      map[string]models.JSON `json:"manual_form_data"`
+	ShippingAddress     models.JSON            `json:"shipping_address"`
 	ChannelID           uint                   `json:"channel_id"`
 	UseBalance          bool                   `json:"use_balance"`
 }
@@ -329,6 +333,7 @@ func (h *Handler) CreateOrderAndPay(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondUserOrderCreateError(c, err)

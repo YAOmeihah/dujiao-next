@@ -58,15 +58,16 @@ func (h *Handler) GetCart(c *gin.Context) {
 			cartFT = constants.FulfillmentTypeManual
 		}
 		product := dto.CartProductResp{
-			Slug:                item.Product.Slug,
-			Title:               item.Product.TitleJSON,
-			PriceAmount:         item.Product.PriceAmount,
-			Images:              item.Product.Images,
-			Tags:                item.Product.Tags,
-			PurchaseType:        item.Product.PurchaseType,
-			MaxPurchaseQuantity: item.Product.MaxPurchaseQuantity,
-			FulfillmentType:     productFT,
-			IsActive:            item.Product.IsActive,
+			Slug:                    item.Product.Slug,
+			Title:                   item.Product.TitleJSON,
+			PriceAmount:             item.Product.PriceAmount,
+			Images:                  item.Product.Images,
+			Tags:                    item.Product.Tags,
+			PurchaseType:            item.Product.PurchaseType,
+			MaxPurchaseQuantity:     item.Product.MaxPurchaseQuantity,
+			FulfillmentType:         productFT,
+			RequiresShippingAddress: item.Product.RequiresShippingAddress,
+			IsActive:                item.Product.IsActive,
 		}
 		respItems = append(respItems, dto.CartItemResp{
 			ProductID:       item.ProductID,

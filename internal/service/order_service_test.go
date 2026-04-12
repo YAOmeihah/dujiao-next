@@ -721,3 +721,163 @@ func TestBuildOrderResultRejectsZeroTotalAmountAfterCoupon(t *testing.T) {
 		t.Fatalf("expected invalid order amount, got: %v", err)
 	}
 }
+
+func TestBuildOrderResultRequiresShippingAddressForPhysicalProduct(t *testing.T) {
+	dsn := fmt.Sprintf("file:order_service_shipping_required_%d?mode=memory&cache=shared", time.Now().UnixNano())
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Category{}, &models.Product{}, &models.ProductSKU{}, &models.Promotion{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	now := time.Now()
+	category := models.Category{
+		Slug:      "shipping-required-category",
+		NameJSON:  models.JSON{"zh-CN": "需要地址分类"},
+		SortOrder: 0,
+		CreatedAt: now,
+	}
+	if err := db.Create(&category).Error; err != nil {
+		t.Fatalf("create category failed: %v", err)
+	}
+
+	product := models.Product{
+		CategoryID:              category.ID,
+		Slug:                    "shipping-required-product",
+		TitleJSON:               models.JSON{"zh-CN": "需要地址商品"},
+		PriceAmount:             models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		PurchaseType:            constants.ProductPurchaseMember,
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		RequiresShippingAddress: true,
+		IsActive:                true,
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+
+	sku := models.ProductSKU{
+		ProductID:         product.ID,
+		SKUCode:           models.DefaultSKUCode,
+		PriceAmount:       models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		IsActive:          true,
+		ManualStockTotal:  constants.ManualStockUnlimited,
+		ManualStockLocked: 0,
+		ManualStockSold:   0,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(&sku).Error; err != nil {
+		t.Fatalf("create sku failed: %v", err)
+	}
+
+	svc := NewOrderService(OrderServiceOptions{
+		ProductRepo:    repository.NewProductRepository(db),
+		ProductSKURepo: repository.NewProductSKURepository(db),
+		PromotionRepo:  repository.NewPromotionRepository(db),
+		ExpireMinutes:  15,
+	})
+
+	_, err = svc.buildOrderResult(orderCreateParams{
+		UserID: 1,
+		Items: []CreateOrderItem{
+			{
+				ProductID: product.ID,
+				SKUID:     sku.ID,
+				Quantity:  1,
+			},
+		},
+	})
+	if !errors.Is(err, ErrShippingAddressRequired) {
+		t.Fatalf("expected shipping address required, got: %v", err)
+	}
+}
+
+func TestBuildOrderResultAcceptsShippingAddressForPhysicalProduct(t *testing.T) {
+	dsn := fmt.Sprintf("file:order_service_shipping_accept_%d?mode=memory&cache=shared", time.Now().UnixNano())
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Category{}, &models.Product{}, &models.ProductSKU{}, &models.Promotion{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	now := time.Now()
+	category := models.Category{
+		Slug:      "shipping-accept-category",
+		NameJSON:  models.JSON{"zh-CN": "收货地址分类"},
+		SortOrder: 0,
+		CreatedAt: now,
+	}
+	if err := db.Create(&category).Error; err != nil {
+		t.Fatalf("create category failed: %v", err)
+	}
+
+	product := models.Product{
+		CategoryID:              category.ID,
+		Slug:                    "shipping-accept-product",
+		TitleJSON:               models.JSON{"zh-CN": "收货地址商品"},
+		PriceAmount:             models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		PurchaseType:            constants.ProductPurchaseMember,
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		RequiresShippingAddress: true,
+		IsActive:                true,
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+
+	sku := models.ProductSKU{
+		ProductID:         product.ID,
+		SKUCode:           models.DefaultSKUCode,
+		PriceAmount:       models.NewMoneyFromDecimal(decimal.NewFromInt(10)),
+		IsActive:          true,
+		ManualStockTotal:  constants.ManualStockUnlimited,
+		ManualStockLocked: 0,
+		ManualStockSold:   0,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(&sku).Error; err != nil {
+		t.Fatalf("create sku failed: %v", err)
+	}
+
+	svc := NewOrderService(OrderServiceOptions{
+		ProductRepo:    repository.NewProductRepository(db),
+		ProductSKURepo: repository.NewProductSKURepository(db),
+		PromotionRepo:  repository.NewPromotionRepository(db),
+		ExpireMinutes:  15,
+	})
+
+	result, err := svc.buildOrderResult(orderCreateParams{
+		UserID: 1,
+		Items: []CreateOrderItem{
+			{
+				ProductID: product.ID,
+				SKUID:     sku.ID,
+				Quantity:  1,
+			},
+		},
+		ShippingAddress: models.JSON{
+			"receiver_name":  "张三",
+			"receiver_phone": "13800138000",
+			"province":       "浙江省",
+			"city":           "杭州市",
+			"district":       "西湖区",
+			"detail_address": "文三路100号",
+			"postal_code":    "310000",
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected nil error, got: %v", err)
+	}
+	if result.ShippingAddressJSON["receiver_name"] != "张三" {
+		t.Fatalf("expected normalized shipping address, got %+v", result.ShippingAddressJSON)
+	}
+}

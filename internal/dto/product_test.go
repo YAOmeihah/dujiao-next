@@ -39,3 +39,22 @@ func TestCategoryRespListEmpty(t *testing.T) {
 		t.Errorf("expected empty list, got %d", len(result))
 	}
 }
+
+func TestProductRespIncludesRequiresShippingAddress(t *testing.T) {
+	resp := ProductResp{
+		ID:                      1,
+		Slug:                    "physical-product",
+		Title:                   models.JSON{"zh-CN": "实物商品"},
+		RequiresShippingAddress: true,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal product resp failed: %v", err)
+	}
+
+	jsonStr := string(data)
+	if !strings.Contains(jsonStr, `"requires_shipping_address":true`) {
+		t.Fatalf("expected requires_shipping_address in json, got %s", jsonStr)
+	}
+}

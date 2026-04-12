@@ -9,6 +9,16 @@ import (
 	"github.com/dujiao-next/internal/worker"
 )
 
+func shouldStartWorker(cfg *config.Config, mode string) bool {
+	if cfg == nil {
+		return false
+	}
+	if !cfg.Queue.Enabled {
+		return false
+	}
+	return mode == ModeAll || mode == ModeWorker
+}
+
 // BuildRunner 构建服务运行器
 func BuildRunner(cfg *config.Config, mode string) (*Runner, error) {
 	if cfg == nil {
@@ -28,7 +38,7 @@ func BuildRunner(cfg *config.Config, mode string) (*Runner, error) {
 	}
 
 	// 初始化 Worker 服务
-	if mode == ModeAll || mode == ModeWorker {
+	if shouldStartWorker(cfg, mode) {
 		consumer := worker.NewConsumer(container)
 		workerService, err := worker.NewService(&cfg.Queue, consumer)
 		if err != nil {

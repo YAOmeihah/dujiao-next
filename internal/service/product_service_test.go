@@ -836,3 +836,52 @@ func TestProductServiceDeleteCascade(t *testing.T) {
 		t.Errorf("expected product to be soft-deleted, but still found %d", productCount)
 	}
 }
+
+func TestProductServiceCreateAndUpdatePersistsRequiresShippingAddress(t *testing.T) {
+	svc, _ := newProductServiceForTest(t)
+
+	category := models.Category{
+		Slug:     "shipping-flag-category",
+		NameJSON: models.JSON{"zh-CN": "shipping-flag-category"},
+	}
+	if err := svc.categoryRepo.Create(&category); err != nil {
+		t.Fatalf("create category failed: %v", err)
+	}
+
+	manualStock := 5
+	requiresShippingAddress := true
+	product, err := svc.Create(CreateProductInput{
+		CategoryID:              category.ID,
+		Slug:                    "shipping-flag-product",
+		TitleJSON:               map[string]interface{}{"zh-CN": "shipping-flag-product"},
+		PriceAmount:             decimal.NewFromInt(10),
+		PurchaseType:            constants.ProductPurchaseMember,
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		ManualStockTotal:        &manualStock,
+		RequiresShippingAddress: &requiresShippingAddress,
+	})
+	if err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+	if !product.RequiresShippingAddress {
+		t.Fatalf("expected requires shipping address on create")
+	}
+
+	disableRequiresShippingAddress := false
+	updated, err := svc.Update(strconv.FormatUint(uint64(product.ID), 10), CreateProductInput{
+		CategoryID:              category.ID,
+		Slug:                    "shipping-flag-product",
+		TitleJSON:               map[string]interface{}{"zh-CN": "shipping-flag-product"},
+		PriceAmount:             decimal.NewFromInt(10),
+		PurchaseType:            constants.ProductPurchaseMember,
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		ManualStockTotal:        &manualStock,
+		RequiresShippingAddress: &disableRequiresShippingAddress,
+	})
+	if err != nil {
+		t.Fatalf("update product failed: %v", err)
+	}
+	if updated.RequiresShippingAddress {
+		t.Fatalf("expected requires shipping address to be false after update")
+	}
+}

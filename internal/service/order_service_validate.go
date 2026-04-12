@@ -43,6 +43,7 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 	var promotionSeen bool
 	promotionSame := true
 	var noPromotionSeen bool
+	requiresShippingAddress := false
 
 	// 解析用户会员等级
 	var userMemberLevelID uint
@@ -71,6 +72,9 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 		}
 		if product == nil || !product.IsActive {
 			return nil, ErrProductNotAvailable
+		}
+		if product.RequiresShippingAddress {
+			requiresShippingAddress = true
 		}
 		if err := validateProductPurchaseQuantity(product, item.Quantity); err != nil {
 			return nil, err
@@ -257,6 +261,14 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 		return nil, ErrInvalidOrderAmount
 	}
 
+	normalizedShippingAddress := models.JSON{}
+	if requiresShippingAddress {
+		normalizedShippingAddress, err = ValidateAndNormalizeShippingAddress(input.ShippingAddress)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &orderBuildResult{
 		Plans:                   plans,
 		OrderItems:              orderItems,
@@ -269,6 +281,7 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 		OrderPromotionID:        orderPromotionID,
 		MemberLevelID:           memberLevelIDSnapshot,
 		AppliedCoupon:           appliedCoupon,
+		ShippingAddressJSON:     normalizedShippingAddress,
 	}, nil
 }
 

@@ -6,15 +6,16 @@ import (
 
 // CartProductResp 购物车商品摘要
 type CartProductResp struct {
-	Slug                string             `json:"slug"`
-	Title               models.JSON        `json:"title"`
-	PriceAmount         models.Money       `json:"price_amount"`
-	Images              models.StringArray `json:"images"`
-	Tags                models.StringArray `json:"tags"`
-	PurchaseType        string             `json:"purchase_type"`
-	MaxPurchaseQuantity int                `json:"max_purchase_quantity"`
-	FulfillmentType     string             `json:"fulfillment_type"`
-	IsActive            bool               `json:"is_active"`
+	Slug                    string             `json:"slug"`
+	Title                   models.JSON        `json:"title"`
+	PriceAmount             models.Money       `json:"price_amount"`
+	Images                  models.StringArray `json:"images"`
+	Tags                    models.StringArray `json:"tags"`
+	PurchaseType            string             `json:"purchase_type"`
+	MaxPurchaseQuantity     int                `json:"max_purchase_quantity"`
+	FulfillmentType         string             `json:"fulfillment_type"`
+	RequiresShippingAddress bool               `json:"requires_shipping_address"`
+	IsActive                bool               `json:"is_active"`
 }
 
 // CartItemResp 购物车项响应

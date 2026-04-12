@@ -53,26 +53,27 @@ func NewProductService(
 
 // CreateProductInput 创建/更新商品输入
 type CreateProductInput struct {
-	CategoryID           uint
-	Slug                 string
-	SeoMetaJSON          map[string]interface{}
-	TitleJSON            map[string]interface{}
-	DescriptionJSON      map[string]interface{}
-	ContentJSON          map[string]interface{}
-	ManualFormSchemaJSON map[string]interface{}
-	PriceAmount          decimal.Decimal
-	CostPriceAmount      decimal.Decimal
-	Images               []string
-	Tags                 []string
-	PurchaseType         string
-	MaxPurchaseQuantity  *int
-	FulfillmentType      string
-	ManualStockTotal     *int
-	SKUs                 []ProductSKUInput
-	PaymentChannelIDs    []uint
-	IsAffiliateEnabled   *bool
-	IsActive             *bool
-	SortOrder            int
+	CategoryID              uint
+	Slug                    string
+	SeoMetaJSON             map[string]interface{}
+	TitleJSON               map[string]interface{}
+	DescriptionJSON         map[string]interface{}
+	ContentJSON             map[string]interface{}
+	ManualFormSchemaJSON    map[string]interface{}
+	PriceAmount             decimal.Decimal
+	CostPriceAmount         decimal.Decimal
+	Images                  []string
+	Tags                    []string
+	PurchaseType            string
+	MaxPurchaseQuantity     *int
+	FulfillmentType         string
+	ManualStockTotal        *int
+	SKUs                    []ProductSKUInput
+	PaymentChannelIDs       []uint
+	IsAffiliateEnabled      *bool
+	RequiresShippingAddress *bool
+	IsActive                *bool
+	SortOrder               int
 }
 
 type ProductSKUInput struct {
@@ -191,6 +192,10 @@ func (s *ProductService) Create(input CreateProductInput) (*models.Product, erro
 	if input.IsAffiliateEnabled != nil {
 		isAffiliateEnabled = *input.IsAffiliateEnabled
 	}
+	requiresShippingAddress := false
+	if input.RequiresShippingAddress != nil {
+		requiresShippingAddress = *input.RequiresShippingAddress
+	}
 	purchaseType := normalizePurchaseType(input.PurchaseType)
 	if purchaseType == "" {
 		return nil, ErrProductPurchaseInvalid
@@ -233,27 +238,28 @@ func (s *ProductService) Create(input CreateProductInput) (*models.Product, erro
 	}
 
 	product := models.Product{
-		CategoryID:           input.CategoryID,
-		Slug:                 input.Slug,
-		SeoMetaJSON:          models.JSON(input.SeoMetaJSON),
-		TitleJSON:            models.JSON(input.TitleJSON),
-		DescriptionJSON:      models.JSON(input.DescriptionJSON),
-		ContentJSON:          models.JSON(input.ContentJSON),
-		ManualFormSchemaJSON: models.JSON{},
-		PriceAmount:          models.NewMoneyFromDecimal(priceAmount),
-		CostPriceAmount:      models.NewMoneyFromDecimal(costPriceAmount),
-		Images:               models.StringArray(input.Images),
-		Tags:                 models.StringArray(input.Tags),
-		PurchaseType:         purchaseType,
-		MaxPurchaseQuantity:  maxPurchaseQuantity,
-		FulfillmentType:      fulfillmentType,
-		ManualStockTotal:     manualStockTotal,
-		ManualStockLocked:    0,
-		ManualStockSold:      0,
-		PaymentChannelIDs:    EncodeChannelIDs(input.PaymentChannelIDs),
-		IsAffiliateEnabled:   isAffiliateEnabled,
-		IsActive:             isActive,
-		SortOrder:            input.SortOrder,
+		CategoryID:              input.CategoryID,
+		Slug:                    input.Slug,
+		SeoMetaJSON:             models.JSON(input.SeoMetaJSON),
+		TitleJSON:               models.JSON(input.TitleJSON),
+		DescriptionJSON:         models.JSON(input.DescriptionJSON),
+		ContentJSON:             models.JSON(input.ContentJSON),
+		ManualFormSchemaJSON:    models.JSON{},
+		PriceAmount:             models.NewMoneyFromDecimal(priceAmount),
+		CostPriceAmount:         models.NewMoneyFromDecimal(costPriceAmount),
+		Images:                  models.StringArray(input.Images),
+		Tags:                    models.StringArray(input.Tags),
+		PurchaseType:            purchaseType,
+		MaxPurchaseQuantity:     maxPurchaseQuantity,
+		FulfillmentType:         fulfillmentType,
+		RequiresShippingAddress: requiresShippingAddress,
+		ManualStockTotal:        manualStockTotal,
+		ManualStockLocked:       0,
+		ManualStockSold:         0,
+		PaymentChannelIDs:       EncodeChannelIDs(input.PaymentChannelIDs),
+		IsAffiliateEnabled:      isAffiliateEnabled,
+		IsActive:                isActive,
+		SortOrder:               input.SortOrder,
 	}
 	if fulfillmentType == constants.FulfillmentTypeManual {
 		_, normalizedSchemaJSON, err := parseManualFormSchema(models.JSON(input.ManualFormSchemaJSON))
@@ -329,6 +335,9 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 	}
 	if input.IsAffiliateEnabled != nil {
 		product.IsAffiliateEnabled = *input.IsAffiliateEnabled
+	}
+	if input.RequiresShippingAddress != nil {
+		product.RequiresShippingAddress = *input.RequiresShippingAddress
 	}
 	rawPurchaseType := strings.TrimSpace(input.PurchaseType)
 	if rawPurchaseType == "" {

@@ -85,6 +85,8 @@ var userOrderCommonErrorRules = []mappedHandlerError{
 	{target: service.ErrManualFormFieldInvalid, code: response.CodeBadRequest, key: "error.manual_form_field_invalid"},
 	{target: service.ErrManualFormTypeInvalid, code: response.CodeBadRequest, key: "error.manual_form_type_invalid"},
 	{target: service.ErrManualFormOptionInvalid, code: response.CodeBadRequest, key: "error.manual_form_option_invalid"},
+	{target: service.ErrShippingAddressRequired, code: response.CodeBadRequest, key: "error.shipping_address_required"},
+	{target: service.ErrShippingAddressInvalid, code: response.CodeBadRequest, key: "error.shipping_address_invalid"},
 }
 
 var userOrderPreviewExtraErrorRules = []mappedHandlerError{
@@ -112,6 +114,8 @@ var guestOrderCommonErrorRules = []mappedHandlerError{
 	{target: service.ErrManualFormFieldInvalid, code: response.CodeBadRequest, key: "error.manual_form_field_invalid"},
 	{target: service.ErrManualFormTypeInvalid, code: response.CodeBadRequest, key: "error.manual_form_type_invalid"},
 	{target: service.ErrManualFormOptionInvalid, code: response.CodeBadRequest, key: "error.manual_form_option_invalid"},
+	{target: service.ErrShippingAddressRequired, code: response.CodeBadRequest, key: "error.shipping_address_required"},
+	{target: service.ErrShippingAddressInvalid, code: response.CodeBadRequest, key: "error.shipping_address_invalid"},
 }
 
 var guestOrderCreateExtraErrorRules = []mappedHandlerError{

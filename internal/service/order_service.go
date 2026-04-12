@@ -91,6 +91,7 @@ type CreateOrderInput struct {
 	AffiliateVisitorKey string
 	ClientIP            string
 	ManualFormData      map[string]models.JSON
+	ShippingAddress     models.JSON
 	SkipRiskControl     bool // 完全跳过风控（下游订单）
 	SkipIPRiskControl   bool // 跳过 IP 维度风控（渠道/Bot 订单）
 }
@@ -106,6 +107,7 @@ type CreateGuestOrderInput struct {
 	AffiliateVisitorKey string
 	ClientIP            string
 	ManualFormData      map[string]models.JSON
+	ShippingAddress     models.JSON
 }
 
 // CreateOrderItem 创建订单项输入
@@ -179,6 +181,7 @@ func (s *OrderService) CreateOrder(input CreateOrderInput) (*models.Order, error
 		AffiliateVisitorKey: input.AffiliateVisitorKey,
 		ClientIP:            input.ClientIP,
 		ManualFormData:      input.ManualFormData,
+		ShippingAddress:     input.ShippingAddress,
 		SkipRiskControl:     input.SkipRiskControl,
 		SkipIPRiskControl:   input.SkipIPRiskControl,
 	})
@@ -207,6 +210,7 @@ func (s *OrderService) CreateGuestOrder(input CreateGuestOrderInput) (*models.Or
 		ClientIP:            input.ClientIP,
 		IsGuest:             true,
 		ManualFormData:      input.ManualFormData,
+		ShippingAddress:     input.ShippingAddress,
 	})
 }
 
@@ -222,6 +226,7 @@ type orderCreateParams struct {
 	ClientIP            string
 	IsGuest             bool
 	ManualFormData      map[string]models.JSON
+	ShippingAddress     models.JSON
 	SkipRiskControl     bool
 	SkipIPRiskControl   bool
 }
@@ -265,6 +270,7 @@ type orderBuildResult struct {
 	OrderPromotionID        *uint
 	MemberLevelID           *uint
 	AppliedCoupon           *models.Coupon
+	ShippingAddressJSON     models.JSON
 }
 
 // PreviewOrder 用户订单金额预览
@@ -280,6 +286,7 @@ func (s *OrderService) PreviewOrder(input CreateOrderInput) (*OrderPreview, erro
 		AffiliateVisitorKey: input.AffiliateVisitorKey,
 		ClientIP:            input.ClientIP,
 		ManualFormData:      input.ManualFormData,
+		ShippingAddress:     input.ShippingAddress,
 	})
 }
 
@@ -296,6 +303,7 @@ func (s *OrderService) PreviewGuestOrder(input CreateGuestOrderInput) (*OrderPre
 		ClientIP:            input.ClientIP,
 		IsGuest:             true,
 		ManualFormData:      input.ManualFormData,
+		ShippingAddress:     input.ShippingAddress,
 	})
 }
 
@@ -423,6 +431,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 		PromotionID:             result.OrderPromotionID,
 		AffiliateProfileID:      affiliateProfileID,
 		AffiliateCode:           affiliateCode,
+		ShippingAddressJSON:     result.ShippingAddressJSON,
 		ExpiresAt:               &expiresAt,
 		ClientIP:                strings.TrimSpace(input.ClientIP),
 		CreatedAt:               now,
@@ -466,6 +475,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 				PromotionID:             plan.Item.PromotionID,
 				AffiliateProfileID:      affiliateProfileID,
 				AffiliateCode:           affiliateCode,
+				ShippingAddressJSON:     result.ShippingAddressJSON,
 				ExpiresAt:               &expiresAt,
 				ClientIP:                order.ClientIP,
 				CreatedAt:               now,

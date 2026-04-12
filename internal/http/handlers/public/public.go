@@ -68,32 +68,33 @@ func (v *publicProductView) toProductResp() dto.ProductResp {
 	}
 
 	resp := dto.ProductResp{
-		ID:                   v.Product.ID,
-		CategoryID:           v.Product.CategoryID,
-		Slug:                 v.Product.Slug,
-		Title:                v.Product.TitleJSON,
-		Description:          v.Product.DescriptionJSON,
-		Content:              v.Product.ContentJSON,
-		PriceAmount:          v.Product.PriceAmount,
-		Images:               v.Product.Images,
-		Tags:                 v.Product.Tags,
-		PurchaseType:         v.Product.PurchaseType,
-		MaxPurchaseQuantity:  v.Product.MaxPurchaseQuantity,
-		FulfillmentType:      v.Product.FulfillmentType,
-		ManualFormSchema:     v.Product.ManualFormSchemaJSON,
-		ManualStockAvailable: v.ManualStockAvailable,
-		AutoStockAvailable:   v.AutoStockAvailable,
-		StockStatus:          v.StockStatus,
-		IsSoldOut:            v.IsSoldOut,
-		PaymentChannelIDs:    service.DecodeChannelIDs(v.Product.PaymentChannelIDs),
-		Category:             dto.NewCategoryResp(&v.Product.Category),
-		SKUs:                 skus,
-		PromotionID:          v.PromotionID,
-		PromotionName:        v.PromotionName,
-		PromotionType:        v.PromotionType,
-		PromotionPriceAmount: v.PromotionPriceAmount,
-		PromotionRules:       v.PromotionRules,
-		MemberPrices:         v.MemberPrices,
+		ID:                      v.Product.ID,
+		CategoryID:              v.Product.CategoryID,
+		Slug:                    v.Product.Slug,
+		Title:                   v.Product.TitleJSON,
+		Description:             v.Product.DescriptionJSON,
+		Content:                 v.Product.ContentJSON,
+		PriceAmount:             v.Product.PriceAmount,
+		Images:                  v.Product.Images,
+		Tags:                    v.Product.Tags,
+		PurchaseType:            v.Product.PurchaseType,
+		MaxPurchaseQuantity:     v.Product.MaxPurchaseQuantity,
+		FulfillmentType:         v.Product.FulfillmentType,
+		RequiresShippingAddress: v.Product.RequiresShippingAddress,
+		ManualFormSchema:        v.Product.ManualFormSchemaJSON,
+		ManualStockAvailable:    v.ManualStockAvailable,
+		AutoStockAvailable:      v.AutoStockAvailable,
+		StockStatus:             v.StockStatus,
+		IsSoldOut:               v.IsSoldOut,
+		PaymentChannelIDs:       service.DecodeChannelIDs(v.Product.PaymentChannelIDs),
+		Category:                dto.NewCategoryResp(&v.Product.Category),
+		SKUs:                    skus,
+		PromotionID:             v.PromotionID,
+		PromotionName:           v.PromotionName,
+		PromotionType:           v.PromotionType,
+		PromotionPriceAmount:    v.PromotionPriceAmount,
+		PromotionRules:          v.PromotionRules,
+		MemberPrices:            v.MemberPrices,
 	}
 	return resp
 }
@@ -694,6 +695,7 @@ type CreateGuestOrderRequest struct {
 	AffiliateCode       string                       `json:"affiliate_code"`
 	AffiliateVisitorKey string                       `json:"affiliate_visitor_key"`
 	ManualFormData      map[string]models.JSON       `json:"manual_form_data"`
+	ShippingAddress     models.JSON                  `json:"shipping_address"`
 	CaptchaPayload      shared.CaptchaPayloadRequest `json:"captcha_payload"`
 }
 
@@ -741,6 +743,7 @@ func (h *Handler) CreateGuestOrder(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondGuestOrderCreateError(c, err)
@@ -760,6 +763,7 @@ type CreateGuestOrderAndPayRequest struct {
 	AffiliateCode       string                       `json:"affiliate_code"`
 	AffiliateVisitorKey string                       `json:"affiliate_visitor_key"`
 	ManualFormData      map[string]models.JSON       `json:"manual_form_data"`
+	ShippingAddress     models.JSON                  `json:"shipping_address"`
 	CaptchaPayload      shared.CaptchaPayloadRequest `json:"captcha_payload"`
 	ChannelID           uint                         `json:"channel_id"`
 }
@@ -808,6 +812,7 @@ func (h *Handler) CreateGuestOrderAndPay(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondGuestOrderCreateError(c, err)
@@ -887,6 +892,7 @@ func (h *Handler) PreviewGuestOrder(c *gin.Context) {
 		AffiliateVisitorKey: req.AffiliateVisitorKey,
 		ClientIP:            c.ClientIP(),
 		ManualFormData:      req.ManualFormData,
+		ShippingAddress:     req.ShippingAddress,
 	})
 	if err != nil {
 		respondGuestOrderPreviewError(c, err)
