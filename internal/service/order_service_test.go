@@ -437,7 +437,6 @@ func TestBuildOrderResultRejectsZeroPromotionPrice(t *testing.T) {
 		"city_code":      "3301",
 		"district_code":  "330106",
 		"township_code":  "330106001",
-		"village_code":   "330106001001",
 		"detail_address": "文三路100号",
 	}
 	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
@@ -527,7 +526,6 @@ func TestBuildOrderResultRejectsProductMaxPurchaseQuantityExceeded(t *testing.T)
 		"city_code":      "3301",
 		"district_code":  "330106",
 		"township_code":  "330106001",
-		"village_code":   "330106001001",
 		"detail_address": "文三路100号",
 	}
 	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
@@ -624,11 +622,11 @@ func TestBuildOrderResultOriginalAmountBeforePromotion(t *testing.T) {
 	}
 
 	svc := NewOrderService(OrderServiceOptions{
-		ProductRepo:     repository.NewProductRepository(db),
-		ProductSKURepo:  repository.NewProductSKURepository(db),
-		PromotionRepo:   repository.NewPromotionRepository(db),
-		AddressService:  newTestAddressService(),
-		ExpireMinutes:   15,
+		ProductRepo:    repository.NewProductRepository(db),
+		ProductSKURepo: repository.NewProductSKURepository(db),
+		PromotionRepo:  repository.NewPromotionRepository(db),
+		AddressService: newTestAddressService(),
+		ExpireMinutes:  15,
 	})
 
 	result, err := svc.buildOrderResult(orderCreateParams{
@@ -815,7 +813,6 @@ func TestBuildOrderResultRequiresShippingAddressForPhysicalProduct(t *testing.T)
 		"city_code":      "3301",
 		"district_code":  "330106",
 		"township_code":  "330106001",
-		"village_code":   "330106001001",
 		"detail_address": "文三路100号",
 	}
 	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
@@ -905,7 +902,6 @@ func TestBuildOrderResultAcceptsShippingAddressForPhysicalProduct(t *testing.T) 
 		"city_code":      "3301",
 		"district_code":  "330106",
 		"township_code":  "330106001",
-		"village_code":   "330106001001",
 		"detail_address": "文三路100号",
 	}
 	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
@@ -937,7 +933,7 @@ func TestBuildOrderResultAcceptsShippingAddressForPhysicalProduct(t *testing.T) 
 	if result.ShippingAddressJSON["receiver_name"] != "张三" {
 		t.Fatalf("expected normalized shipping address, got %+v", result.ShippingAddressJSON)
 	}
-	if result.ShippingAddressJSON["village"] != "文一社区" {
-		t.Fatalf("expected normalized village, got %+v", result.ShippingAddressJSON)
+	if result.ShippingAddressJSON["township"] != "西溪街道" {
+		t.Fatalf("expected normalized township, got %+v", result.ShippingAddressJSON)
 	}
 }

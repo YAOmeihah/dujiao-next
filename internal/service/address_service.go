@@ -44,13 +44,6 @@ func (s *AddressService) ListTownships(districtCode string) ([]models.AddressDiv
 	return s.repo.ListTownships(strings.TrimSpace(districtCode)), nil
 }
 
-func (s *AddressService) ListVillages(townshipCode string) ([]models.AddressDivision, error) {
-	if s == nil || s.repo == nil {
-		return []models.AddressDivision{}, nil
-	}
-	return s.repo.ListVillages(strings.TrimSpace(townshipCode)), nil
-}
-
 func (s *AddressService) GetProvince(code string) (models.AddressDivision, bool) {
 	if s == nil || s.repo == nil {
 		return models.AddressDivision{}, false
@@ -77,11 +70,4 @@ func (s *AddressService) GetTownship(code string) (models.AddressDivision, bool)
 		return models.AddressDivision{}, false
 	}
 	return s.repo.GetTownship(strings.TrimSpace(code))
-}
-
-func (s *AddressService) GetVillage(code string) (models.AddressDivision, bool) {
-	if s == nil || s.repo == nil {
-		return models.AddressDivision{}, false
-	}
-	return s.repo.GetVillage(strings.TrimSpace(code))
 }

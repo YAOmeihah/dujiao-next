@@ -29,30 +29,27 @@ func newAddressTestHandler() *Handler {
 		Townships: []models.AddressDivision{
 			{Code: "330106001", Name: "西溪街道", ProvinceCode: "33", CityCode: "3301", DistrictCode: "330106"},
 		},
-		Villages: []models.AddressDivision{
-			{Code: "330106001001", Name: "文一社区", ProvinceCode: "33", CityCode: "3301", DistrictCode: "330106", TownshipCode: "330106001"},
-		},
 	}))
 	return &Handler{Container: &provider.Container{AddressService: addressService}}
 }
 
-func TestGetVillagesByTownshipCode(t *testing.T) {
+func TestGetTownshipsByDistrictCode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h := newAddressTestHandler()
 
 	w := httptest.NewRecorder()
 	r := gin.New()
-	r.GET("/api/v1/address/villages", h.GetVillages)
+	r.GET("/api/v1/address/townships", h.GetTownships)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/address/villages?township_code=330106001", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/address/townships?district_code=330106", nil)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "文一社区") {
-		t.Fatalf("expected village in response, got %s", body)
+	if !strings.Contains(body, "西溪街道") {
+		t.Fatalf("expected township in response, got %s", body)
 	}
 }
 

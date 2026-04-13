@@ -13,7 +13,6 @@ type AddressDivisionDataset struct {
 	Cities    []models.AddressDivision
 	Districts []models.AddressDivision
 	Townships []models.AddressDivision
-	Villages  []models.AddressDivision
 }
 
 // AddressDivisionRepository 提供内存中的行政区划查询。
@@ -22,12 +21,10 @@ type AddressDivisionRepository interface {
 	ListCities(provinceCode string) []models.AddressDivision
 	ListDistricts(cityCode string) []models.AddressDivision
 	ListTownships(districtCode string) []models.AddressDivision
-	ListVillages(townshipCode string) []models.AddressDivision
 	GetProvince(code string) (models.AddressDivision, bool)
 	GetCity(code string) (models.AddressDivision, bool)
 	GetDistrict(code string) (models.AddressDivision, bool)
 	GetTownship(code string) (models.AddressDivision, bool)
-	GetVillage(code string) (models.AddressDivision, bool)
 }
 
 type addressDivisionRepository struct {
@@ -35,12 +32,10 @@ type addressDivisionRepository struct {
 	citiesByProvince map[string][]models.AddressDivision
 	districtsByCity  map[string][]models.AddressDivision
 	townshipsByDist  map[string][]models.AddressDivision
-	villagesByTown   map[string][]models.AddressDivision
 	provinceByCode   map[string]models.AddressDivision
 	cityByCode       map[string]models.AddressDivision
 	districtByCode   map[string]models.AddressDivision
 	townshipByCode   map[string]models.AddressDivision
-	villageByCode    map[string]models.AddressDivision
 }
 
 // NewAddressDivisionRepository 创建一个基于静态快照的仓储。
@@ -50,12 +45,10 @@ func NewAddressDivisionRepository(dataset AddressDivisionDataset) AddressDivisio
 		citiesByProvince: make(map[string][]models.AddressDivision),
 		districtsByCity:  make(map[string][]models.AddressDivision),
 		townshipsByDist:  make(map[string][]models.AddressDivision),
-		villagesByTown:   make(map[string][]models.AddressDivision),
 		provinceByCode:   make(map[string]models.AddressDivision),
 		cityByCode:       make(map[string]models.AddressDivision),
 		districtByCode:   make(map[string]models.AddressDivision),
 		townshipByCode:   make(map[string]models.AddressDivision),
-		villageByCode:    make(map[string]models.AddressDivision),
 	}
 
 	sortDivisions(repo.provinces)
@@ -74,10 +67,6 @@ func NewAddressDivisionRepository(dataset AddressDivisionDataset) AddressDivisio
 		repo.townshipByCode[row.Code] = row
 		repo.townshipsByDist[row.DistrictCode] = append(repo.townshipsByDist[row.DistrictCode], row)
 	}
-	for _, row := range cloneDivisions(dataset.Villages) {
-		repo.villageByCode[row.Code] = row
-		repo.villagesByTown[row.TownshipCode] = append(repo.villagesByTown[row.TownshipCode], row)
-	}
 	for key := range repo.citiesByProvince {
 		sortDivisions(repo.citiesByProvince[key])
 	}
@@ -86,9 +75,6 @@ func NewAddressDivisionRepository(dataset AddressDivisionDataset) AddressDivisio
 	}
 	for key := range repo.townshipsByDist {
 		sortDivisions(repo.townshipsByDist[key])
-	}
-	for key := range repo.villagesByTown {
-		sortDivisions(repo.villagesByTown[key])
 	}
 	return repo
 }
@@ -109,10 +95,6 @@ func (r *addressDivisionRepository) ListTownships(districtCode string) []models.
 	return cloneDivisions(r.townshipsByDist[strings.TrimSpace(districtCode)])
 }
 
-func (r *addressDivisionRepository) ListVillages(townshipCode string) []models.AddressDivision {
-	return cloneDivisions(r.villagesByTown[strings.TrimSpace(townshipCode)])
-}
-
 func (r *addressDivisionRepository) GetProvince(code string) (models.AddressDivision, bool) {
 	row, ok := r.provinceByCode[strings.TrimSpace(code)]
 	return row, ok
@@ -130,11 +112,6 @@ func (r *addressDivisionRepository) GetDistrict(code string) (models.AddressDivi
 
 func (r *addressDivisionRepository) GetTownship(code string) (models.AddressDivision, bool) {
 	row, ok := r.townshipByCode[strings.TrimSpace(code)]
-	return row, ok
-}
-
-func (r *addressDivisionRepository) GetVillage(code string) (models.AddressDivision, bool) {
-	row, ok := r.villageByCode[strings.TrimSpace(code)]
 	return row, ok
 }
 

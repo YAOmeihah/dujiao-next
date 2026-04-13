@@ -33,8 +33,6 @@ func ValidateAndNormalizeShippingAddressWithService(input models.JSON, addressSe
 		"district_code":  strings.TrimSpace(toShippingText(input["district_code"])),
 		"township":       strings.TrimSpace(toShippingText(input["township"])),
 		"township_code":  strings.TrimSpace(toShippingText(input["township_code"])),
-		"village":        strings.TrimSpace(toShippingText(input["village"])),
-		"village_code":   strings.TrimSpace(toShippingText(input["village_code"])),
 		"detail_address": strings.TrimSpace(toShippingText(input["detail_address"])),
 	}
 
@@ -45,7 +43,6 @@ func ValidateAndNormalizeShippingAddressWithService(input models.JSON, addressSe
 		"city_code",
 		"district_code",
 		"township_code",
-		"village_code",
 		"detail_address",
 	}
 	for _, key := range requiredKeys {
@@ -76,16 +73,11 @@ func ValidateAndNormalizeShippingAddressWithService(input models.JSON, addressSe
 	if !ok || township.ProvinceCode != province.Code || township.CityCode != city.Code || township.DistrictCode != district.Code {
 		return nil, ErrShippingAddressInvalid
 	}
-	village, ok := addressService.GetVillage(toShippingText(normalized["village_code"]))
-	if !ok || village.ProvinceCode != province.Code || village.CityCode != city.Code || village.DistrictCode != district.Code || village.TownshipCode != township.Code {
-		return nil, ErrShippingAddressInvalid
-	}
 
 	normalized["province"] = province.Name
 	normalized["city"] = city.Name
 	normalized["district"] = district.Name
 	normalized["township"] = township.Name
-	normalized["village"] = village.Name
 
 	return normalized, nil
 }

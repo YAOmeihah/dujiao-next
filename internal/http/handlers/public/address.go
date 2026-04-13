@@ -40,12 +40,6 @@ func (h *Handler) GetTownships(c *gin.Context) {
 	})
 }
 
-func (h *Handler) GetVillages(c *gin.Context) {
-	h.respondAddressChildren(c, strings.TrimSpace(c.Query("township_code")), func(code string) (interface{}, error) {
-		return h.AddressService.ListVillages(code)
-	})
-}
-
 func (h *Handler) respondAddressChildren(c *gin.Context, parentCode string, fetch func(string) (interface{}, error)) {
 	if h.AddressService == nil {
 		shared.RespondError(c, response.CodeInternal, "error.internal_error", nil)

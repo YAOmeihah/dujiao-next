@@ -13,7 +13,6 @@ func TestLoadDatasetFromDir(t *testing.T) {
 	writeDatasetFile(t, dir, "cities.json", `[{"code":"3301","name":"杭州市","provinceCode":"33"}]`)
 	writeDatasetFile(t, dir, "districts.json", `[{"code":"330106","name":"西湖区","cityCode":"3301","provinceCode":"33"}]`)
 	writeDatasetFile(t, dir, "townships.json", `[{"code":"330106001","name":"西溪街道","areaCode":"330106","cityCode":"3301","provinceCode":"33"}]`)
-	writeDatasetFile(t, dir, "villages.json", `[{"code":"330106001001","name":"文一社区","streetCode":"330106001","areaCode":"330106","cityCode":"3301","provinceCode":"33"}]`)
 
 	dataset, err := LoadDatasetFromDir(dir)
 	if err != nil {
@@ -23,8 +22,8 @@ func TestLoadDatasetFromDir(t *testing.T) {
 	if len(dataset.Provinces) != 1 || dataset.Provinces[0].Name != "浙江省" {
 		t.Fatalf("unexpected provinces: %+v", dataset.Provinces)
 	}
-	if len(dataset.Villages) != 1 || dataset.Villages[0].TownshipCode != "330106001" {
-		t.Fatalf("unexpected villages: %+v", dataset.Villages)
+	if len(dataset.Townships) != 1 || dataset.Townships[0].DistrictCode != "330106" {
+		t.Fatalf("unexpected townships: %+v", dataset.Townships)
 	}
 }
 

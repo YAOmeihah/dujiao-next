@@ -22,9 +22,6 @@ func newTestAddressService() *AddressService {
 		Townships: []models.AddressDivision{
 			{Code: "330106001", Name: "西溪街道", ProvinceCode: "33", CityCode: "3301", DistrictCode: "330106"},
 		},
-		Villages: []models.AddressDivision{
-			{Code: "330106001001", Name: "文一社区", ProvinceCode: "33", CityCode: "3301", DistrictCode: "330106", TownshipCode: "330106001"},
-		},
 	}))
 }
 
@@ -54,14 +51,6 @@ func TestAddressServiceListChildrenByParentCode(t *testing.T) {
 	if len(townships) != 1 || townships[0].Code != "330106001" {
 		t.Fatalf("unexpected townships: %+v", townships)
 	}
-
-	villages, err := svc.ListVillages("330106001")
-	if err != nil {
-		t.Fatalf("ListVillages failed: %v", err)
-	}
-	if len(villages) != 1 || villages[0].Code != "330106001001" {
-		t.Fatalf("unexpected villages: %+v", villages)
-	}
 }
 
 func TestValidateAndNormalizeShippingAddressCanonicalizesFiveLevelAddress(t *testing.T) {
@@ -78,8 +67,6 @@ func TestValidateAndNormalizeShippingAddressCanonicalizesFiveLevelAddress(t *tes
 		"district_code":  "330106",
 		"township":       "错误街道",
 		"township_code":  "330106001",
-		"village":        "错误社区",
-		"village_code":   "330106001001",
 		"detail_address": " 文三路100号 ",
 	}, svc)
 	if err != nil {
@@ -89,8 +76,8 @@ func TestValidateAndNormalizeShippingAddressCanonicalizesFiveLevelAddress(t *tes
 	if normalized["province"] != "浙江省" || normalized["city"] != "杭州市" {
 		t.Fatalf("expected normalized province/city names, got %+v", normalized)
 	}
-	if normalized["township"] != "西溪街道" || normalized["village"] != "文一社区" {
-		t.Fatalf("expected normalized township/village names, got %+v", normalized)
+	if normalized["township"] != "西溪街道" {
+		t.Fatalf("expected normalized township name, got %+v", normalized)
 	}
 	if normalized["detail_address"] != "文三路100号" {
 		t.Fatalf("expected detail address to be trimmed, got %+v", normalized)
@@ -106,8 +93,7 @@ func TestValidateAndNormalizeShippingAddressRejectsBrokenHierarchy(t *testing.T)
 		"province_code":  "33",
 		"city_code":      "3301",
 		"district_code":  "330106",
-		"township_code":  "330106001",
-		"village_code":   "110101001001",
+		"township_code":  "110101001",
 		"detail_address": "文三路100号",
 	}, svc)
 	if !errors.Is(err, ErrShippingAddressInvalid) {

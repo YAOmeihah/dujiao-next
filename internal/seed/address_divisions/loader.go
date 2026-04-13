@@ -46,15 +46,6 @@ type townshipRow struct {
 	ProvinceCode string `json:"provinceCode"`
 }
 
-type villageRow struct {
-	Code         string `json:"code"`
-	Name         string `json:"name"`
-	TownshipCode string `json:"streetCode"`
-	DistrictCode string `json:"areaCode"`
-	CityCode     string `json:"cityCode"`
-	ProvinceCode string `json:"provinceCode"`
-}
-
 // LoadDataset 返回外置文件中的五级行政区划数据集，并缓存默认加载结果。
 func LoadDataset() (repository.AddressDivisionDataset, error) {
 	once.Do(func() {
@@ -91,17 +82,12 @@ func LoadDatasetFromDir(dir string) (repository.AddressDivisionDataset, error) {
 	if err != nil {
 		return repository.AddressDivisionDataset{}, err
 	}
-	villages, err := loadJSON[villageRow](baseDir, "villages.json")
-	if err != nil {
-		return repository.AddressDivisionDataset{}, err
-	}
 
 	dataset := repository.AddressDivisionDataset{
 		Provinces: make([]models.AddressDivision, 0, len(provinces)),
 		Cities:    make([]models.AddressDivision, 0, len(cities)),
 		Districts: make([]models.AddressDivision, 0, len(districts)),
 		Townships: make([]models.AddressDivision, 0, len(townships)),
-		Villages:  make([]models.AddressDivision, 0, len(villages)),
 	}
 	for _, row := range provinces {
 		dataset.Provinces = append(dataset.Provinces, models.AddressDivision{
@@ -131,16 +117,6 @@ func LoadDatasetFromDir(dir string) (repository.AddressDivisionDataset, error) {
 			ProvinceCode: row.ProvinceCode,
 			CityCode:     row.CityCode,
 			DistrictCode: row.DistrictCode,
-		})
-	}
-	for _, row := range villages {
-		dataset.Villages = append(dataset.Villages, models.AddressDivision{
-			Code:         row.Code,
-			Name:         row.Name,
-			ProvinceCode: row.ProvinceCode,
-			CityCode:     row.CityCode,
-			DistrictCode: row.DistrictCode,
-			TownshipCode: row.TownshipCode,
 		})
 	}
 	return dataset, nil
