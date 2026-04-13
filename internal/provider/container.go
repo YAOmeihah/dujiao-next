@@ -8,6 +8,7 @@ import (
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/queue"
 	"github.com/dujiao-next/internal/repository"
+	addressdivisions "github.com/dujiao-next/internal/seed/address_divisions"
 	"github.com/dujiao-next/internal/service"
 )
 
@@ -58,6 +59,7 @@ type Container struct {
 	MemberLevelRepo        repository.MemberLevelRepository
 	MemberLevelPriceRepo   repository.MemberLevelPriceRepository
 	MediaRepo              repository.MediaRepository
+	AddressDivisionRepo    repository.AddressDivisionRepository
 
 	// Services
 	AuthzService              *authz.Service
@@ -100,6 +102,7 @@ type Container struct {
 	AdProxyService            *service.AdProxyService
 	MediaService              *service.MediaService
 	OrderRiskControlService   *service.OrderRiskControlService
+	AddressService            *service.AddressService
 }
 
 // NewContainer 初始化容器
@@ -177,6 +180,13 @@ func (c *Container) initRepositories() {
 	c.MemberLevelRepo = repository.NewMemberLevelRepository(db)
 	c.MemberLevelPriceRepo = repository.NewMemberLevelPriceRepository(db)
 	c.MediaRepo = repository.NewMediaRepository(db)
+
+	dataset, err := addressdivisions.LoadDataset()
+	if err != nil {
+		logger.Errorw("provider_load_address_divisions_failed", "error", err)
+		panic(err)
+	}
+	c.AddressDivisionRepo = repository.NewAddressDivisionRepository(dataset)
 }
 
 func (c *Container) initServices() {
@@ -227,6 +237,7 @@ func (c *Container) initServices() {
 	c.WalletService = service.NewWalletService(c.WalletRepo, c.OrderRepo, c.UserRepo, c.AffiliateService)
 	c.OrderRefundService = service.NewOrderRefundService(c.OrderRepo, c.UserRepo, c.OrderRefundRecordRepo, c.AffiliateService)
 	c.MemberLevelService = service.NewMemberLevelService(c.MemberLevelRepo, c.MemberLevelPriceRepo, c.UserRepo)
+	c.AddressService = service.NewAddressService(c.AddressDivisionRepo)
 	c.OrderRiskControlService = service.NewOrderRiskControlService(c.SettingService, c.OrderRepo)
 	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
 		OrderRepo:             c.OrderRepo,
@@ -244,6 +255,7 @@ func (c *Container) initServices() {
 		WalletService:         c.WalletService,
 		AffiliateService:      c.AffiliateService,
 		MemberLevelService:    c.MemberLevelService,
+		AddressService:        c.AddressService,
 		RiskControlService:    c.OrderRiskControlService,
 		ExpireMinutes:         c.Config.Order.PaymentExpireMinutes,
 	})

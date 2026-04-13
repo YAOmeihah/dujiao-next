@@ -263,7 +263,7 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 
 	normalizedShippingAddress := models.JSON{}
 	if requiresShippingAddress {
-		normalizedShippingAddress, err = ValidateAndNormalizeShippingAddress(input.ShippingAddress)
+		normalizedShippingAddress, err = ValidateAndNormalizeShippingAddressWithService(input.ShippingAddress, s.addressService)
 		if err != nil {
 			return nil, err
 		}

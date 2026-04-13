@@ -34,6 +34,7 @@ type OrderService struct {
 	walletService         *WalletService
 	affiliateSvc          *AffiliateService
 	memberLevelService    *MemberLevelService
+	addressService        *AddressService
 	riskControlSvc        *OrderRiskControlService
 	expireMinutes         int
 }
@@ -55,6 +56,7 @@ type OrderServiceOptions struct {
 	WalletService         *WalletService
 	AffiliateService      *AffiliateService
 	MemberLevelService    *MemberLevelService
+	AddressService        *AddressService
 	RiskControlService    *OrderRiskControlService
 	ExpireMinutes         int
 }
@@ -77,6 +79,7 @@ func NewOrderService(opts OrderServiceOptions) *OrderService {
 		walletService:         opts.WalletService,
 		affiliateSvc:          opts.AffiliateService,
 		memberLevelService:    opts.MemberLevelService,
+		addressService:        opts.AddressService,
 		riskControlSvc:        opts.RiskControlService,
 		expireMinutes:         opts.ExpireMinutes,
 	}

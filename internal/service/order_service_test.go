@@ -429,10 +429,26 @@ func TestBuildOrderResultRejectsZeroPromotionPrice(t *testing.T) {
 		t.Fatalf("create promotion failed: %v", err)
 	}
 
+	addressService := newTestAddressService()
+	shippingAddress := models.JSON{
+		"receiver_name":  "张三",
+		"receiver_phone": "13800138000",
+		"province_code":  "33",
+		"city_code":      "3301",
+		"district_code":  "330106",
+		"township_code":  "330106001",
+		"village_code":   "330106001001",
+		"detail_address": "文三路100号",
+	}
+	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
+		t.Fatalf("expected shipping address to validate, got: %v", err)
+	}
+
 	svc := NewOrderService(OrderServiceOptions{
 		ProductRepo:    repository.NewProductRepository(db),
 		ProductSKURepo: repository.NewProductSKURepository(db),
 		PromotionRepo:  repository.NewPromotionRepository(db),
+		AddressService: addressService,
 		ExpireMinutes:  15,
 	})
 
@@ -503,10 +519,26 @@ func TestBuildOrderResultRejectsProductMaxPurchaseQuantityExceeded(t *testing.T)
 		t.Fatalf("create sku failed: %v", err)
 	}
 
+	addressService := newTestAddressService()
+	shippingAddress := models.JSON{
+		"receiver_name":  "张三",
+		"receiver_phone": "13800138000",
+		"province_code":  "33",
+		"city_code":      "3301",
+		"district_code":  "330106",
+		"township_code":  "330106001",
+		"village_code":   "330106001001",
+		"detail_address": "文三路100号",
+	}
+	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
+		t.Fatalf("expected shipping address to validate, got: %v", err)
+	}
+
 	svc := NewOrderService(OrderServiceOptions{
 		ProductRepo:    repository.NewProductRepository(db),
 		ProductSKURepo: repository.NewProductSKURepository(db),
 		PromotionRepo:  repository.NewPromotionRepository(db),
+		AddressService: addressService,
 		ExpireMinutes:  15,
 	})
 
@@ -592,10 +624,11 @@ func TestBuildOrderResultOriginalAmountBeforePromotion(t *testing.T) {
 	}
 
 	svc := NewOrderService(OrderServiceOptions{
-		ProductRepo:    repository.NewProductRepository(db),
-		ProductSKURepo: repository.NewProductSKURepository(db),
-		PromotionRepo:  repository.NewPromotionRepository(db),
-		ExpireMinutes:  15,
+		ProductRepo:     repository.NewProductRepository(db),
+		ProductSKURepo:  repository.NewProductSKURepository(db),
+		PromotionRepo:   repository.NewPromotionRepository(db),
+		AddressService:  newTestAddressService(),
+		ExpireMinutes:   15,
 	})
 
 	result, err := svc.buildOrderResult(orderCreateParams{
@@ -774,10 +807,26 @@ func TestBuildOrderResultRequiresShippingAddressForPhysicalProduct(t *testing.T)
 		t.Fatalf("create sku failed: %v", err)
 	}
 
+	addressService := newTestAddressService()
+	shippingAddress := models.JSON{
+		"receiver_name":  "张三",
+		"receiver_phone": "13800138000",
+		"province_code":  "33",
+		"city_code":      "3301",
+		"district_code":  "330106",
+		"township_code":  "330106001",
+		"village_code":   "330106001001",
+		"detail_address": "文三路100号",
+	}
+	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
+		t.Fatalf("expected shipping address to validate, got: %v", err)
+	}
+
 	svc := NewOrderService(OrderServiceOptions{
 		ProductRepo:    repository.NewProductRepository(db),
 		ProductSKURepo: repository.NewProductSKURepository(db),
 		PromotionRepo:  repository.NewPromotionRepository(db),
+		AddressService: addressService,
 		ExpireMinutes:  15,
 	})
 
@@ -848,10 +897,26 @@ func TestBuildOrderResultAcceptsShippingAddressForPhysicalProduct(t *testing.T) 
 		t.Fatalf("create sku failed: %v", err)
 	}
 
+	addressService := newTestAddressService()
+	shippingAddress := models.JSON{
+		"receiver_name":  "张三",
+		"receiver_phone": "13800138000",
+		"province_code":  "33",
+		"city_code":      "3301",
+		"district_code":  "330106",
+		"township_code":  "330106001",
+		"village_code":   "330106001001",
+		"detail_address": "文三路100号",
+	}
+	if _, err := ValidateAndNormalizeShippingAddress(shippingAddress, addressService); err != nil {
+		t.Fatalf("expected shipping address to validate, got: %v", err)
+	}
+
 	svc := NewOrderService(OrderServiceOptions{
 		ProductRepo:    repository.NewProductRepository(db),
 		ProductSKURepo: repository.NewProductSKURepository(db),
 		PromotionRepo:  repository.NewPromotionRepository(db),
+		AddressService: addressService,
 		ExpireMinutes:  15,
 	})
 
@@ -864,20 +929,15 @@ func TestBuildOrderResultAcceptsShippingAddressForPhysicalProduct(t *testing.T) 
 				Quantity:  1,
 			},
 		},
-		ShippingAddress: models.JSON{
-			"receiver_name":  "张三",
-			"receiver_phone": "13800138000",
-			"province":       "浙江省",
-			"city":           "杭州市",
-			"district":       "西湖区",
-			"detail_address": "文三路100号",
-			"postal_code":    "310000",
-		},
+		ShippingAddress: shippingAddress,
 	})
 	if err != nil {
 		t.Fatalf("expected nil error, got: %v", err)
 	}
 	if result.ShippingAddressJSON["receiver_name"] != "张三" {
 		t.Fatalf("expected normalized shipping address, got %+v", result.ShippingAddressJSON)
+	}
+	if result.ShippingAddressJSON["village"] != "文一社区" {
+		t.Fatalf("expected normalized village, got %+v", result.ShippingAddressJSON)
 	}
 }

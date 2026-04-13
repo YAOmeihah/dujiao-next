@@ -74,6 +74,12 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 	// API 路由组
 	apiV1 := r.Group("/api/v1")
 	{
+		apiV1.GET("/address/provinces", publicHandler.GetProvinces)
+		apiV1.GET("/address/cities", publicHandler.GetCities)
+		apiV1.GET("/address/districts", publicHandler.GetDistricts)
+		apiV1.GET("/address/townships", publicHandler.GetTownships)
+		apiV1.GET("/address/villages", publicHandler.GetVillages)
+
 		// 公开接口
 		public := apiV1.Group("/public")
 		{
