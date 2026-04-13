@@ -22,7 +22,7 @@ func TestNormalizeOrderRiskControlConfig_ClampValues(t *testing.T) {
 	cfg := NormalizeOrderRiskControlConfig(OrderRiskControlConfig{
 		MaxPendingOrdersPerUser:       -1,
 		MaxPendingOrdersPerIP:         200,
-		MaxPendingOrdersPerGuestEmail: 50,
+		MaxPendingOrdersPerGuestPhone: 50,
 		OrderRateLimit: OrderRateLimitConfig{
 			WindowSeconds: 5,    // below min 10
 			MaxRequests:   0,    // below min 1
@@ -35,8 +35,8 @@ func TestNormalizeOrderRiskControlConfig_ClampValues(t *testing.T) {
 	if cfg.MaxPendingOrdersPerIP != 5 {
 		t.Fatalf("expected clamped to default 5, got %d", cfg.MaxPendingOrdersPerIP)
 	}
-	if cfg.MaxPendingOrdersPerGuestEmail != 50 {
-		t.Fatalf("expected 50 (valid), got %d", cfg.MaxPendingOrdersPerGuestEmail)
+	if cfg.MaxPendingOrdersPerGuestPhone != 50 {
+		t.Fatalf("expected 50 (valid), got %d", cfg.MaxPendingOrdersPerGuestPhone)
 	}
 	if cfg.OrderRateLimit.WindowSeconds != 60 {
 		t.Fatalf("expected clamped window to 60, got %d", cfg.OrderRateLimit.WindowSeconds)
@@ -72,19 +72,59 @@ func TestNormalizeOrderRiskControlConfig_IPValidation(t *testing.T) {
 	}
 }
 
-func TestNormalizeOrderRiskControlConfig_EmailNormalization(t *testing.T) {
+func TestNormalizeOrderRiskControlConfig_PhoneNormalization(t *testing.T) {
 	cfg := NormalizeOrderRiskControlConfig(OrderRiskControlConfig{
-		EmailBlacklist: []string{
-			"  Spam@Example.COM  ",
+		PhoneBlacklist: []string{
+			"  +8613800138000  ",
 			"",
-			"test@test.com",
+			"13800138001",
 		},
 	})
-	if len(cfg.EmailBlacklist) != 2 {
-		t.Fatalf("expected 2 emails, got %d: %v", len(cfg.EmailBlacklist), cfg.EmailBlacklist)
+	if len(cfg.PhoneBlacklist) != 2 {
+		t.Fatalf("expected 2 phones, got %d: %v", len(cfg.PhoneBlacklist), cfg.PhoneBlacklist)
 	}
-	if cfg.EmailBlacklist[0] != "spam@example.com" {
-		t.Fatalf("expected lowercased email, got %q", cfg.EmailBlacklist[0])
+	if cfg.PhoneBlacklist[0] != "+8613800138000" {
+		t.Fatalf("expected trimmed phone, got %q", cfg.PhoneBlacklist[0])
+	}
+}
+
+func TestOrderRiskControlConfigFromJSON_LegacyGuestEmailKeys(t *testing.T) {
+	cfg := orderRiskControlConfigFromJSON(models.JSON{
+		"enabled":                            true,
+		"max_pending_orders_per_guest_email": float64(4),
+		"email_blacklist": []interface{}{
+			" Spam@Example.com ",
+			"",
+			"blocked@test.com",
+		},
+	}, DefaultOrderRiskControlConfig())
+
+	if !cfg.Enabled {
+		t.Fatal("expected enabled to be preserved")
+	}
+	if cfg.MaxPendingOrdersPerGuestPhone != 4 {
+		t.Fatalf("expected legacy guest pending limit to map to phone limit, got %d", cfg.MaxPendingOrdersPerGuestPhone)
+	}
+	if len(cfg.LegacyEmailBlacklist) != 2 {
+		t.Fatalf("expected legacy email blacklist to be preserved, got %v", cfg.LegacyEmailBlacklist)
+	}
+	if cfg.LegacyEmailBlacklist[0] != "spam@example.com" {
+		t.Fatalf("expected legacy blacklist value to be normalized, got %q", cfg.LegacyEmailBlacklist[0])
+	}
+}
+
+func TestCheckOrderAllowed_LegacyEmailBlacklist(t *testing.T) {
+	svc := newTestRiskControlService(0, 0, 0, models.JSON{
+		"enabled":         true,
+		"email_blacklist": []interface{}{"spam@example.com"},
+	})
+
+	if err := svc.CheckOrderAllowed(RiskCheckInput{
+		IsGuest:    true,
+		GuestEmail: "SPAM@example.com",
+		ClientIP:   "2.3.4.5",
+	}); err != ErrRiskEmailBlacklisted {
+		t.Fatalf("expected ErrRiskEmailBlacklisted, got %v", err)
 	}
 }
 
@@ -192,7 +232,7 @@ type mockOrderRepoForRisk struct {
 	repository.OrderRepository
 	pendingByUser  int64
 	pendingByIP    int64
-	pendingByEmail int64
+	pendingByPhone int64
 }
 
 func (m *mockOrderRepoForRisk) CountPendingByUserID(_ uint) (int64, error) {
@@ -201,8 +241,8 @@ func (m *mockOrderRepoForRisk) CountPendingByUserID(_ uint) (int64, error) {
 func (m *mockOrderRepoForRisk) CountPendingByClientIP(_ string) (int64, error) {
 	return m.pendingByIP, nil
 }
-func (m *mockOrderRepoForRisk) CountPendingByGuestEmail(_ string) (int64, error) {
-	return m.pendingByEmail, nil
+func (m *mockOrderRepoForRisk) CountPendingByGuestPhone(_ string) (int64, error) {
+	return m.pendingByPhone, nil
 }
 
 // Implement remaining interface methods as no-ops
@@ -249,7 +289,7 @@ func (m *mockOrderRepoForRisk) WithTx(_ *gorm.DB) *repository.GormOrderRepositor
 	return nil
 }
 
-func newTestRiskControlService(pendingByUser, pendingByIP, pendingByEmail int64, cfgJSON models.JSON) *OrderRiskControlService {
+func newTestRiskControlService(pendingByUser, pendingByIP, pendingByPhone int64, cfgJSON models.JSON) *OrderRiskControlService {
 	settingRepo := newMockSettingRepo()
 	if cfgJSON != nil {
 		settingRepo.Upsert("order_risk_control_config", cfgJSON)
@@ -258,7 +298,7 @@ func newTestRiskControlService(pendingByUser, pendingByIP, pendingByEmail int64,
 	return NewOrderRiskControlService(settingSvc, &mockOrderRepoForRisk{
 		pendingByUser:  pendingByUser,
 		pendingByIP:    pendingByIP,
-		pendingByEmail: pendingByEmail,
+		pendingByPhone: pendingByPhone,
 	})
 }
 
@@ -290,21 +330,21 @@ func TestCheckOrderAllowed_IPBlacklist(t *testing.T) {
 	}
 }
 
-func TestCheckOrderAllowed_EmailBlacklist(t *testing.T) {
+func TestCheckOrderAllowed_PhoneBlacklist(t *testing.T) {
 	svc := newTestRiskControlService(0, 0, 0, models.JSON{
 		"enabled":         true,
-		"email_blacklist": []interface{}{"spam@example.com"},
+		"phone_blacklist": []interface{}{"+8613800138000"},
 	})
 
 	if err := svc.CheckOrderAllowed(RiskCheckInput{
 		IsGuest:    true,
-		GuestEmail: "SPAM@example.com",
+		GuestPhone: "+8613800138000",
 		ClientIP:   "2.3.4.5",
-	}); err != ErrRiskEmailBlacklisted {
-		t.Fatalf("expected ErrRiskEmailBlacklisted, got %v", err)
+	}); err != ErrRiskPhoneBlacklisted {
+		t.Fatalf("expected ErrRiskPhoneBlacklisted, got %v", err)
 	}
 
-	// Non-guest should not be blocked by email blacklist
+	// Non-guest should not be blocked by phone blacklist
 	if err := svc.CheckOrderAllowed(RiskCheckInput{
 		UserID:   1,
 		ClientIP: "2.3.4.5",
@@ -318,7 +358,7 @@ func TestCheckOrderAllowed_PendingOrderLimits(t *testing.T) {
 		"enabled":                            true,
 		"max_pending_orders_per_user":        float64(2),
 		"max_pending_orders_per_ip":          float64(3),
-		"max_pending_orders_per_guest_email": float64(1),
+		"max_pending_orders_per_guest_phone": float64(1),
 	}
 
 	// User at limit
@@ -339,14 +379,14 @@ func TestCheckOrderAllowed_PendingOrderLimits(t *testing.T) {
 		t.Fatalf("expected ErrRiskTooManyPendingOrders for IP, got %v", err)
 	}
 
-	// Guest email at limit
+	// Guest phone at limit
 	svc = newTestRiskControlService(0, 0, 1, cfg)
 	if err := svc.CheckOrderAllowed(RiskCheckInput{
 		IsGuest:    true,
-		GuestEmail: "test@example.com",
+		GuestPhone: "+8613800138000",
 		ClientIP:   "5.6.7.8",
 	}); err != ErrRiskTooManyPendingOrders {
-		t.Fatalf("expected ErrRiskTooManyPendingOrders for guest email, got %v", err)
+		t.Fatalf("expected ErrRiskTooManyPendingOrders for guest phone, got %v", err)
 	}
 }
 
@@ -394,13 +434,13 @@ func TestCheckOrderAllowed_ZeroLimitMeansNoLimit(t *testing.T) {
 		"enabled":                            true,
 		"max_pending_orders_per_user":        float64(0),
 		"max_pending_orders_per_ip":          float64(0),
-		"max_pending_orders_per_guest_email": float64(0),
+		"max_pending_orders_per_guest_phone": float64(0),
 	})
 	if err := svc.CheckOrderAllowed(RiskCheckInput{
 		UserID:     1,
 		ClientIP:   "1.2.3.4",
 		IsGuest:    true,
-		GuestEmail: "test@example.com",
+		GuestPhone: "+8613800138000",
 	}); err != nil {
 		t.Fatalf("expected nil when limits are 0 (disabled), got %v", err)
 	}

@@ -731,6 +731,7 @@ func (s *PaymentService) buildOrderNotificationPayload(order *models.Order, paym
 		"order_id":                  fmt.Sprintf("%d", order.ID),
 		"order_no":                  strings.TrimSpace(order.OrderNo),
 		"user_id":                   fmt.Sprintf("%d", order.UserID),
+		"guest_phone":               strings.TrimSpace(order.GuestPhone),
 		"guest_email":               strings.TrimSpace(order.GuestEmail),
 		"amount":                    order.TotalAmount.String(),
 		"currency":                  strings.ToUpper(strings.TrimSpace(order.Currency)),
@@ -813,8 +814,13 @@ func (s *PaymentService) resolveNotificationCustomer(order *models.Order) (strin
 		return "", "", "guest"
 	}
 	if order.UserID == 0 {
+		guestPhone := strings.TrimSpace(order.GuestPhone)
 		guestEmail := strings.TrimSpace(order.GuestEmail)
-		return guestEmail, guestEmail, "guest"
+		label := guestEmail
+		if label == "" {
+			label = guestPhone
+		}
+		return guestEmail, label, "guest"
 	}
 	email, label := s.resolveUserNotificationIdentity(order.UserID)
 	if email == "" {

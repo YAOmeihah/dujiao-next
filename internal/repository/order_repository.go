@@ -19,18 +19,18 @@ type OrderRepository interface {
 	GetByIDAndUser(id uint, userID uint) (*models.Order, error)
 	GetByOrderNoAndUser(orderNo string, userID uint) (*models.Order, error)
 	GetAnyByOrderNoAndUser(orderNo string, userID uint) (*models.Order, error)
-	GetByIDAndGuest(id uint, email, password string) (*models.Order, error)
-	GetByOrderNoAndGuest(orderNo, email, password string) (*models.Order, error)
-	GetAnyByOrderNoAndGuest(orderNo, email, password string) (*models.Order, error)
+	GetByIDAndGuest(id uint, phone, password string) (*models.Order, error)
+	GetByOrderNoAndGuest(orderNo, phone, password string) (*models.Order, error)
+	GetAnyByOrderNoAndGuest(orderNo, phone, password string) (*models.Order, error)
 	ListChildren(parentID uint) ([]models.Order, error)
 	ListByUser(filter OrderListFilter) ([]models.Order, int64, error)
-	ListByGuest(email, password string, page, pageSize int) ([]models.Order, int64, error)
+	ListByGuest(phone, password string, page, pageSize int) ([]models.Order, int64, error)
 	ListAdmin(filter OrderListFilter) ([]models.Order, int64, error)
 	UpdateStatus(id uint, status string, updates map[string]interface{}) error
 	CountOrderItemsByProduct(productID uint) (int64, error)
 	CountPendingByUserID(userID uint) (int64, error)
 	CountPendingByClientIP(clientIP string) (int64, error)
-	CountPendingByGuestEmail(email string) (int64, error)
+	CountPendingByGuestPhone(phone string) (int64, error)
 	Transaction(fn func(tx *gorm.DB) error) error
 	WithTx(tx *gorm.DB) *GormOrderRepository
 }
@@ -176,12 +176,12 @@ func (r *GormOrderRepository) GetAnyByOrderNoAndUser(orderNo string, userID uint
 }
 
 // GetAnyByOrderNoAndGuest 按订单号查找游客订单（不限父/子），用于交付下载等场景
-func (r *GormOrderRepository) GetAnyByOrderNoAndGuest(orderNo, email, password string) (*models.Order, error) {
+func (r *GormOrderRepository) GetAnyByOrderNoAndGuest(orderNo, phone, password string) (*models.Order, error) {
 	var order models.Order
 	query := r.db.Preload("Items").Preload("Fulfillment").Preload("Children", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Items").Preload("Fulfillment")
 	})
-	if err := query.Where("order_no = ? AND user_id = 0 AND guest_email = ? AND guest_password = ?", orderNo, email, password).First(&order).Error; err != nil {
+	if err := query.Where("order_no = ? AND user_id = 0 AND guest_phone = ? AND guest_password = ?", orderNo, phone, password).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -191,11 +191,11 @@ func (r *GormOrderRepository) GetAnyByOrderNoAndGuest(orderNo, email, password s
 }
 
 // GetByIDAndGuest 获取游客订单详情
-func (r *GormOrderRepository) GetByIDAndGuest(id uint, email, password string) (*models.Order, error) {
+func (r *GormOrderRepository) GetByIDAndGuest(id uint, phone, password string) (*models.Order, error) {
 	var order models.Order
 	query := r.withChildren(r.db.Preload("Items").Preload("Fulfillment"))
 	if err := query.
-		Where("id = ? AND user_id = 0 AND guest_email = ? AND guest_password = ? AND parent_id IS NULL", id, email, password).
+		Where("id = ? AND user_id = 0 AND guest_phone = ? AND guest_password = ? AND parent_id IS NULL", id, phone, password).
 		First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -206,11 +206,11 @@ func (r *GormOrderRepository) GetByIDAndGuest(id uint, email, password string) (
 }
 
 // GetByOrderNoAndGuest 获取游客订单详情（按订单号）
-func (r *GormOrderRepository) GetByOrderNoAndGuest(orderNo, email, password string) (*models.Order, error) {
+func (r *GormOrderRepository) GetByOrderNoAndGuest(orderNo, phone, password string) (*models.Order, error) {
 	var order models.Order
 	query := r.withChildren(r.db.Preload("Items").Preload("Fulfillment"))
 	if err := query.
-		Where("order_no = ? AND user_id = 0 AND guest_email = ? AND guest_password = ? AND parent_id IS NULL", orderNo, email, password).
+		Where("order_no = ? AND user_id = 0 AND guest_phone = ? AND guest_password = ? AND parent_id IS NULL", orderNo, phone, password).
 		First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -269,6 +269,9 @@ func (r *GormOrderRepository) ListAdmin(filter OrderListFilter) ([]models.Order,
 	}
 	if filter.OrderNo != "" {
 		query = query.Where("order_no = ?", filter.OrderNo)
+	}
+	if filter.GuestPhone != "" {
+		query = query.Where("guest_phone = ?", filter.GuestPhone)
 	}
 	if filter.GuestEmail != "" {
 		query = query.Where("guest_email = ?", filter.GuestEmail)
@@ -363,10 +366,10 @@ func (r *GormOrderRepository) ListByUser(filter OrderListFilter) ([]models.Order
 }
 
 // ListByGuest 获取游客订单列表
-func (r *GormOrderRepository) ListByGuest(email, password string, page, pageSize int) ([]models.Order, int64, error) {
+func (r *GormOrderRepository) ListByGuest(phone, password string, page, pageSize int) ([]models.Order, int64, error) {
 	var total int64
 	if err := r.db.Model(&models.Order{}).
-		Where("user_id = 0 AND guest_email = ? AND guest_password = ? AND parent_id IS NULL", email, password).
+		Where("user_id = 0 AND guest_phone = ? AND guest_password = ? AND parent_id IS NULL", phone, password).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -374,7 +377,7 @@ func (r *GormOrderRepository) ListByGuest(email, password string, page, pageSize
 	var orders []models.Order
 	query := r.withChildren(r.db.Preload("Items").Preload("Fulfillment"))
 	if err := query.
-		Where("user_id = 0 AND guest_email = ? AND guest_password = ? AND parent_id IS NULL", email, password).
+		Where("user_id = 0 AND guest_phone = ? AND guest_password = ? AND parent_id IS NULL", phone, password).
 		Order("id desc").
 		Limit(pageSize).
 		Offset((page - 1) * pageSize).
@@ -412,14 +415,14 @@ func (r *GormOrderRepository) CountPendingByClientIP(clientIP string) (int64, er
 	return count, nil
 }
 
-// CountPendingByGuestEmail 统计游客邮箱待支付的父订单数量
-func (r *GormOrderRepository) CountPendingByGuestEmail(email string) (int64, error) {
-	if email == "" {
+// CountPendingByGuestPhone 统计游客手机号待支付的父订单数量
+func (r *GormOrderRepository) CountPendingByGuestPhone(phone string) (int64, error) {
+	if phone == "" {
 		return 0, nil
 	}
 	var count int64
 	if err := r.db.Model(&models.Order{}).
-		Where("guest_email = ? AND status = ? AND parent_id IS NULL", email, constants.OrderStatusPendingPayment).
+		Where("guest_phone = ? AND status = ? AND parent_id IS NULL", phone, constants.OrderStatusPendingPayment).
 		Count(&count).Error; err != nil {
 		return 0, err
 	}

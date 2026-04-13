@@ -688,7 +688,8 @@ func (h *Handler) GetCategories(c *gin.Context) {
 
 // CreateGuestOrderRequest 游客下单请求
 type CreateGuestOrderRequest struct {
-	Email               string                       `json:"email" binding:"required"`
+	Phone               string                       `json:"phone" binding:"required"`
+	Email               string                       `json:"email"`
 	OrderPassword       string                       `json:"order_password" binding:"required"`
 	Items               []OrderItemRequest           `json:"items" binding:"required"`
 	CouponCode          string                       `json:"coupon_code"`
@@ -734,6 +735,7 @@ func (h *Handler) CreateGuestOrder(c *gin.Context) {
 		})
 	}
 	order, err := h.OrderService.CreateGuestOrder(service.CreateGuestOrderInput{
+		Phone:               req.Phone,
 		Email:               req.Email,
 		OrderPassword:       req.OrderPassword,
 		Locale:              i18n.ResolveLocale(c),
@@ -756,7 +758,8 @@ func (h *Handler) CreateGuestOrder(c *gin.Context) {
 
 // CreateGuestOrderAndPayRequest 游客创建订单并发起支付请求
 type CreateGuestOrderAndPayRequest struct {
-	Email               string                       `json:"email" binding:"required"`
+	Phone               string                       `json:"phone" binding:"required"`
+	Email               string                       `json:"email"`
 	OrderPassword       string                       `json:"order_password" binding:"required"`
 	Items               []OrderItemRequest           `json:"items" binding:"required"`
 	CouponCode          string                       `json:"coupon_code"`
@@ -803,6 +806,7 @@ func (h *Handler) CreateGuestOrderAndPay(c *gin.Context) {
 		})
 	}
 	order, err := h.OrderService.CreateGuestOrder(service.CreateGuestOrderInput{
+		Phone:               req.Phone,
 		Email:               req.Email,
 		OrderPassword:       req.OrderPassword,
 		Locale:              i18n.ResolveLocale(c),
@@ -883,6 +887,7 @@ func (h *Handler) PreviewGuestOrder(c *gin.Context) {
 		})
 	}
 	preview, err := h.OrderService.PreviewGuestOrder(service.CreateGuestOrderInput{
+		Phone:               req.Phone,
 		Email:               req.Email,
 		OrderPassword:       req.OrderPassword,
 		Locale:              i18n.ResolveLocale(c),
@@ -903,11 +908,11 @@ func (h *Handler) PreviewGuestOrder(c *gin.Context) {
 
 // ListGuestOrders 获取游客订单列表
 func (h *Handler) ListGuestOrders(c *gin.Context) {
-	email := strings.TrimSpace(c.Query("email"))
+	phone := strings.TrimSpace(c.Query("phone"))
 	password := strings.TrimSpace(c.Query("order_password"))
 	orderNo := strings.TrimSpace(c.Query("order_no"))
-	if email == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
 		return
 	}
 	if password == "" {
@@ -916,7 +921,7 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 	}
 
 	if orderNo != "" {
-		order, err := h.OrderService.GetOrderByGuestOrderNo(orderNo, email, password)
+		order, err := h.OrderService.GetOrderByGuestOrderNo(orderNo, phone, password)
 		if err != nil {
 			if errors.Is(err, service.ErrGuestOrderNotFound) {
 				pagination := response.Pagination{
@@ -945,7 +950,7 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 	page, pageSize = shared.NormalizePagination(page, pageSize)
 
-	orders, total, err := h.OrderService.ListOrdersByGuest(email, password, page, pageSize)
+	orders, total, err := h.OrderService.ListOrdersByGuest(phone, password, page, pageSize)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
@@ -956,10 +961,10 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 
 // GetGuestOrderByOrderNo 按订单号获取游客订单详情
 func (h *Handler) GetGuestOrderByOrderNo(c *gin.Context) {
-	email := strings.TrimSpace(c.Query("email"))
+	phone := strings.TrimSpace(c.Query("phone"))
 	password := strings.TrimSpace(c.Query("order_password"))
-	if email == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
 		return
 	}
 	if password == "" {
@@ -971,7 +976,7 @@ func (h *Handler) GetGuestOrderByOrderNo(c *gin.Context) {
 		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
-	order, err := h.OrderService.GetOrderByGuestOrderNo(orderNo, email, password)
+	order, err := h.OrderService.GetOrderByGuestOrderNo(orderNo, phone, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
@@ -989,10 +994,14 @@ func (h *Handler) GetGuestOrderByOrderNo(c *gin.Context) {
 // DownloadGuestFulfillment 下载订单交付内容（游客）
 // 支持父订单或子订单的 order_no
 func (h *Handler) DownloadGuestFulfillment(c *gin.Context) {
-	email := strings.TrimSpace(c.Query("email"))
+	phone := strings.TrimSpace(c.Query("phone"))
 	password := strings.TrimSpace(c.Query("order_password"))
-	if email == "" || password == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
+		return
+	}
+	if password == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
 	orderNo := strings.TrimSpace(c.Param("order_no"))
@@ -1000,7 +1009,7 @@ func (h *Handler) DownloadGuestFulfillment(c *gin.Context) {
 		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
-	order, err := h.OrderRepo.GetAnyByOrderNoAndGuest(orderNo, email, password)
+	order, err := h.OrderRepo.GetAnyByOrderNoAndGuest(orderNo, phone, password)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
@@ -1014,14 +1023,14 @@ func (h *Handler) DownloadGuestFulfillment(c *gin.Context) {
 
 // CreateGuestPaymentRequest 游客发起支付请求
 type CreateGuestPaymentRequest struct {
-	Email         string `json:"email" binding:"required"`
+	Phone         string `json:"phone" binding:"required"`
 	OrderPassword string `json:"order_password" binding:"required"`
 	OrderNo       string `json:"order_no" binding:"required"`
 	ChannelID     uint   `json:"channel_id" binding:"required"`
 }
 
 type LatestGuestPaymentQuery struct {
-	Email         string `form:"email" binding:"required"`
+	Phone         string `form:"phone" binding:"required"`
 	OrderPassword string `form:"order_password" binding:"required"`
 	OrderNo       string `form:"order_no" binding:"required"`
 }
@@ -1033,17 +1042,17 @@ func (h *Handler) CreateGuestPayment(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
-	email := strings.TrimSpace(req.Email)
+	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.OrderPassword)
-	if email == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
 		return
 	}
 	if password == "" {
 		shared.RespondError(c, response.CodeBadRequest, "error.guest_password_required", nil)
 		return
 	}
-	guestOrder, err := h.OrderService.GetOrderByGuestOrderNo(req.OrderNo, email, password)
+	guestOrder, err := h.OrderService.GetOrderByGuestOrderNo(req.OrderNo, phone, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
@@ -1068,7 +1077,7 @@ func (h *Handler) CreateGuestPayment(c *gin.Context) {
 
 // CaptureGuestPaymentRequest 游客捕获支付请求。
 type CaptureGuestPaymentRequest struct {
-	Email         string `json:"email" binding:"required"`
+	Phone         string `json:"phone" binding:"required"`
 	OrderPassword string `json:"order_password" binding:"required"`
 }
 
@@ -1084,10 +1093,10 @@ func (h *Handler) CaptureGuestPayment(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
-	email := strings.TrimSpace(req.Email)
+	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.OrderPassword)
-	if email == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
 		return
 	}
 	if password == "" {
@@ -1104,7 +1113,7 @@ func (h *Handler) CaptureGuestPayment(c *gin.Context) {
 		shared.RespondError(c, response.CodeInternal, "error.payment_fetch_failed", err)
 		return
 	}
-	if _, err := h.OrderService.GetOrderByGuest(payment.OrderID, email, password); err != nil {
+	if _, err := h.OrderService.GetOrderByGuest(payment.OrderID, phone, password); err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 			return
@@ -1134,10 +1143,10 @@ func (h *Handler) GetGuestLatestPayment(c *gin.Context) {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
-	email := strings.TrimSpace(query.Email)
+	phone := strings.TrimSpace(query.Phone)
 	password := strings.TrimSpace(query.OrderPassword)
-	if email == "" {
-		shared.RespondError(c, response.CodeBadRequest, "error.guest_email_required", nil)
+	if phone == "" {
+		shared.RespondError(c, response.CodeBadRequest, "error.guest_phone_required", nil)
 		return
 	}
 	if password == "" {
@@ -1145,7 +1154,7 @@ func (h *Handler) GetGuestLatestPayment(c *gin.Context) {
 		return
 	}
 
-	order, err := h.OrderService.GetOrderByGuestOrderNo(query.OrderNo, email, password)
+	order, err := h.OrderService.GetOrderByGuestOrderNo(query.OrderNo, phone, password)
 	if err != nil {
 		if errors.Is(err, service.ErrGuestOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)

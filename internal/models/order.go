@@ -12,6 +12,7 @@ type Order struct {
 	OrderNo                 string         `gorm:"uniqueIndex;not null" json:"order_no"`                                   // 订单编号
 	ParentID                *uint          `gorm:"index" json:"parent_id,omitempty"`                                       // 父订单ID
 	UserID                  uint           `gorm:"index;not null" json:"user_id,omitempty"`                                // 用户ID（游客订单为 0）
+	GuestPhone              string         `gorm:"type:varchar(32);index" json:"guest_phone,omitempty"`                    // 游客手机号
 	GuestEmail              string         `gorm:"index" json:"guest_email,omitempty"`                                     // 游客邮箱
 	GuestPassword           string         `gorm:"type:varchar(200)" json:"-"`                                             // 游客订单密码
 	GuestLocale             string         `gorm:"type:varchar(20)" json:"guest_locale,omitempty"`                         // 游客语言

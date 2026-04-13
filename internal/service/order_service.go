@@ -101,6 +101,7 @@ type CreateOrderInput struct {
 
 // CreateGuestOrderInput 游客创建订单输入
 type CreateGuestOrderInput struct {
+	Phone               string
 	Email               string
 	OrderPassword       string
 	Locale              string
@@ -192,7 +193,11 @@ func (s *OrderService) CreateOrder(input CreateOrderInput) (*models.Order, error
 
 // CreateGuestOrder 游客创建订单
 func (s *OrderService) CreateGuestOrder(input CreateGuestOrderInput) (*models.Order, error) {
-	email, err := normalizeGuestEmail(input.Email)
+	phone, err := normalizeGuestPhone(input.Phone)
+	if err != nil {
+		return nil, err
+	}
+	email, err := normalizeOptionalGuestEmail(input.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +208,7 @@ func (s *OrderService) CreateGuestOrder(input CreateGuestOrderInput) (*models.Or
 	locale := strings.TrimSpace(input.Locale)
 	return s.createOrder(orderCreateParams{
 		UserID:              0,
+		GuestPhone:          phone,
 		GuestEmail:          email,
 		GuestPassword:       password,
 		GuestLocale:         locale,
@@ -219,6 +225,7 @@ func (s *OrderService) CreateGuestOrder(input CreateGuestOrderInput) (*models.Or
 
 type orderCreateParams struct {
 	UserID              uint
+	GuestPhone          string
 	GuestEmail          string
 	GuestPassword       string
 	GuestLocale         string
@@ -295,8 +302,17 @@ func (s *OrderService) PreviewOrder(input CreateOrderInput) (*OrderPreview, erro
 
 // PreviewGuestOrder 游客订单金额预览
 func (s *OrderService) PreviewGuestOrder(input CreateGuestOrderInput) (*OrderPreview, error) {
+	phone, err := normalizeGuestPhone(input.Phone)
+	if err != nil {
+		return nil, err
+	}
+	email, err := normalizeOptionalGuestEmail(input.Email)
+	if err != nil {
+		return nil, err
+	}
 	return s.previewOrder(orderCreateParams{
-		GuestEmail:          input.Email,
+		GuestPhone:          phone,
+		GuestEmail:          email,
 		GuestPassword:       input.OrderPassword,
 		GuestLocale:         input.Locale,
 		Items:               input.Items,
@@ -353,6 +369,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 	if s.riskControlSvc != nil && !input.SkipRiskControl {
 		if err := s.riskControlSvc.CheckOrderAllowed(RiskCheckInput{
 			UserID:      input.UserID,
+			GuestPhone:  input.GuestPhone,
 			GuestEmail:  input.GuestEmail,
 			ClientIP:    input.ClientIP,
 			IsGuest:     input.IsGuest,
@@ -403,8 +420,8 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 	if s.productSKURepo == nil {
 		return nil, ErrProductSKUInvalid
 	}
-	if input.IsGuest && input.GuestEmail == "" {
-		return nil, ErrGuestEmailRequired
+	if input.IsGuest && input.GuestPhone == "" {
+		return nil, ErrGuestPhoneRequired
 	}
 	if input.IsGuest && input.GuestPassword == "" {
 		return nil, ErrGuestPasswordRequired
@@ -416,6 +433,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 	order := &models.Order{
 		OrderNo:                 generateOrderNo(),
 		UserID:                  input.UserID,
+		GuestPhone:              input.GuestPhone,
 		GuestEmail:              input.GuestEmail,
 		GuestPassword:           input.GuestPassword,
 		GuestLocale:             input.GuestLocale,
@@ -461,6 +479,7 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 				OrderNo:                 buildChildOrderNo(order.OrderNo, idx+1),
 				ParentID:                &order.ID,
 				UserID:                  order.UserID,
+				GuestPhone:              order.GuestPhone,
 				GuestEmail:              order.GuestEmail,
 				GuestPassword:           order.GuestPassword,
 				GuestLocale:             order.GuestLocale,

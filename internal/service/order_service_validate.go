@@ -3,9 +3,11 @@ package service
 import (
 	"fmt"
 	"net/mail"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/models"
@@ -17,8 +19,8 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 	if len(input.Items) == 0 {
 		return nil, ErrInvalidOrderItem
 	}
-	if input.IsGuest && input.GuestEmail == "" {
-		return nil, ErrGuestEmailRequired
+	if input.IsGuest && input.GuestPhone == "" {
+		return nil, ErrGuestPhoneRequired
 	}
 	if input.IsGuest && input.GuestPassword == "" {
 		return nil, ErrGuestPasswordRequired
@@ -285,10 +287,44 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 	}, nil
 }
 
-func normalizeGuestEmail(raw string) (string, error) {
+var guestPhonePattern = regexp.MustCompile(`^\+?[0-9]{6,20}$`)
+
+func canonicalizeGuestPhone(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(trimmed))
+	for _, r := range trimmed {
+		switch {
+		case unicode.IsSpace(r):
+			continue
+		case r == '-' || r == '(' || r == ')':
+			continue
+		default:
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
+}
+
+func normalizeGuestPhone(raw string) (string, error) {
+	normalized := canonicalizeGuestPhone(raw)
+	if normalized == "" {
+		return "", ErrGuestPhoneRequired
+	}
+	if !guestPhonePattern.MatchString(normalized) {
+		return "", ErrInvalidPhone
+	}
+	return normalized, nil
+}
+
+func normalizeOptionalGuestEmail(raw string) (string, error) {
 	normalized := strings.ToLower(strings.TrimSpace(raw))
 	if normalized == "" {
-		return "", ErrGuestEmailRequired
+		return "", nil
 	}
 	if _, err := mail.ParseAddress(normalized); err != nil {
 		return "", ErrInvalidEmail

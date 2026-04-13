@@ -41,7 +41,7 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 	userIDRaw := c.Query("user_id")
 	userKeyword := strings.TrimSpace(c.Query("user_keyword"))
 	orderNo := strings.TrimSpace(c.Query("order_no"))
-	guestEmail := strings.TrimSpace(c.Query("guest_email"))
+	guestPhone := strings.TrimSpace(c.Query("guest_phone"))
 	createdFromRaw := strings.TrimSpace(c.Query("created_from"))
 	createdToRaw := strings.TrimSpace(c.Query("created_to"))
 
@@ -69,7 +69,7 @@ func (h *Handler) AdminListOrders(c *gin.Context) {
 		UserKeyword:    userKeyword,
 		Status:         status,
 		OrderNo:        orderNo,
-		GuestEmail:     guestEmail,
+		GuestPhone:     guestPhone,
 		ProductKeyword: productKeyword,
 		CreatedFrom:    createdFrom,
 		CreatedTo:      createdTo,

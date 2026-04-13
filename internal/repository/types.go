@@ -56,6 +56,7 @@ type OrderListFilter struct {
 	UserKeyword    string
 	Status         string
 	OrderNo        string
+	GuestPhone     string
 	GuestEmail     string
 	ProductKeyword string
 	CreatedFrom    *time.Time

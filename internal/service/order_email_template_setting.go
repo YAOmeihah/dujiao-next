@@ -205,9 +205,9 @@ func OrderEmailTemplateDefaultSetting() OrderEmailTemplateSetting {
 			},
 		},
 		GuestTip: OrderEmailGuestTip{
-			ZHCN: "游客订单可使用下单邮箱与订单密码在网站查询订单详情。",
-			ZHTW: "遊客訂單可使用下單信箱與訂單密碼在網站查詢訂單詳情。",
-			ENUS: "Guest orders can be queried on the site using the checkout email and order password.",
+			ZHCN: "游客订单可使用下单手机号与订单密码在网站查询订单详情。",
+			ZHTW: "遊客訂單可使用下單手機號與訂單密碼在網站查詢訂單詳情。",
+			ENUS: "Guest orders can be queried on the site using the checkout phone number and order password.",
 		},
 		FulfillmentAttachmentTip: OrderEmailFulfillmentAttachmentTip{
 			ZHCN: "交付内容较多，已作为附件发送，请查看邮件附件获取完整交付内容。",

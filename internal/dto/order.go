@@ -10,6 +10,8 @@ import (
 // OrderSummary 订单列表响应（精简字段）
 type OrderSummary struct {
 	OrderNo     string          `json:"order_no"`
+	GuestPhone  string          `json:"guest_phone,omitempty"`
+	GuestEmail  string          `json:"guest_email,omitempty"`
 	Status      string          `json:"status"`
 	Currency    string          `json:"currency"`
 	TotalAmount models.Money    `json:"total_amount"`
@@ -22,6 +24,8 @@ type OrderSummary struct {
 func NewOrderSummary(o *models.Order) OrderSummary {
 	s := OrderSummary{
 		OrderNo:     o.OrderNo,
+		GuestPhone:  o.GuestPhone,
+		GuestEmail:  o.GuestEmail,
 		Status:      o.Status,
 		Currency:    o.Currency,
 		TotalAmount: o.TotalAmount,
@@ -49,6 +53,7 @@ func NewOrderSummaryList(orders []models.Order) []OrderSummary {
 // OrderDetail 订单详情响应（完整字段）
 type OrderDetail struct {
 	OrderNo                  string           `json:"order_no"`
+	GuestPhone               string           `json:"guest_phone,omitempty"`
 	GuestEmail               string           `json:"guest_email,omitempty"`
 	GuestLocale              string           `json:"guest_locale,omitempty"`
 	Status                   string           `json:"status"`
@@ -87,6 +92,7 @@ type OrderRefundResp struct {
 func NewOrderDetail(o *models.Order) OrderDetail {
 	d := OrderDetail{
 		OrderNo:                 o.OrderNo,
+		GuestPhone:              o.GuestPhone,
 		GuestEmail:              o.GuestEmail,
 		GuestLocale:             o.GuestLocale,
 		Status:                  o.Status,

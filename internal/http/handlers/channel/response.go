@@ -26,6 +26,7 @@ type mappedChannelError struct {
 var channelOrderCreateErrorRules = []mappedChannelError{
 	{target: service.ErrRiskIPBlacklisted, httpCode: http.StatusForbidden, code: response.CodeForbidden, errorCode: "risk_blocked", key: "error.risk_ip_blacklisted"},
 	{target: service.ErrRiskEmailBlacklisted, httpCode: http.StatusForbidden, code: response.CodeForbidden, errorCode: "risk_blocked", key: "error.risk_email_blacklisted"},
+	{target: service.ErrRiskPhoneBlacklisted, httpCode: http.StatusForbidden, code: response.CodeForbidden, errorCode: "risk_blocked", key: "error.risk_phone_blacklisted"},
 	{target: service.ErrRiskTooManyPendingOrders, httpCode: http.StatusTooManyRequests, code: response.CodeTooManyRequests, errorCode: "risk_blocked", key: "error.risk_too_many_pending_orders"},
 	{target: service.ErrRiskOrderRateLimited, httpCode: http.StatusTooManyRequests, code: response.CodeTooManyRequests, errorCode: "risk_blocked", key: "error.risk_order_rate_limited"},
 	{target: service.ErrProductSKURequired, httpCode: http.StatusBadRequest, code: response.CodeBadRequest, errorCode: "validation_error", key: "error.order_item_invalid"},

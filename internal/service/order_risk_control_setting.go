@@ -22,10 +22,11 @@ type OrderRiskControlConfig struct {
 	Enabled                       bool                 `json:"enabled"`
 	MaxPendingOrdersPerUser       int                  `json:"max_pending_orders_per_user"`
 	MaxPendingOrdersPerIP         int                  `json:"max_pending_orders_per_ip"`
-	MaxPendingOrdersPerGuestEmail int                  `json:"max_pending_orders_per_guest_email"`
+	MaxPendingOrdersPerGuestPhone int                  `json:"max_pending_orders_per_guest_phone"`
 	OrderRateLimit                OrderRateLimitConfig `json:"order_rate_limit"`
 	IPBlacklist                   []string             `json:"ip_blacklist"`
-	EmailBlacklist                []string             `json:"email_blacklist"`
+	PhoneBlacklist                []string             `json:"phone_blacklist"`
+	LegacyEmailBlacklist          []string             `json:"email_blacklist,omitempty"`
 }
 
 // DefaultOrderRiskControlConfig 默认风控配置
@@ -34,7 +35,7 @@ func DefaultOrderRiskControlConfig() OrderRiskControlConfig {
 		Enabled:                       false,
 		MaxPendingOrdersPerUser:       3,
 		MaxPendingOrdersPerIP:         5,
-		MaxPendingOrdersPerGuestEmail: 2,
+		MaxPendingOrdersPerGuestPhone: 2,
 		OrderRateLimit: OrderRateLimitConfig{
 			Enabled:       false,
 			WindowSeconds: 60,
@@ -42,7 +43,7 @@ func DefaultOrderRiskControlConfig() OrderRiskControlConfig {
 			BlockSeconds:  120,
 		},
 		IPBlacklist:    []string{},
-		EmailBlacklist: []string{},
+		PhoneBlacklist: []string{},
 	}
 }
 
@@ -54,8 +55,8 @@ func NormalizeOrderRiskControlConfig(cfg OrderRiskControlConfig) OrderRiskContro
 	if cfg.MaxPendingOrdersPerIP < 0 || cfg.MaxPendingOrdersPerIP > 100 {
 		cfg.MaxPendingOrdersPerIP = 5
 	}
-	if cfg.MaxPendingOrdersPerGuestEmail < 0 || cfg.MaxPendingOrdersPerGuestEmail > 100 {
-		cfg.MaxPendingOrdersPerGuestEmail = 2
+	if cfg.MaxPendingOrdersPerGuestPhone < 0 || cfg.MaxPendingOrdersPerGuestPhone > 100 {
+		cfg.MaxPendingOrdersPerGuestPhone = 2
 	}
 
 	if cfg.OrderRateLimit.WindowSeconds < 10 || cfg.OrderRateLimit.WindowSeconds > 3600 {
@@ -81,25 +82,30 @@ func NormalizeOrderRiskControlConfig(cfg OrderRiskControlConfig) OrderRiskContro
 	}
 	cfg.IPBlacklist = cleanIPs
 
-	// 归一化邮箱黑名单：去空行、小写化
-	cleanEmails := make([]string, 0, len(cfg.EmailBlacklist))
-	for _, email := range cfg.EmailBlacklist {
-		email = trimStringToLower(email)
-		if email != "" {
-			cleanEmails = append(cleanEmails, email)
+	// 归一化手机号黑名单：去空行、去首尾空格
+	cleanPhones := make([]string, 0, len(cfg.PhoneBlacklist))
+	for _, phone := range cfg.PhoneBlacklist {
+		phone = canonicalizeGuestPhone(phone)
+		if phone != "" && guestPhonePattern.MatchString(phone) {
+			cleanPhones = append(cleanPhones, phone)
 		}
 	}
-	cfg.EmailBlacklist = cleanEmails
+	cfg.PhoneBlacklist = cleanPhones
+
+	cleanLegacyEmails := make([]string, 0, len(cfg.LegacyEmailBlacklist))
+	for _, email := range cfg.LegacyEmailBlacklist {
+		email = strings.ToLower(strings.TrimSpace(email))
+		if email != "" {
+			cleanLegacyEmails = append(cleanLegacyEmails, email)
+		}
+	}
+	cfg.LegacyEmailBlacklist = cleanLegacyEmails
 
 	return cfg
 }
 
 func trimString(s string) string {
 	return strings.TrimSpace(s)
-}
-
-func trimStringToLower(s string) string {
-	return strings.ToLower(strings.TrimSpace(s))
 }
 
 // isValidIPOrCIDR 校验字符串是否为有效的 IP 地址或 CIDR 表示
@@ -117,7 +123,16 @@ func orderRiskControlConfigFromJSON(raw models.JSON, fallback OrderRiskControlCo
 	if raw == nil {
 		return result
 	}
-	data, err := json.Marshal(raw)
+	normalizedRaw := make(models.JSON, len(raw))
+	for key, value := range raw {
+		normalizedRaw[key] = value
+	}
+	if _, exists := normalizedRaw["max_pending_orders_per_guest_phone"]; !exists {
+		if legacyValue, ok := normalizedRaw["max_pending_orders_per_guest_email"]; ok {
+			normalizedRaw["max_pending_orders_per_guest_phone"] = legacyValue
+		}
+	}
+	data, err := json.Marshal(normalizedRaw)
 	if err != nil {
 		return result
 	}

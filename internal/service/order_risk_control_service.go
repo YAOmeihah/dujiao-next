@@ -20,6 +20,7 @@ import (
 var (
 	ErrRiskIPBlacklisted        = errors.New("risk: ip blacklisted")
 	ErrRiskEmailBlacklisted     = errors.New("risk: email blacklisted")
+	ErrRiskPhoneBlacklisted     = errors.New("risk: phone blacklisted")
 	ErrRiskTooManyPendingOrders = errors.New("risk: too many pending orders")
 	ErrRiskOrderRateLimited     = errors.New("risk: order rate limited")
 )
@@ -49,6 +50,7 @@ func GetRetryAfter(err error) int64 {
 // RiskCheckInput 风控检查输入
 type RiskCheckInput struct {
 	UserID      uint
+	GuestPhone  string
 	GuestEmail  string
 	ClientIP    string
 	IsGuest     bool
@@ -102,10 +104,20 @@ func (s *OrderRiskControlService) CheckOrderAllowed(input RiskCheckInput) error 
 		}
 	}
 
-	// 2. 邮箱黑名单检查（游客订单）
-	if input.IsGuest && input.GuestEmail != "" && len(cfg.EmailBlacklist) > 0 {
+	// 2. 手机号黑名单检查（游客订单）
+	if input.IsGuest && input.GuestPhone != "" && len(cfg.PhoneBlacklist) > 0 {
+		normalizedPhone := canonicalizeGuestPhone(input.GuestPhone)
+		for _, blocked := range cfg.PhoneBlacklist {
+			if normalizedPhone == blocked {
+				return ErrRiskPhoneBlacklisted
+			}
+		}
+	}
+
+	// 2.1 兼容旧版邮箱黑名单配置：仅在游客填写了邮箱时继续生效。
+	if input.IsGuest && input.GuestEmail != "" && len(cfg.LegacyEmailBlacklist) > 0 {
 		normalizedEmail := strings.ToLower(strings.TrimSpace(input.GuestEmail))
-		for _, blocked := range cfg.EmailBlacklist {
+		for _, blocked := range cfg.LegacyEmailBlacklist {
 			if normalizedEmail == blocked {
 				return ErrRiskEmailBlacklisted
 			}
@@ -149,12 +161,12 @@ func (s *OrderRiskControlService) checkPendingOrderLimits(input RiskCheckInput, 
 		}
 	}
 
-	// 游客邮箱维度
-	if input.IsGuest && input.GuestEmail != "" && cfg.MaxPendingOrdersPerGuestEmail > 0 {
-		count, err := s.orderRepo.CountPendingByGuestEmail(input.GuestEmail)
+	// 游客手机号维度
+	if input.IsGuest && input.GuestPhone != "" && cfg.MaxPendingOrdersPerGuestPhone > 0 {
+		count, err := s.orderRepo.CountPendingByGuestPhone(input.GuestPhone)
 		if err != nil {
-			logger.Warnw("risk_control_count_pending_by_email_error", "email", input.GuestEmail, "error", err)
-		} else if count >= int64(cfg.MaxPendingOrdersPerGuestEmail) {
+			logger.Warnw("risk_control_count_pending_by_phone_error", "phone", input.GuestPhone, "error", err)
+		} else if count >= int64(cfg.MaxPendingOrdersPerGuestPhone) {
 			return ErrRiskTooManyPendingOrders
 		}
 	}

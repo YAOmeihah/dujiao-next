@@ -54,6 +54,7 @@ func concatMappedHandlerErrors(groups ...[]mappedHandlerError) []mappedHandlerEr
 var orderRiskControlErrorRules = []mappedHandlerError{
 	{target: service.ErrRiskIPBlacklisted, code: response.CodeForbidden, key: "error.risk_ip_blacklisted"},
 	{target: service.ErrRiskEmailBlacklisted, code: response.CodeForbidden, key: "error.risk_email_blacklisted"},
+	{target: service.ErrRiskPhoneBlacklisted, code: response.CodeForbidden, key: "error.risk_phone_blacklisted"},
 	{target: service.ErrRiskTooManyPendingOrders, code: response.CodeTooManyRequests, key: "error.risk_too_many_pending_orders"},
 	{target: service.ErrRiskOrderRateLimited, code: response.CodeTooManyRequests, key: "error.risk_order_rate_limited"},
 }
@@ -96,8 +97,9 @@ var userOrderPreviewExtraErrorRules = []mappedHandlerError{
 var guestOrderCommonErrorRules = []mappedHandlerError{
 	{target: service.ErrProductSKURequired, code: response.CodeBadRequest, key: "error.order_item_invalid"},
 	{target: service.ErrProductSKUInvalid, code: response.CodeBadRequest, key: "error.order_item_invalid"},
-	{target: service.ErrGuestEmailRequired, code: response.CodeBadRequest, key: "error.guest_email_required"},
+	{target: service.ErrGuestPhoneRequired, code: response.CodeBadRequest, key: "error.guest_phone_required"},
 	{target: service.ErrGuestPasswordRequired, code: response.CodeBadRequest, key: "error.guest_password_required"},
+	{target: service.ErrInvalidPhone, code: response.CodeBadRequest, key: "error.phone_invalid"},
 	{target: service.ErrInvalidEmail, code: response.CodeBadRequest, key: "error.email_invalid"},
 	{target: service.ErrProductPurchaseNotAllowed, code: response.CodeBadRequest, key: "error.product_purchase_not_allowed"},
 	{target: service.ErrProductMaxPurchaseExceeded, code: response.CodeBadRequest, key: "error.product_max_purchase_exceeded"},

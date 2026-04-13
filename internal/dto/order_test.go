@@ -20,6 +20,7 @@ func TestOrderDetailOmitsSensitiveFields(t *testing.T) {
 		ID:                 1,
 		OrderNo:            "ORD-001",
 		UserID:             99,
+		GuestPhone:         "+8613800138000",
 		GuestEmail:         "guest@test.com",
 		GuestPassword:      "secret123",
 		Status:             "paid",
@@ -78,7 +79,7 @@ func TestOrderDetailOmitsSensitiveFields(t *testing.T) {
 	// 公开字段应存在
 	publicFields := []string{
 		"order_no", "total_amount", "status", "currency",
-		"guest_email", "unit_price", "fulfillment_type",
+		"guest_phone", "guest_email", "unit_price", "fulfillment_type",
 	}
 	for _, field := range publicFields {
 		if !strings.Contains(jsonStr, `"`+field+`"`) {
@@ -92,6 +93,36 @@ func TestOrderDetailOmitsSensitiveFields(t *testing.T) {
 	}
 	if !strings.Contains(jsonStr, `"manual"`) {
 		t.Error("fulfillment type should be manual after masking")
+	}
+}
+
+func TestOrderSummaryIncludesGuestPhone(t *testing.T) {
+	order := &models.Order{
+		OrderNo:    "G20260413001",
+		UserID:     0,
+		GuestPhone: "+8613800138000",
+		GuestEmail: "guest@example.com",
+		Status:     "pending_payment",
+		Currency:   "CNY",
+		TotalAmount: newMoney("88.00"),
+		CreatedAt:  time.Now(),
+	}
+
+	summary := NewOrderSummary(order)
+	data, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonStr := string(data)
+
+	if summary.OrderNo != "G20260413001" {
+		t.Fatalf("expected order number to be preserved, got %s", summary.OrderNo)
+	}
+	if !strings.Contains(jsonStr, `"guest_phone"`) {
+		t.Fatalf("expected guest_phone to appear in summary json, got %s", jsonStr)
+	}
+	if !strings.Contains(jsonStr, `"+8613800138000"`) {
+		t.Fatalf("expected guest_phone value to appear in summary json, got %s", jsonStr)
 	}
 }
 
