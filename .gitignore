@@ -11,3 +11,5 @@ uploads
 */dist/
 # Added by goreleaser init:
 dist/
+docs
+dujiao-next
