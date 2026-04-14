@@ -27,6 +27,7 @@ func TestEnsureProductSKUMigrationBackfillLegacyData(t *testing.T) {
 	db := setupSKUMigrationTestDB(t)
 
 	if err := db.AutoMigrate(
+		&Setting{},
 		&Product{},
 		&ProductSKU{},
 		&OrderItem{},

@@ -3,6 +3,7 @@ package logger
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -46,7 +47,14 @@ func TestResolveLogFilePathDefaultDir(t *testing.T) {
 }
 
 func TestNewReleaseWritesToConfiguredFile(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir, err := os.MkdirTemp("", "dujiao-next-release-log-*")
+	if err != nil {
+		t.Fatalf("create temp dir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		runtime.GC()
+		_ = os.RemoveAll(tmpDir)
+	})
 	cfg := Options{
 		Dir:      tmpDir,
 		Filename: "release.log",
@@ -54,6 +62,8 @@ func TestNewReleaseWritesToConfiguredFile(t *testing.T) {
 	log := New("release", cfg)
 	log.Info("release-log-test")
 	_ = log.Sync()
+	log = nil
+	runtime.GC()
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, "release.log"))
 	if err != nil {

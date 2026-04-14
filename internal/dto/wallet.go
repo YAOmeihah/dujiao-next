@@ -96,7 +96,7 @@ func NewWalletRechargeRespList(orders []models.WalletRechargeOrder) []WalletRech
 
 // WalletRechargePaymentPayload 钱包充值支付响应载荷
 type WalletRechargePaymentPayload struct {
-	Recharge        *WalletRechargeResp `json:"recharge,omitempty"`
+	Recharge        *walletRechargePaymentResp `json:"recharge,omitempty"`
 	RechargeNo      string              `json:"recharge_no,omitempty"`
 	RechargeStatus  string              `json:"recharge_status,omitempty"`
 	Account         *WalletAccountResp  `json:"account,omitempty"`
@@ -110,11 +110,31 @@ type WalletRechargePaymentPayload struct {
 	Status          string              `json:"status,omitempty"`
 }
 
+type walletRechargePaymentResp struct {
+	RechargeNo    string     `json:"recharge_no"`
+	Amount        models.Money `json:"amount"`
+	PayableAmount models.Money `json:"payable_amount"`
+	Currency      string     `json:"currency"`
+	Status        string     `json:"status"`
+	Remark        string     `json:"remark"`
+	PaidAt        *time.Time `json:"paid_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
+
 // NewWalletRechargePaymentPayload 构造钱包充值支付响应
 func NewWalletRechargePaymentPayload(recharge *models.WalletRechargeOrder, payment *models.Payment, account *models.WalletAccount) WalletRechargePaymentPayload {
 	p := WalletRechargePaymentPayload{}
 	if recharge != nil {
-		r := NewWalletRechargeResp(recharge)
+		r := walletRechargePaymentResp{
+			RechargeNo:    recharge.RechargeNo,
+			Amount:        recharge.Amount,
+			PayableAmount: recharge.PayableAmount,
+			Currency:      recharge.Currency,
+			Status:        recharge.Status,
+			Remark:        recharge.Remark,
+			PaidAt:        recharge.PaidAt,
+			CreatedAt:     recharge.CreatedAt,
+		}
 		p.Recharge = &r
 		p.RechargeNo = recharge.RechargeNo
 		p.RechargeStatus = recharge.Status
