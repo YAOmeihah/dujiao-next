@@ -13,3 +13,4 @@ uploads
 dist/
 docs
 dujiao-next
+.worktrees/
