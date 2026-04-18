@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  create:
   workflow_dispatch:
     inputs:
       ref:
@@ -12,34 +11,29 @@ on:
         required: true
         default: 'main'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ inputs.ref || github.ref_name || github.run_id }}
-  cancel-in-progress: true
-
 permissions:
   contents: write
 
 jobs:
   goreleaser:
-    if: ${{ github.event_name != 'create' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref || github.ref_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version: stable
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
+        uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
