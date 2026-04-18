@@ -98,14 +98,14 @@ func TestOrderDetailOmitsSensitiveFields(t *testing.T) {
 
 func TestOrderSummaryIncludesGuestPhone(t *testing.T) {
 	order := &models.Order{
-		OrderNo:    "G20260413001",
-		UserID:     0,
-		GuestPhone: "+8613800138000",
-		GuestEmail: "guest@example.com",
-		Status:     "pending_payment",
-		Currency:   "CNY",
+		OrderNo:     "G20260413001",
+		UserID:      0,
+		GuestPhone:  "+8613800138000",
+		GuestEmail:  "guest@example.com",
+		Status:      "pending_payment",
+		Currency:    "CNY",
 		TotalAmount: newMoney("88.00"),
-		CreatedAt:  time.Now(),
+		CreatedAt:   time.Now(),
 	}
 
 	summary := NewOrderSummary(order)
@@ -123,6 +123,49 @@ func TestOrderSummaryIncludesGuestPhone(t *testing.T) {
 	}
 	if !strings.Contains(jsonStr, `"+8613800138000"`) {
 		t.Fatalf("expected guest_phone value to appear in summary json, got %s", jsonStr)
+	}
+}
+
+func TestOrderDetailHidesInstructionsBeforePayment(t *testing.T) {
+	instructions := models.JSON{"zh-CN": "账号使用方法：…"}
+	mkOrder := func(paidAt *time.Time) *models.Order {
+		return &models.Order{
+			ID:          42,
+			OrderNo:     "ORD-INST",
+			Status:      "pending_payment",
+			Currency:    "CNY",
+			TotalAmount: newMoney("9.90"),
+			PaidAt:      paidAt,
+			Items: []models.OrderItem{
+				{
+					ID:               1,
+					ProductID:        5,
+					SKUID:            10,
+					TitleJSON:        models.JSON{"zh-CN": "商品A"},
+					InstructionsJSON: instructions,
+					FulfillmentType:  "auto",
+				},
+			},
+		}
+	}
+
+	unpaid := NewOrderDetail(mkOrder(nil))
+	if unpaid.Items[0].Instructions != nil {
+		t.Fatalf("unpaid order must not expose instructions, got %v", unpaid.Items[0].Instructions)
+	}
+
+	now := time.Now()
+	paid := NewOrderDetail(mkOrder(&now))
+	if paid.Items[0].Instructions == nil {
+		t.Fatal("paid order should expose instructions")
+	}
+	if got := paid.Items[0].Instructions["zh-CN"]; got != "账号使用方法：…" {
+		t.Fatalf("instructions mismatch: %v", got)
+	}
+
+	summary := NewOrderSummary(mkOrder(&now))
+	if summary.Items[0].Instructions != nil {
+		t.Fatal("order summary must never expose instructions")
 	}
 }
 
