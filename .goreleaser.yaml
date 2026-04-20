@@ -28,6 +28,9 @@ archives:
     files:
       - ./config.yml.example
       - ./README.md
+      - src: ./data/address_divisions/*.json
+        dst: data/address_divisions
+        strip_parent: true
     name_template: >-
       {{ .ProjectName }}_
       {{- .Tag }}_
