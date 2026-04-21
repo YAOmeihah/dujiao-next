@@ -158,8 +158,9 @@ func normalizeSiteFooterLinks(raw interface{}) []interface{} {
 
 func normalizeSiteContact(raw interface{}) map[string]interface{} {
 	result := map[string]interface{}{
-		"telegram": "",
-		"whatsapp": "",
+		"telegram":    "",
+		"whatsapp":    "",
+		"support_url": "",
 	}
 	contactMap, ok := raw.(map[string]interface{})
 	if !ok {
@@ -167,6 +168,7 @@ func normalizeSiteContact(raw interface{}) map[string]interface{} {
 	}
 	result["telegram"] = normalizeSettingText(contactMap["telegram"])
 	result["whatsapp"] = normalizeSettingText(contactMap["whatsapp"])
+	result["support_url"] = normalizeSettingText(contactMap["support_url"])
 	return result
 }
 

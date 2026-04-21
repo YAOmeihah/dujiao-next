@@ -74,8 +74,9 @@ func TestUpdateSiteSettingNormalized(t *testing.T) {
 			"site_url":  "  https://example.com/path/  ",
 		},
 		"contact": map[string]interface{}{
-			"telegram": "  https://t.me/demo  ",
-			"whatsapp": 123,
+			"telegram":    "  https://t.me/demo  ",
+			"whatsapp":    123,
+			"support_url": "  https://support.example.com/path  ",
 		},
 		"seo": map[string]interface{}{
 			"title": map[string]interface{}{
@@ -178,6 +179,9 @@ func TestUpdateSiteSettingNormalized(t *testing.T) {
 	}
 	if contact["whatsapp"] != "" {
 		t.Fatalf("unexpected whatsapp: %v", contact["whatsapp"])
+	}
+	if contact["support_url"] != "https://support.example.com/path" {
+		t.Fatalf("unexpected support_url: %v", contact["support_url"])
 	}
 
 	seo, ok := result["seo"].(map[string]interface{})
@@ -329,6 +333,13 @@ func TestUpdateSiteSettingNormalizedDefaultAbout(t *testing.T) {
 	}
 	if brand["site_url"] != "" {
 		t.Fatalf("unexpected default brand payload: %+v", brand)
+	}
+	contact, ok := result["contact"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("invalid contact payload type: %T", result["contact"])
+	}
+	if contact["telegram"] != "" || contact["whatsapp"] != "" || contact["support_url"] != "" {
+		t.Fatalf("unexpected default contact payload: %+v", contact)
 	}
 	scripts, ok := result["scripts"].([]interface{})
 	if !ok {
