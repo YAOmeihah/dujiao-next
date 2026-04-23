@@ -472,16 +472,16 @@ print_release_preview() {
 }
 
 main() {
-  local root_dir temp_root temp_dir answer selected_target
-  local latest_release_json latest_repo
-  local admin_release_json user_release_json
-  local tag admin_release_name user_release_name api_release_name
-  local admin_asset_name user_asset_name api_asset_name
-  local admin_asset_url user_asset_url api_asset_url
-  local os_name arch_name
-  local admin_archive user_archive api_archive
-  local admin_extract_dir user_extract_dir api_extract_dir
-  local admin_payload_dir user_payload_dir
+  local root_dir="" temp_root="" temp_dir="" answer="" selected_target=""
+  local latest_release_json="" latest_repo=""
+  local admin_release_json="" user_release_json=""
+  local tag="" admin_release_name="" user_release_name="" api_release_name=""
+  local admin_asset_name="" user_asset_name="" api_asset_name=""
+  local admin_asset_url="" user_asset_url="" api_asset_url=""
+  local os_name="" arch_name=""
+  local admin_archive="" user_archive="" api_archive=""
+  local admin_extract_dir="" user_extract_dir="" api_extract_dir=""
+  local admin_payload_dir="" user_payload_dir=""
 
   if [[ "$#" -gt 0 ]]; then
     die "此脚本不接受任何参数。"

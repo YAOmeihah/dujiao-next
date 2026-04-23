@@ -81,6 +81,51 @@ test_prompt_release_target_selection_stdout_only_returns_target() {
   rm -f "${stderr_file}"
 }
 
+test_main_user_target_preview_does_not_require_other_target_variables() {
+  local workdir output status
+  workdir="$(mktemp -d)"
+
+  set +e
+  output="$(
+    ROOT_DIR="${ROOT_DIR}" TEST_WORKDIR="${workdir}" bash <<'EOF' 2>&1
+set -Eeuo pipefail
+source "${ROOT_DIR}/scripts/release.sh"
+
+prompt_release_target_selection() { echo "user"; }
+require_selected_deployment_dirs() { :; }
+require_selected_deployment_write_access() { :; }
+require_selected_commands() { :; }
+check_url_reachable() { :; }
+github_api_get() {
+  local _url="$1"
+  local output_path="$2"
+  cat >"${output_path}" <<'JSON'
+{
+  "tag_name": "v1.0.0",
+  "name": "v1.0.0",
+  "assets": [
+    {
+      "name": "dujiao-next-user-v1.0.0.zip",
+      "browser_download_url": "https://example.test/user.zip"
+    }
+  ]
+}
+JSON
+}
+
+cd "${TEST_WORKDIR}"
+printf 'n\n' | main
+EOF
+  )"
+  status=$?
+  set -e
+
+  [[ ${status} -eq 0 ]] || fail "user target preview should not fail before confirmation: ${output}"
+  [[ "${output}" == *"用户端发布：v1.0.0"* ]] || fail "user target preview should include user release info"
+
+  rm -rf "${workdir}"
+}
+
 make_release_fixture() {
   local path="$1"
   cat >"${path}" <<'JSON'
@@ -174,6 +219,7 @@ main() {
   test_release_target_includes
   test_require_selected_deployment_dirs
   test_prompt_release_target_selection_stdout_only_returns_target
+  test_main_user_target_preview_does_not_require_other_target_variables
   test_parse_release_metadata
   test_validate_frontend_stage
   test_validate_api_stage
