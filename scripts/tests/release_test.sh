@@ -71,6 +71,16 @@ test_require_selected_deployment_dirs() {
   rm -rf "${workdir}"
 }
 
+test_prompt_release_target_selection_stdout_only_returns_target() {
+  local captured stderr_file
+  stderr_file="$(mktemp)"
+  captured="$(printf '1\n' | prompt_release_target_selection 2>"${stderr_file}")"
+
+  assert_eq "admin" "${captured}" "prompt selection should only return normalized target"
+
+  rm -f "${stderr_file}"
+}
+
 make_release_fixture() {
   local path="$1"
   cat >"${path}" <<'JSON'
@@ -163,6 +173,7 @@ main() {
   test_normalize_release_target_selection
   test_release_target_includes
   test_require_selected_deployment_dirs
+  test_prompt_release_target_selection_stdout_only_returns_target
   test_parse_release_metadata
   test_validate_frontend_stage
   test_validate_api_stage

@@ -124,11 +124,11 @@ release_target_label() {
 prompt_release_target_selection() {
   local answer selected_target
 
-  printf '\n请选择更新目标：\n'
-  printf '  1) 管理端\n'
-  printf '  2) 用户端\n'
-  printf '  3) API\n'
-  printf '  4) 全部\n'
+  printf '\n请选择更新目标：\n' >&2
+  printf '  1) 管理端\n' >&2
+  printf '  2) 用户端\n' >&2
+  printf '  3) API\n' >&2
+  printf '  4) 全部\n' >&2
 
   while true; do
     read -r -p "请输入选项 [1-4]: " answer
