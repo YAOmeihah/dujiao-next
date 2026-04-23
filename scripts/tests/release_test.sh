@@ -44,6 +44,33 @@ test_require_deployment_dirs() {
   rm -rf "${workdir}"
 }
 
+test_normalize_release_target_selection() {
+  assert_eq "admin" "$(normalize_release_target_selection "1")" "admin selection"
+  assert_eq "user" "$(normalize_release_target_selection "2")" "user selection"
+  assert_eq "api" "$(normalize_release_target_selection "3")" "api selection"
+  assert_eq "all" "$(normalize_release_target_selection "4")" "all selection"
+  assert_eq "1" "$(normalize_release_target_selection "9" >/dev/null 2>&1; echo $?)" "invalid selection rejected"
+}
+
+test_release_target_includes() {
+  assert_eq "0" "$(release_target_includes "admin" "admin"; echo $?)" "admin includes admin"
+  assert_eq "1" "$(release_target_includes "admin" "user" >/dev/null 2>&1; echo $?)" "admin excludes user"
+  assert_eq "0" "$(release_target_includes "all" "admin"; echo $?)" "all includes admin"
+  assert_eq "0" "$(release_target_includes "all" "user"; echo $?)" "all includes user"
+  assert_eq "0" "$(release_target_includes "all" "api"; echo $?)" "all includes api"
+}
+
+test_require_selected_deployment_dirs() {
+  local workdir
+  workdir="$(mktemp -d)"
+
+  mkdir -p "${workdir}/admin"
+  require_selected_deployment_dirs "${workdir}" "admin"
+  assert_eq "1" "$(require_selected_deployment_dirs "${workdir}" "all" >/dev/null 2>&1; echo $?)" "all requires all directories"
+
+  rm -rf "${workdir}"
+}
+
 make_release_fixture() {
   local path="$1"
   cat >"${path}" <<'JSON'
@@ -133,6 +160,9 @@ main() {
   test_confirmation_input
   test_resolve_python_command
   test_require_deployment_dirs
+  test_normalize_release_target_selection
+  test_release_target_includes
+  test_require_selected_deployment_dirs
   test_parse_release_metadata
   test_validate_frontend_stage
   test_validate_api_stage
