@@ -50,6 +50,13 @@ func TestShouldUseGatewayOrderNo(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "vpay",
+			channel: &models.PaymentChannel{
+				ProviderType: constants.PaymentProviderVpay,
+			},
+			want: true,
+		},
+		{
 			name: "official wechat",
 			channel: &models.PaymentChannel{
 				ProviderType: constants.PaymentProviderOfficial,
@@ -390,6 +397,125 @@ func TestApplyProviderPaymentBuildsRedirectURLForEpay(t *testing.T) {
 	}
 }
 
+func TestApplyProviderPaymentBuildsRedirectURLForVpay(t *testing.T) {
+	svc, db := setupPaymentServiceWalletTest(t)
+	now := time.Now()
+
+	order := &models.Order{
+		OrderNo:                 "DJTESTVPAY001",
+		UserID:                  1,
+		Status:                  constants.OrderStatusPendingPayment,
+		Currency:                "CNY",
+		OriginalAmount:          models.NewMoneyFromDecimal(decimal.NewFromInt(99)),
+		DiscountAmount:          models.NewMoneyFromDecimal(decimal.Zero),
+		PromotionDiscountAmount: models.NewMoneyFromDecimal(decimal.Zero),
+		TotalAmount:             models.NewMoneyFromDecimal(decimal.NewFromInt(99)),
+		WalletPaidAmount:        models.NewMoneyFromDecimal(decimal.Zero),
+		OnlinePaidAmount:        models.NewMoneyFromDecimal(decimal.NewFromInt(99)),
+		RefundedAmount:          models.NewMoneyFromDecimal(decimal.Zero),
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := db.Create(order).Error; err != nil {
+		t.Fatalf("create order failed: %v", err)
+	}
+
+	var gotPayID string
+	var gotParam string
+	var gotReturnURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/createOrder" {
+			t.Fatalf("path = %s, want /createOrder", r.URL.Path)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form failed: %v", err)
+		}
+		gotPayID = strings.TrimSpace(r.PostForm.Get("payId"))
+		gotParam = strings.TrimSpace(r.PostForm.Get("param"))
+		gotReturnURL = strings.TrimSpace(r.PostForm.Get("returnUrl"))
+		if got := strings.TrimSpace(r.PostForm.Get("type")); got != "2" {
+			t.Fatalf("vpay type = %s, want 2", got)
+		}
+		if got := strings.TrimSpace(r.PostForm.Get("price")); got != "99.00" {
+			t.Fatalf("vpay price = %s, want 99.00", got)
+		}
+		if strings.TrimSpace(r.PostForm.Get("sign")) == "" {
+			t.Fatalf("vpay sign should not be empty")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":1,"msg":"成功","data":{"payId":"` + gotPayID + `","orderId":"VPAY-ORDER-1001","payType":2,"price":"99.00","reallyPrice":"99.01","payUrl":"alipay://pay"}}`))
+	}))
+	defer server.Close()
+
+	channel := &models.PaymentChannel{
+		ProviderType:    constants.PaymentProviderVpay,
+		ChannelType:     constants.PaymentChannelTypeAlipay,
+		InteractionMode: constants.PaymentInteractionRedirect,
+		FeeRate:         models.NewMoneyFromDecimal(decimal.Zero),
+		ConfigJSON: models.JSON{
+			"gateway_url": server.URL,
+			"sign_key":    "vpay-secret",
+			"notify_url":  "https://api.example.com/api/v1/payments/callback",
+			"return_url":  "https://shop.example.com/pay",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := db.Create(channel).Error; err != nil {
+		t.Fatalf("create channel failed: %v", err)
+	}
+
+	payment := &models.Payment{
+		OrderID:         order.ID,
+		ChannelID:       channel.ID,
+		ProviderType:    channel.ProviderType,
+		ChannelType:     channel.ChannelType,
+		InteractionMode: channel.InteractionMode,
+		Amount:          models.NewMoneyFromDecimal(decimal.RequireFromString("99.00")),
+		FeeRate:         models.NewMoneyFromDecimal(decimal.Zero),
+		FeeAmount:       models.NewMoneyFromDecimal(decimal.Zero),
+		Currency:        "CNY",
+		Status:          constants.PaymentStatusInitiated,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(payment).Error; err != nil {
+		t.Fatalf("create payment failed: %v", err)
+	}
+
+	if err := svc.applyProviderPayment(CreatePaymentInput{
+		ClientIP: "127.0.0.1",
+		Context:  context.Background(),
+	}, order, channel, payment); err != nil {
+		t.Fatalf("applyProviderPayment vpay failed: %v", err)
+	}
+
+	if payment.GatewayOrderNo == "" {
+		t.Fatalf("payment gateway order no should not be empty")
+	}
+	if gotPayID != payment.GatewayOrderNo {
+		t.Fatalf("vpay payId = %s, want %s", gotPayID, payment.GatewayOrderNo)
+	}
+	if gotParam != order.OrderNo {
+		t.Fatalf("vpay param = %s, want %s", gotParam, order.OrderNo)
+	}
+	if !strings.Contains(gotReturnURL, "vpay_return=1") || !strings.Contains(gotReturnURL, "order_no="+order.OrderNo) {
+		t.Fatalf("vpay return url should include order return marker, got %s", gotReturnURL)
+	}
+	if payment.ProviderRef != "VPAY-ORDER-1001" {
+		t.Fatalf("provider ref = %s, want VPAY-ORDER-1001", payment.ProviderRef)
+	}
+	if !strings.HasPrefix(payment.PayURL, server.URL+"/payPage/pay.html?") || !strings.Contains(payment.PayURL, "orderId=VPAY-ORDER-1001") {
+		t.Fatalf("unexpected vpay redirect url: %s", payment.PayURL)
+	}
+	if payment.QRCode != "" {
+		t.Fatalf("vpay redirect mode should not expose qr code")
+	}
+	if payment.ProviderPayload == nil {
+		t.Fatalf("provider payload should be recorded")
+	}
+}
+
 func TestValidateChannelRejectsInvalidEpayInteractionMode(t *testing.T) {
 	svc, _ := setupPaymentServiceWalletTest(t)
 	channel := &models.PaymentChannel{
@@ -407,6 +533,24 @@ func TestValidateChannelRejectsInvalidEpayInteractionMode(t *testing.T) {
 	}
 	if err := svc.ValidateChannel(channel); err == nil {
 		t.Fatalf("ValidateChannel should reject invalid epay interaction mode")
+	}
+}
+
+func TestValidateChannelRejectsInvalidVpayInteractionMode(t *testing.T) {
+	svc, _ := setupPaymentServiceWalletTest(t)
+	channel := &models.PaymentChannel{
+		ProviderType:    constants.PaymentProviderVpay,
+		ChannelType:     constants.PaymentChannelTypeWechat,
+		InteractionMode: constants.PaymentInteractionQR,
+		ConfigJSON: models.JSON{
+			"gateway_url": "https://gateway.example.com",
+			"sign_key":    "vpay-secret",
+			"notify_url":  "https://api.example.com/api/v1/payments/callback",
+			"return_url":  "https://shop.example.com/pay",
+		},
+	}
+	if err := svc.ValidateChannel(channel); err == nil {
+		t.Fatalf("ValidateChannel should reject non-redirect vpay interaction mode")
 	}
 }
 

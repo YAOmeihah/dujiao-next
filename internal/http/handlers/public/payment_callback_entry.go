@@ -34,6 +34,9 @@ func (h *Handler) PaymentCallback(c *gin.Context) {
 	if handled := h.HandleTokenPayCallback(c); handled {
 		return
 	}
+	if handled := h.HandleVpayCallback(c); handled {
+		return
+	}
 	if handled := h.HandleEpusdtCallback(c); handled {
 		return
 	}

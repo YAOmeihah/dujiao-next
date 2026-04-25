@@ -45,6 +45,7 @@ const (
 	PaymentProviderEpusdt   = "epusdt"
 	PaymentProviderOkpay    = "okpay"
 	PaymentProviderTokenpay = "tokenpay"
+	PaymentProviderVpay     = "vpay"
 	PaymentProviderWallet   = "wallet"
 )
 
@@ -174,6 +175,12 @@ const (
 const (
 	TokenPayCallbackSuccess = "ok"
 	TokenPayCallbackFail    = "fail"
+)
+
+// VPay 回调常量
+const (
+	VpayCallbackSuccess = "success"
+	VpayCallbackFail    = "fail"
 )
 
 // 文章类型常量

@@ -16,6 +16,7 @@ import (
 	"github.com/dujiao-next/internal/payment/paypal"
 	"github.com/dujiao-next/internal/payment/stripe"
 	"github.com/dujiao-next/internal/payment/tokenpay"
+	"github.com/dujiao-next/internal/payment/vpay"
 	"github.com/dujiao-next/internal/payment/wechatpay"
 
 	"github.com/shopspring/decimal"
@@ -304,6 +305,67 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 		payment.ProviderRef = pickFirstNonEmpty(strings.TrimSpace(createResult.TokenOrderID), strings.TrimSpace(payment.ProviderRef), order.OrderNo)
 		if createResult.Raw != nil {
 			payment.ProviderPayload = models.JSON(createResult.Raw)
+		}
+		payment.UpdatedAt = time.Now()
+		if err := s.paymentRepo.Update(payment); err != nil {
+			return ErrPaymentUpdateFailed
+		}
+		return nil
+	case constants.PaymentProviderVpay:
+		if !vpay.IsSupportedChannelType(channel.ChannelType) {
+			return fmt.Errorf("%w: unsupported channel_type %s", ErrPaymentChannelConfigInvalid, channel.ChannelType)
+		}
+		if strings.ToLower(strings.TrimSpace(channel.InteractionMode)) != constants.PaymentInteractionRedirect {
+			return ErrPaymentChannelConfigInvalid
+		}
+		cfg, err := vpay.ParseConfig(channel.ConfigJSON)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		if err := vpay.ValidateConfig(cfg); err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		notifyURL := strings.TrimSpace(cfg.NotifyURL)
+		returnURL := appendURLQuery(cfg.ReturnURL, buildPaymentReturnQuery(input, order, "vpay_return", ""))
+		if notifyURL == "" || returnURL == "" {
+			return fmt.Errorf("%w: notify_url/return_url is required", ErrPaymentChannelConfigInvalid)
+		}
+		createResult, err := vpay.CreatePayment(gatewayCtx, cfg, vpay.CreateInput{
+			PayID:       providerOrderNo,
+			Param:       strings.TrimSpace(order.OrderNo),
+			ChannelType: channel.ChannelType,
+			Price:       payment.Amount.String(),
+			NotifyURL:   notifyURL,
+			ReturnURL:   returnURL,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, vpay.ErrConfigInvalid), errors.Is(err, vpay.ErrChannelType):
+				return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+			case errors.Is(err, vpay.ErrRequestFailed):
+				return ErrPaymentGatewayRequestFailed
+			case errors.Is(err, vpay.ErrResponseInvalid):
+				return ErrPaymentGatewayResponseInvalid
+			default:
+				return ErrPaymentGatewayRequestFailed
+			}
+		}
+		payment.PayURL = strings.TrimSpace(createResult.RedirectURL)
+		payment.QRCode = ""
+		payment.Status = constants.PaymentStatusPending
+		payment.ProviderRef = strings.TrimSpace(createResult.OrderID)
+		if createResult.Raw != nil {
+			providerPayload := models.JSON(createResult.Raw)
+			if strings.TrimSpace(createResult.Price) != "" {
+				providerPayload["price"] = strings.TrimSpace(createResult.Price)
+			}
+			if strings.TrimSpace(createResult.ReallyPrice) != "" {
+				providerPayload["really_price"] = strings.TrimSpace(createResult.ReallyPrice)
+			}
+			if strings.TrimSpace(createResult.PayURL) != "" {
+				providerPayload["vpay_pay_url"] = strings.TrimSpace(createResult.PayURL)
+			}
+			payment.ProviderPayload = providerPayload
 		}
 		payment.UpdatedAt = time.Now()
 		if err := s.paymentRepo.Update(payment); err != nil {
@@ -632,6 +694,21 @@ func (s *PaymentService) ValidateChannel(channel *models.PaymentChannel) error {
 			return fmt.Errorf("%w: notify_url is required", ErrPaymentChannelConfigInvalid)
 		}
 		if err := tokenpay.ValidateConfig(cfg); err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		return nil
+	case constants.PaymentProviderVpay:
+		if !vpay.IsSupportedChannelType(channel.ChannelType) {
+			return fmt.Errorf("%w: unsupported channel_type %s", ErrPaymentChannelConfigInvalid, channel.ChannelType)
+		}
+		if strings.ToLower(strings.TrimSpace(channel.InteractionMode)) != constants.PaymentInteractionRedirect {
+			return ErrPaymentChannelConfigInvalid
+		}
+		cfg, err := vpay.ParseConfig(channel.ConfigJSON)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
+		}
+		if err := vpay.ValidateConfig(cfg); err != nil {
 			return fmt.Errorf("%w: %v", ErrPaymentChannelConfigInvalid, err)
 		}
 		return nil
