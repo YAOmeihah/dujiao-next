@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/models"
 
 	"gorm.io/gorm"
@@ -37,6 +38,9 @@ func (r *GormPostRepository) List(filter PostListFilter) ([]models.Post, int64, 
 
 	if filter.OnlyPublished {
 		query = query.Where("is_published = ?", true)
+	}
+	if filter.HomePopupOnly {
+		query = query.Where("is_home_popup = ?", true)
 	}
 	if filter.Type != "" {
 		query = query.Where("type = ?", filter.Type)
@@ -96,12 +100,26 @@ func (r *GormPostRepository) GetByID(id string) (*models.Post, error) {
 
 // Create 创建文章
 func (r *GormPostRepository) Create(post *models.Post) error {
-	return r.db.Create(post).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if post.IsHomePopup {
+			if err := clearOtherHomePopupNotices(tx, 0); err != nil {
+				return err
+			}
+		}
+		return tx.Create(post).Error
+	})
 }
 
 // Update 更新文章
 func (r *GormPostRepository) Update(post *models.Post) error {
-	return r.db.Save(post).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if post.IsHomePopup {
+			if err := clearOtherHomePopupNotices(tx, post.ID); err != nil {
+				return err
+			}
+		}
+		return tx.Save(post).Error
+	})
 }
 
 // Delete 删除文章
@@ -120,4 +138,13 @@ func (r *GormPostRepository) CountBySlug(slug string, excludeID *string) (int64,
 		return 0, err
 	}
 	return count, nil
+}
+
+func clearOtherHomePopupNotices(tx *gorm.DB, excludeID uint) error {
+	query := tx.Model(&models.Post{}).
+		Where("type = ? AND is_home_popup = ?", constants.PostTypeNotice, true)
+	if excludeID > 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+	return query.Update("is_home_popup", false).Error
 }

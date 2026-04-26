@@ -15,6 +15,7 @@ type PostResp struct {
 	Summary     models.JSON `json:"summary"`
 	Content     models.JSON `json:"content"`
 	Thumbnail   string      `json:"thumbnail,omitempty"`
+	IsHomePopup bool        `json:"is_home_popup"`
 	PublishedAt *time.Time  `json:"published_at"`
 }
 
@@ -28,6 +29,7 @@ func NewPostResp(p *models.Post) PostResp {
 		Summary:     p.SummaryJSON,
 		Content:     p.ContentJSON,
 		Thumbnail:   p.Thumbnail,
+		IsHomePopup: p.IsHomePopup,
 		PublishedAt: p.PublishedAt,
 	}
 	// 排除：IsPublished(内部状态)、CreatedAt

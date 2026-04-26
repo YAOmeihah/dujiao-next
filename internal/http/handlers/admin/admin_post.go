@@ -40,6 +40,7 @@ type CreatePostRequest struct {
 	ContentJSON map[string]interface{} `json:"content"`
 	Thumbnail   string                 `json:"thumbnail"`
 	IsPublished *bool                  `json:"is_published"`
+	IsHomePopup bool                   `json:"is_home_popup"`
 }
 
 // CreatePost 创建文章
@@ -58,6 +59,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 		ContentJSON: req.ContentJSON,
 		Thumbnail:   req.Thumbnail,
 		IsPublished: req.IsPublished,
+		IsHomePopup: req.IsHomePopup,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidPostType) {
@@ -93,6 +95,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 		ContentJSON: req.ContentJSON,
 		Thumbnail:   req.Thumbnail,
 		IsPublished: req.IsPublished,
+		IsHomePopup: req.IsHomePopup,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidPostType) {

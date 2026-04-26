@@ -675,6 +675,21 @@ func (h *Handler) GetPostBySlug(c *gin.Context) {
 	response.Success(c, dto.NewPostResp(post))
 }
 
+// GetHomePopupNotice 获取首页弹窗公告
+func (h *Handler) GetHomePopupNotice(c *gin.Context) {
+	post, err := h.PostService.GetPublicHomePopupNotice()
+	if err != nil {
+		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
+		return
+	}
+	if post == nil {
+		response.Success(c, nil)
+		return
+	}
+
+	response.Success(c, dto.NewPostResp(post))
+}
+
 // GetCategories 获取分类列表
 func (h *Handler) GetCategories(c *gin.Context) {
 	categories, err := h.CategoryService.List()

@@ -27,6 +27,7 @@ type CreatePostInput struct {
 	ContentJSON map[string]interface{}
 	Thumbnail   string
 	IsPublished *bool
+	IsHomePopup bool
 }
 
 var allowedPostTypes = map[string]struct{}{
@@ -56,6 +57,25 @@ func (s *PostService) GetPublicBySlug(slug string) (*models.Post, error) {
 		return nil, ErrNotFound
 	}
 	return post, nil
+}
+
+// GetPublicHomePopupNotice 获取公开首页弹窗公告
+func (s *PostService) GetPublicHomePopupNotice() (*models.Post, error) {
+	posts, _, err := s.repo.List(repository.PostListFilter{
+		Page:          1,
+		PageSize:      1,
+		Type:          constants.PostTypeNotice,
+		OnlyPublished: true,
+		HomePopupOnly: true,
+		OrderBy:       "published_at DESC, created_at DESC",
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(posts) == 0 {
+		return nil, nil
+	}
+	return &posts[0], nil
 }
 
 // ListAdmin 获取后台文章列表
@@ -97,6 +117,7 @@ func (s *PostService) Create(input CreatePostInput) (*models.Post, error) {
 		ContentJSON: models.JSON(input.ContentJSON),
 		Thumbnail:   input.Thumbnail,
 		IsPublished: isPublished,
+		IsHomePopup: input.Type == constants.PostTypeNotice && input.IsHomePopup,
 	}
 	if isPublished {
 		now := time.Now()
@@ -137,6 +158,7 @@ func (s *PostService) Update(id string, input CreatePostInput) (*models.Post, er
 	post.SummaryJSON = models.JSON(input.SummaryJSON)
 	post.ContentJSON = models.JSON(input.ContentJSON)
 	post.Thumbnail = input.Thumbnail
+	post.IsHomePopup = input.Type == constants.PostTypeNotice && input.IsHomePopup
 	if input.IsPublished != nil {
 		wasPublished := post.IsPublished
 		post.IsPublished = *input.IsPublished

@@ -34,6 +34,7 @@ type PostListFilter struct {
 	Type          string
 	Search        string
 	OnlyPublished bool
+	HomePopupOnly bool
 	OrderBy       string
 }
 
