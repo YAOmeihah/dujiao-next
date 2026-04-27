@@ -43,6 +43,7 @@ type Container struct {
 	UserLoginLogRepo       repository.UserLoginLogRepository
 	AuthzAuditLogRepo      repository.AuthzAuditLogRepository
 	NotificationLogRepo    repository.NotificationLogRepository
+	AdminLoginLogRepo      repository.AdminLoginLogRepository
 	DashboardRepo          repository.DashboardRepository
 	AffiliateRepo          repository.AffiliateRepository
 	ApiCredentialRepo      repository.ApiCredentialRepository
@@ -62,6 +63,7 @@ type Container struct {
 	// Services
 	AuthzService              *authz.Service
 	AuthService               *service.AuthService
+	TOTPService               *service.TOTPService
 	UserAuthService           *service.UserAuthService
 	TelegramAuthService       *service.TelegramAuthService
 	EmailService              *service.EmailService
@@ -162,6 +164,7 @@ func (c *Container) initRepositories() {
 	c.UserLoginLogRepo = repository.NewUserLoginLogRepository(db)
 	c.AuthzAuditLogRepo = repository.NewAuthzAuditLogRepository(db)
 	c.NotificationLogRepo = repository.NewNotificationLogRepository(db)
+	c.AdminLoginLogRepo = repository.NewAdminLoginLogRepository(db)
 	c.DashboardRepo = repository.NewDashboardRepository(db)
 	c.AffiliateRepo = repository.NewAffiliateRepository(db)
 	c.ApiCredentialRepo = repository.NewApiCredentialRepository(db)
@@ -216,6 +219,7 @@ func (c *Container) initServices() {
 	c.EmailService = service.NewEmailService(&c.Config.Email)
 	c.CaptchaService = service.NewCaptchaService(c.SettingService, c.Config.Captcha)
 	c.AuthService = service.NewAuthService(c.Config, c.AdminRepo)
+	c.TOTPService = service.NewTOTPService(c.Config, c.AdminRepo, cache.Client())
 	c.TelegramAuthService = service.NewTelegramAuthService(c.Config.TelegramAuth)
 	c.UserAuthService = service.NewUserAuthService(c.Config, c.UserRepo, c.UserOAuthIdentityRepo, c.EmailVerifyCodeRepo, c.SettingService, c.EmailService, c.TelegramAuthService)
 	c.UploadService = service.NewUploadService(c.Config)

@@ -234,6 +234,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 		{
 			// 登录接口（无需鉴权）
 			admin.POST("/login", RateLimitMiddleware(redisClient, adminLoginRule, KeyByIP), adminHandler.AdminLogin)
+			admin.POST("/login/verify-2fa", RateLimitMiddleware(redisClient, adminLoginRule, KeyByIP), adminHandler.Verify2FA)
 
 			// 需要鉴权的接口
 			authorized := admin.Use(JWTAuthMiddleware(cfg.JWT.SecretKey, c.AdminRepo), AdminRBACMiddleware(c.AuthzService))
@@ -303,6 +304,11 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/settings/affiliate", adminHandler.GetAffiliateSettings)
 				authorized.PUT("/settings/affiliate", adminHandler.UpdateAffiliateSettings)
 				authorized.PUT("/password", adminHandler.UpdateAdminPassword) // 修改密码
+				authorized.GET("/2fa/status", adminHandler.Get2FAStatus)
+				authorized.POST("/2fa/setup", adminHandler.Setup2FA)
+				authorized.POST("/2fa/enable", adminHandler.Enable2FA)
+				authorized.POST("/2fa/disable", adminHandler.Disable2FA)
+				authorized.POST("/2fa/recovery-codes/regenerate", adminHandler.RegenerateRecoveryCodes)
 
 				// 推广返利
 				authorized.GET("/affiliates/users", adminHandler.ListAffiliateUsers)
@@ -320,6 +326,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/authz/audit-logs", adminHandler.ListAuthzAuditLogs)
 				authorized.POST("/authz/admins", adminHandler.CreateAuthzAdmin)
 				authorized.PUT("/authz/admins/:id", adminHandler.UpdateAuthzAdmin)
+				authorized.POST("/authz/admins/:id/2fa/reset", adminHandler.ResetTargetAdmin2FA)
 				authorized.DELETE("/authz/admins/:id", adminHandler.DeleteAuthzAdmin)
 				authorized.GET("/authz/permissions/catalog", func(ctx *gin.Context) {
 					response.Success(ctx, buildAdminPermissionCatalog(r))
@@ -526,6 +533,9 @@ func buildAdminPermissionCatalog(engine *gin.Engine) []adminPermissionCatalogIte
 			continue
 		}
 		if item.Path == "/api/v1/admin/login" {
+			continue
+		}
+		if item.Path == "/api/v1/admin/login/verify-2fa" {
 			continue
 		}
 		object := authz.NormalizeObject(item.Path)

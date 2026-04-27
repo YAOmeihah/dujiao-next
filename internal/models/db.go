@@ -114,6 +114,7 @@ func AutoMigrate() error {
 		&UserLoginLog{},
 		&AuthzAuditLog{},
 		&NotificationLog{},
+		&AdminLoginLog{},
 		&EmailVerifyCode{},
 		&Order{},
 		&OrderItem{},
