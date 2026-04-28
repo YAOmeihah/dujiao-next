@@ -57,6 +57,7 @@ jobs:
           cp -r admin-src/dist internal/web/dist/admin
           cp -r user-src/dist  internal/web/dist/user
           ls -la internal/web/dist/admin internal/web/dist/user | head -10
+          rm -rf admin-src user-src
 
       # ---- Go 工具链 + GoReleaser ----
       - name: Set up Go
