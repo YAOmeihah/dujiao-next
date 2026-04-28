@@ -14,3 +14,6 @@ dist/
 docs
 dujiao-next
 .worktrees/
+
+# Fullstack 构建产物（仅 -tags fullstack 时使用，不进 git 历史）
+internal/web/dist/

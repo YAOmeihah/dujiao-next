@@ -17,8 +17,12 @@ func BuiltinRoleSeeds() []RoleSeed {
 			Role: "readonly_auditor",
 			Policies: []Policy{
 				{Object: "/admin/*", Action: "GET"},
-				{Object: "/admin/password", Action: "PUT"},        // 所有管理员均可修改自己密码
-				{Object: "/admin/ads/impression", Action: "POST"}, // 广告曝光埋点，所有管理员可触发
+				{Object: "/admin/password", Action: "PUT"},                       // 所有管理员均可修改自己密码
+				{Object: "/admin/ads/impression", Action: "POST"},                // 广告曝光埋点，所有管理员可触发
+				{Object: "/admin/2fa/setup", Action: "POST"},                     // 自助绑定 2FA
+				{Object: "/admin/2fa/enable", Action: "POST"},                    // 自助启用 2FA
+				{Object: "/admin/2fa/disable", Action: "POST"},                   // 自助关闭 2FA
+				{Object: "/admin/2fa/recovery-codes/regenerate", Action: "POST"}, // 重新生成恢复码
 			},
 			Immutable: true,
 		},
@@ -118,6 +122,7 @@ func BuiltinRoleSeeds() []RoleSeed {
 				{Object: "/admin/product-mappings/batch-status", Action: "POST"},
 				{Object: "/admin/product-mappings/batch-delete", Action: "POST"},
 				{Object: "/admin/procurement-orders", Action: "GET"},
+				{Object: "/admin/procurement-orders/stats", Action: "GET"},
 				{Object: "/admin/procurement-orders/:id", Action: "GET"},
 				{Object: "/admin/procurement-orders/:id/upstream-payload/download", Action: "GET"},
 				{Object: "/admin/procurement-orders/:id/retry", Action: "POST"},

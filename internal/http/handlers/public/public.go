@@ -299,8 +299,14 @@ func (h *Handler) GetProductBySlug(c *gin.Context) {
 		return
 	}
 
+	if posts, perr := h.PostService.ListPostsForProduct(product.ID, publicRelatedPostsLimit); perr == nil {
+		decorated.RelatedPosts = dto.NewRelatedPostCardList(posts)
+	}
+
 	response.Success(c, decorated)
 }
+
+const publicRelatedPostsLimit = 6
 
 func (h *Handler) decoratePublicProduct(product *models.Product, promotionService *service.PromotionService, userMemberLevelID ...uint) (dto.ProductResp, error) {
 	if product == nil {
@@ -646,8 +652,9 @@ func (h *Handler) GetPosts(c *gin.Context) {
 
 	// 获取类型参数
 	postType := c.Query("type") // blog 或 notice
+	search := c.Query("search")
 
-	posts, total, err := h.PostService.ListPublic(postType, page, pageSize)
+	posts, total, err := h.PostService.ListPublic(postType, search, page, pageSize)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return
@@ -672,7 +679,14 @@ func (h *Handler) GetPostBySlug(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, dto.NewPostResp(post))
+	resp := dto.NewPostResp(post)
+	if post.Type == constants.PostTypeBlog {
+		products, perr := h.PostService.ListRelatedProducts(post.ID)
+		if perr == nil {
+			resp.RelatedProducts = dto.NewRelatedProductCardList(products)
+		}
+	}
+	response.Success(c, resp)
 }
 
 // GetHomePopupNotice 获取首页弹窗公告
