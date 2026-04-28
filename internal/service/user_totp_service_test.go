@@ -295,3 +295,66 @@ func TestUserTOTPGetStatusForUnknownUser(t *testing.T) {
 		t.Fatalf("expected not found, got %v", err)
 	}
 }
+
+func TestUserTOTPAdminResetClearsAndBumpsTokenVersion(t *testing.T) {
+	svc, repo, _ := newUserTOTPTestService(t)
+	user := createUserTOTPTestUser(t, repo, "reset@example.com")
+	setupRes, _ := svc.Setup(user.ID)
+	code, _ := totp.GenerateCode(setupRes.Secret, time.Now())
+	if _, err := svc.Enable(user.ID, code); err != nil {
+		t.Fatalf("enable: %v", err)
+	}
+	enabledSnap, _ := repo.GetByID(user.ID)
+
+	target, err := svc.AdminResetUser2FA(1, user.ID)
+	if err != nil {
+		t.Fatalf("admin reset: %v", err)
+	}
+	if target == nil || target.ID != user.ID {
+		t.Fatalf("expected returned target user with ID=%d", user.ID)
+	}
+	if target.Email != "reset@example.com" {
+		t.Fatalf("expected target email returned for audit, got %q", target.Email)
+	}
+
+	cleared, _ := repo.GetByID(user.ID)
+	if cleared.TOTPEnabledAt != nil {
+		t.Fatalf("expected totp_enabled_at cleared, got %v", cleared.TOTPEnabledAt)
+	}
+	if cleared.TOTPSecret != "" {
+		t.Fatalf("expected totp_secret cleared, got %q", cleared.TOTPSecret)
+	}
+	if cleared.RecoveryCodes != "" {
+		t.Fatalf("expected recovery_codes cleared, got %q", cleared.RecoveryCodes)
+	}
+	if cleared.TokenVersion != enabledSnap.TokenVersion+1 {
+		t.Fatalf("expected token_version to bump from %d to %d, got %d",
+			enabledSnap.TokenVersion, enabledSnap.TokenVersion+1, cleared.TokenVersion)
+	}
+	if cleared.TokenInvalidBefore == nil {
+		t.Fatalf("expected token_invalid_before set after admin reset")
+	}
+}
+
+func TestUserTOTPAdminResetRejectsWhenNotEnabled(t *testing.T) {
+	svc, repo, _ := newUserTOTPTestService(t)
+	user := createUserTOTPTestUser(t, repo, "noreset@example.com")
+	if _, err := svc.AdminResetUser2FA(1, user.ID); err != ErrTOTPNotEnabled {
+		t.Fatalf("expected ErrTOTPNotEnabled, got %v", err)
+	}
+}
+
+func TestUserTOTPAdminResetRejectsUnknownUser(t *testing.T) {
+	svc, _, _ := newUserTOTPTestService(t)
+	if _, err := svc.AdminResetUser2FA(1, 99999); err != ErrNotFound {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestUserTOTPAdminResetRequiresOperatorID(t *testing.T) {
+	svc, repo, _ := newUserTOTPTestService(t)
+	user := createUserTOTPTestUser(t, repo, "noopid@example.com")
+	if _, err := svc.AdminResetUser2FA(0, user.ID); err == nil {
+		t.Fatalf("expected error when operatorID=0")
+	}
+}

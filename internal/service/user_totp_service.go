@@ -299,6 +299,33 @@ func (s *UserTOTPService) VerifyChallengeRecoveryCode(userID uint, code string) 
 	return s.consumeRecoveryCode(user, code)
 }
 
+// AdminResetUser2FA 管理员强制清空目标用户 2FA。
+// 使用场景：用户同时丢失 TOTP 设备与所有恢复码，向管理员申诉后由管理员协助解绑。
+// 与用户自助 Disable 不同：不需要 code/recovery code，直接清空。
+// 同步 bump TokenVersion 强制其他设备下线（由 ClearTOTP 完成）。
+// operatorID 仅用于让调用方留痕；service 内部不依赖它，但要求非零以避免来路不明的调用绕过审计。
+// 返回 (targetUser, error)：targetUser 供 handler 写审计日志（邮箱等）。
+func (s *UserTOTPService) AdminResetUser2FA(operatorID, targetID uint) (*models.User, error) {
+	if operatorID == 0 {
+		return nil, fmt.Errorf("operatorID is required for audit")
+	}
+	user, err := s.userRepo.GetByID(targetID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrNotFound
+	}
+	if user.TOTPEnabledAt == nil {
+		return nil, ErrTOTPNotEnabled
+	}
+	if err := s.userRepo.ClearTOTP(targetID); err != nil {
+		return nil, err
+	}
+	_ = cache.DelUserAuthState(context.Background(), targetID)
+	return user, nil
+}
+
 // ---- 内部辅助 ----
 
 func (s *UserTOTPService) verifyCode(secret, code string) bool {

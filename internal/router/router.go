@@ -421,6 +421,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/users/:id/wallet/transactions", adminHandler.GetAdminUserWalletTransactions)
 				authorized.POST("/users/:id/wallet/adjust", adminHandler.AdjustAdminUserWallet)
 				authorized.PUT("/users/:id/member-level", adminHandler.SetUserMemberLevel)
+				authorized.DELETE("/users/:id/2fa", adminHandler.ResetUser2FA)
 				authorized.GET("/wallet/recharges", adminHandler.GetAdminWalletRecharges)
 
 				// API 凭证审核管理
