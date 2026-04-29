@@ -116,6 +116,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			auth.POST("/send-verify-code", publicHandler.SendUserVerifyCode)
 			auth.POST("/register", publicHandler.UserRegister)
 			auth.POST("/login", RateLimitMiddleware(redisClient, loginRule, KeyByIPAndJSONField("email")), publicHandler.UserLogin)
+			auth.POST("/login/verify-2fa", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.VerifyUser2FA)
 			auth.POST("/telegram/login", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.UserTelegramLogin)
 			auth.POST("/telegram/miniapp/login", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.UserTelegramMiniAppLogin)
 			auth.POST("/forgot-password", publicHandler.UserForgotPassword)
@@ -135,6 +136,11 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			user.DELETE("/me/telegram/unbind", publicHandler.UnbindMyTelegram)
 			user.POST("/me/email/send-verify-code", publicHandler.SendChangeEmailCode)
 			user.POST("/me/email/change", publicHandler.ChangeEmail)
+			user.GET("/me/2fa/status", publicHandler.GetUser2FAStatus)
+			user.POST("/me/2fa/setup", publicHandler.SetupUser2FA)
+			user.POST("/me/2fa/enable", publicHandler.EnableUser2FA)
+			user.POST("/me/2fa/disable", publicHandler.DisableUser2FA)
+			user.POST("/me/2fa/recovery-codes/regenerate", publicHandler.RegenerateUser2FARecoveryCodes)
 			user.GET("/cart", publicHandler.GetCart)
 			user.POST("/cart/items", publicHandler.UpsertCartItem)
 			user.DELETE("/cart/items/:product_id", publicHandler.DeleteCartItem)
@@ -310,6 +316,10 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/settings/affiliate", adminHandler.GetAffiliateSettings)
 				authorized.PUT("/settings/affiliate", adminHandler.UpdateAffiliateSettings)
 				authorized.PUT("/password", adminHandler.UpdateAdminPassword) // 修改密码
+
+				// 系统信息与版本检测
+				authorized.GET("/system/version/check", adminHandler.CheckSystemUpdate)
+
 				authorized.GET("/2fa/status", adminHandler.Get2FAStatus)
 				authorized.POST("/2fa/setup", adminHandler.Setup2FA)
 				authorized.POST("/2fa/enable", adminHandler.Enable2FA)
@@ -421,6 +431,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/users/:id/wallet/transactions", adminHandler.GetAdminUserWalletTransactions)
 				authorized.POST("/users/:id/wallet/adjust", adminHandler.AdjustAdminUserWallet)
 				authorized.PUT("/users/:id/member-level", adminHandler.SetUserMemberLevel)
+				authorized.DELETE("/users/:id/2fa", adminHandler.ResetUser2FA)
 				authorized.GET("/wallet/recharges", adminHandler.GetAdminWalletRecharges)
 
 				// API 凭证审核管理

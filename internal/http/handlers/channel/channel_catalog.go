@@ -316,6 +316,7 @@ func (h *Handler) GetProductDetail(c *gin.Context) {
 		"stock_count":           computeStockCount(effectiveFT, product.AutoStockAvailable, product.ManualStockTotal),
 		"category_name":         resolveLocalizedJSON(product.Category.NameJSON, locale, defaultLocale),
 		"fulfillment_type":      effectiveFT,
+		"min_purchase_quantity": normalizeChannelMinPurchaseQuantity(product.MinPurchaseQuantity),
 		"max_purchase_quantity": normalizeChannelMaxPurchaseQuantity(product.MaxPurchaseQuantity),
 		"manual_form_schema":    normalizeChannelManualFormSchema(product.ManualFormSchemaJSON, locale, defaultLocale),
 		"purchase_note":         "",
@@ -462,6 +463,13 @@ func computeStockCount(fulfillmentType string, autoStockAvailable int64, manualS
 }
 
 func normalizeChannelMaxPurchaseQuantity(value int) int {
+	if value <= 0 {
+		return 0
+	}
+	return value
+}
+
+func normalizeChannelMinPurchaseQuantity(value int) int {
 	if value <= 0 {
 		return 0
 	}
