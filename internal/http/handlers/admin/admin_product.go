@@ -105,6 +105,7 @@ type CreateProductRequest struct {
 	Images                  []string               `json:"images"`
 	Tags                    []string               `json:"tags"`
 	PurchaseType            string                 `json:"purchase_type"`
+	MinPurchaseQuantity     *int                   `json:"min_purchase_quantity"`
 	MaxPurchaseQuantity     *int                   `json:"max_purchase_quantity"`
 	FulfillmentType         string                 `json:"fulfillment_type"`
 	ManualStockTotal        *int                   `json:"manual_stock_total"`
@@ -158,6 +159,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		Images:                  req.Images,
 		Tags:                    req.Tags,
 		PurchaseType:            req.PurchaseType,
+		MinPurchaseQuantity:     req.MinPurchaseQuantity,
 		MaxPurchaseQuantity:     req.MaxPurchaseQuantity,
 		FulfillmentType:         req.FulfillmentType,
 		ManualStockTotal:        req.ManualStockTotal,
@@ -195,6 +197,10 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		}
 		if errors.Is(err, service.ErrManualStockInvalid) {
 			shared.RespondError(c, response.CodeBadRequest, "error.manual_stock_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPurchaseLimitInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_purchase_limit_invalid", nil)
 			return
 		}
 		if errors.Is(err, service.ErrProductSKUInvalid) {
@@ -236,6 +242,7 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 		Images:                  req.Images,
 		Tags:                    req.Tags,
 		PurchaseType:            req.PurchaseType,
+		MinPurchaseQuantity:     req.MinPurchaseQuantity,
 		MaxPurchaseQuantity:     req.MaxPurchaseQuantity,
 		FulfillmentType:         req.FulfillmentType,
 		ManualStockTotal:        req.ManualStockTotal,
@@ -277,6 +284,10 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 		}
 		if errors.Is(err, service.ErrManualStockInvalid) {
 			shared.RespondError(c, response.CodeBadRequest, "error.manual_stock_invalid", nil)
+			return
+		}
+		if errors.Is(err, service.ErrProductPurchaseLimitInvalid) {
+			shared.RespondError(c, response.CodeBadRequest, "error.product_purchase_limit_invalid", nil)
 			return
 		}
 		if errors.Is(err, service.ErrProductSKUInvalid) {

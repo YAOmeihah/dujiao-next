@@ -95,6 +95,7 @@ func BuiltinRoleSeeds() []RoleSeed {
 				{Object: "/admin/users/:id/wallet/transactions", Action: "GET"},
 				{Object: "/admin/users/:id/wallet/adjust", Action: "POST"},
 				{Object: "/admin/users/:id/member-level", Action: "PUT"},
+				{Object: "/admin/users/:id/2fa", Action: "DELETE"}, // 客服协助用户重置丢失 TOTP+恢复码 的 2FA
 				{Object: "/admin/user-login-logs", Action: "GET"},
 				{Object: "/admin/wallet/recharges", Action: "GET"},
 				{Object: "/admin/payments", Action: "GET"},
@@ -194,9 +195,12 @@ func BuiltinRoleSeeds() []RoleSeed {
 				{Object: "/admin/authz/admins", Action: "*"},
 				{Object: "/admin/authz/admins/:id", Action: "*"},
 				{Object: "/admin/authz/admins/:id/roles", Action: "*"},
+				{Object: "/admin/authz/admins/:id/2fa/reset", Action: "POST"}, // 超管重置目标管理员 2FA（handler 仍二次校验 isSuper）
 				{Object: "/admin/authz/policies", Action: "*"},
 				{Object: "/admin/authz/permissions/catalog", Action: "GET"},
 				{Object: "/admin/authz/audit-logs", Action: "GET"},
+				// 系统信息与版本检测
+				{Object: "/admin/system/version/check", Action: "GET"},
 				// 渠道客户端管理
 				{Object: "/admin/channel-clients", Action: "*"},
 				{Object: "/admin/channel-clients/:id", Action: "*"},

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -883,5 +884,71 @@ func TestProductServiceCreateAndUpdatePersistsRequiresShippingAddress(t *testing
 	}
 	if updated.RequiresShippingAddress {
 		t.Fatalf("expected requires shipping address to be false after update")
+	}
+}
+
+func TestProductServiceCreateRejectsInvalidPurchaseLimits(t *testing.T) {
+	svc, db := newProductServiceForTest(t)
+
+	cat := models.Category{Slug: "test-purchase-limit", NameJSON: models.JSON{"zh-CN": "test"}}
+	if err := db.Create(&cat).Error; err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+
+	intPtr := func(v int) *int { return &v }
+
+	_, err := svc.Create(CreateProductInput{
+		CategoryID:          cat.ID,
+		Slug:                "invalid-limit-product",
+		TitleJSON:           map[string]interface{}{"zh-CN": "invalid-limit-product"},
+		PriceAmount:         decimal.NewFromInt(10),
+		PurchaseType:        constants.ProductPurchaseMember,
+		FulfillmentType:     constants.FulfillmentTypeManual,
+		ManualStockTotal:    intPtr(1),
+		MinPurchaseQuantity: intPtr(10),
+		MaxPurchaseQuantity: intPtr(5),
+	})
+	if !errors.Is(err, ErrProductPurchaseLimitInvalid) {
+		t.Fatalf("expected ErrProductPurchaseLimitInvalid, got %v", err)
+	}
+}
+
+func TestProductServiceUpdateRejectsInvalidPurchaseLimits(t *testing.T) {
+	svc, db := newProductServiceForTest(t)
+
+	cat := models.Category{Slug: "test-purchase-limit-update", NameJSON: models.JSON{"zh-CN": "test"}}
+	if err := db.Create(&cat).Error; err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+
+	intPtr := func(v int) *int { return &v }
+
+	created, err := svc.Create(CreateProductInput{
+		CategoryID:          cat.ID,
+		Slug:                "valid-limit-product",
+		TitleJSON:           map[string]interface{}{"zh-CN": "valid"},
+		PriceAmount:         decimal.NewFromInt(10),
+		PurchaseType:        constants.ProductPurchaseMember,
+		FulfillmentType:     constants.FulfillmentTypeManual,
+		ManualStockTotal:    intPtr(1),
+		MinPurchaseQuantity: intPtr(2),
+		MaxPurchaseQuantity: intPtr(5),
+	})
+	if err != nil {
+		t.Fatalf("create product failed: %v", err)
+	}
+
+	_, err = svc.Update(strconv.FormatUint(uint64(created.ID), 10), CreateProductInput{
+		CategoryID:          cat.ID,
+		Slug:                "valid-limit-product",
+		TitleJSON:           map[string]interface{}{"zh-CN": "valid"},
+		PriceAmount:         decimal.NewFromInt(10),
+		PurchaseType:        constants.ProductPurchaseMember,
+		FulfillmentType:     constants.FulfillmentTypeManual,
+		ManualStockTotal:    intPtr(1),
+		MaxPurchaseQuantity: intPtr(1), // 已存在 min=2，新设 max=1 应触发校验
+	})
+	if !errors.Is(err, ErrProductPurchaseLimitInvalid) {
+		t.Fatalf("expected ErrProductPurchaseLimitInvalid on update, got %v", err)
 	}
 }

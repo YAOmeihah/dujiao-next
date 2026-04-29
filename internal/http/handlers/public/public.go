@@ -78,6 +78,7 @@ func (v *publicProductView) toProductResp() dto.ProductResp {
 		Images:                  v.Product.Images,
 		Tags:                    v.Product.Tags,
 		PurchaseType:            v.Product.PurchaseType,
+		MinPurchaseQuantity:     v.Product.MinPurchaseQuantity,
 		MaxPurchaseQuantity:     v.Product.MaxPurchaseQuantity,
 		FulfillmentType:         v.Product.FulfillmentType,
 		RequiresShippingAddress: v.Product.RequiresShippingAddress,

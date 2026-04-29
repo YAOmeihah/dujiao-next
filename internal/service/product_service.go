@@ -66,6 +66,7 @@ type CreateProductInput struct {
 	Images                  []string
 	Tags                    []string
 	PurchaseType            string
+	MinPurchaseQuantity     *int
 	MaxPurchaseQuantity     *int
 	FulfillmentType         string
 	ManualStockTotal        *int
@@ -222,6 +223,13 @@ func (s *ProductService) Create(input CreateProductInput) (*models.Product, erro
 	if input.MaxPurchaseQuantity != nil {
 		maxPurchaseQuantity = normalizeMaxPurchaseQuantity(*input.MaxPurchaseQuantity)
 	}
+	minPurchaseQuantity := 0
+	if input.MinPurchaseQuantity != nil {
+		minPurchaseQuantity = normalizeMinPurchaseQuantity(*input.MinPurchaseQuantity)
+	}
+	if minPurchaseQuantity > 0 && maxPurchaseQuantity > 0 && minPurchaseQuantity > maxPurchaseQuantity {
+		return nil, ErrProductPurchaseLimitInvalid
+	}
 
 	costPriceAmount := input.CostPriceAmount.Round(2)
 
@@ -252,6 +260,7 @@ func (s *ProductService) Create(input CreateProductInput) (*models.Product, erro
 		Images:                  models.StringArray(input.Images),
 		Tags:                    models.StringArray(input.Tags),
 		PurchaseType:            purchaseType,
+		MinPurchaseQuantity:     minPurchaseQuantity,
 		MaxPurchaseQuantity:     maxPurchaseQuantity,
 		FulfillmentType:         fulfillmentType,
 		RequiresShippingAddress: requiresShippingAddress,
@@ -353,6 +362,12 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 	product.PurchaseType = purchaseType
 	if input.MaxPurchaseQuantity != nil {
 		product.MaxPurchaseQuantity = normalizeMaxPurchaseQuantity(*input.MaxPurchaseQuantity)
+	}
+	if input.MinPurchaseQuantity != nil {
+		product.MinPurchaseQuantity = normalizeMinPurchaseQuantity(*input.MinPurchaseQuantity)
+	}
+	if product.MinPurchaseQuantity > 0 && product.MaxPurchaseQuantity > 0 && product.MinPurchaseQuantity > product.MaxPurchaseQuantity {
+		return nil, ErrProductPurchaseLimitInvalid
 	}
 	rawFulfillmentType := strings.TrimSpace(input.FulfillmentType)
 	if rawFulfillmentType == "" {
