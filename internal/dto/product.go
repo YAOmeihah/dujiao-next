@@ -16,6 +16,7 @@ type ProductResp struct {
 	Images               models.StringArray `json:"images"`
 	Tags                 models.StringArray `json:"tags"`
 	PurchaseType         string             `json:"purchase_type"`
+	MinPurchaseQuantity  int                `json:"min_purchase_quantity"`
 	MaxPurchaseQuantity  int                `json:"max_purchase_quantity"`
 	FulfillmentType      string             `json:"fulfillment_type"`
 	ManualFormSchema     models.JSON        `json:"manual_form_schema"`
