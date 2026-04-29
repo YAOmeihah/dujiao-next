@@ -138,6 +138,33 @@ order:
   payment_expire_minutes: 15
   max_refund_days: 30
 
+captcha:
+  provider: none # none / image / turnstile / cap
+  scenes:
+    login: false
+    register_send_code: false
+    reset_send_code: false
+    guest_create_order: false
+    gift_card_redeem: false
+  image:
+    length: 5
+    width: 240
+    height: 80
+    noise_count: 2
+    show_line: 2
+    expire_seconds: 300
+    max_store: 10240
+  turnstile:
+    site_key: ""
+    secret_key: ""
+    verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    timeout_ms: 2000
+  cap:
+    endpoint: "" # 例如 "http://127.0.0.1:3001"，不要带 site key
+    site_key: ""
+    secret_key: ""
+    timeout_ms: 2000
+
 # Web 路由配置（仅在 fullstack 二进制模式下生效；普通 Docker 镜像部署忽略此段）
 web:
   # 后台访问路径前缀

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,7 @@ type CaptchaVerifyPayload struct {
 	CaptchaID      string `json:"captcha_id"`
 	CaptchaCode    string `json:"captcha_code"`
 	TurnstileToken string `json:"turnstile_token"`
+	CapToken       string `json:"cap_token"`
 }
 
 // CaptchaImageChallenge 图片验证码挑战
@@ -33,6 +35,10 @@ type CaptchaImageChallenge struct {
 type turnstileVerifyResponse struct {
 	Success    bool     `json:"success"`
 	ErrorCodes []string `json:"error-codes"`
+}
+
+type capVerifyResponse struct {
+	Success bool `json:"success"`
 }
 
 // CaptchaService 验证码服务
@@ -164,6 +170,12 @@ func (s *CaptchaService) Verify(scene string, payload CaptchaVerifyPayload, clie
 			return ErrCaptchaRequired
 		}
 		return s.verifyTurnstile(setting.Turnstile, token, strings.TrimSpace(clientIP))
+	case constants.CaptchaProviderCap:
+		token := strings.TrimSpace(payload.CapToken)
+		if token == "" {
+			return ErrCaptchaRequired
+		}
+		return s.verifyCap(setting.Cap, token)
 	case constants.CaptchaProviderNone:
 		return ErrCaptchaConfigInvalid
 	default:
@@ -208,6 +220,55 @@ func (s *CaptchaService) verifyTurnstile(cfg CaptchaTurnstileSetting, token, cli
 	defer resp.Body.Close()
 
 	var result turnstileVerifyResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
+		return fmt.Errorf("%w: %v", ErrCaptchaVerifyFailed, decodeErr)
+	}
+	if !result.Success {
+		return ErrCaptchaInvalid
+	}
+	return nil
+}
+
+func (s *CaptchaService) verifyCap(cfg CaptchaCapSetting, token string) error {
+	endpoint := strings.TrimRight(strings.TrimSpace(cfg.Endpoint), "/")
+	siteKey := strings.Trim(strings.TrimSpace(cfg.SiteKey), "/")
+	secret := strings.TrimSpace(cfg.SecretKey)
+	if endpoint == "" || siteKey == "" || secret == "" {
+		return ErrCaptchaConfigInvalid
+	}
+
+	timeout := cfg.TimeoutMS
+	if timeout < 500 || timeout > 10000 {
+		timeout = 2000
+	}
+
+	client := s.httpClient
+	if client == nil || client.Timeout != time.Duration(timeout)*time.Millisecond {
+		client = &http.Client{Timeout: time.Duration(timeout) * time.Millisecond}
+	}
+
+	body, err := json.Marshal(map[string]string{
+		"secret":   secret,
+		"response": strings.TrimSpace(token),
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrCaptchaVerifyFailed, err)
+	}
+
+	verifyURL := endpoint + "/" + url.PathEscape(siteKey) + "/siteverify"
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, verifyURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrCaptchaVerifyFailed, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrCaptchaVerifyFailed, err)
+	}
+	defer resp.Body.Close()
+
+	var result capVerifyResponse
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
 		return fmt.Errorf("%w: %v", ErrCaptchaVerifyFailed, decodeErr)
 	}

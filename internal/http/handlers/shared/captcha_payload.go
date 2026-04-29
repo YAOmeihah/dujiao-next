@@ -11,6 +11,7 @@ type CaptchaPayloadRequest struct {
 	CaptchaID      string `json:"captcha_id"`
 	CaptchaCode    string `json:"captcha_code"`
 	TurnstileToken string `json:"turnstile_token"`
+	CapToken       string `json:"cap_token"`
 }
 
 // ToServicePayload 转换为 service 层验证码载荷。
@@ -19,5 +20,6 @@ func (r CaptchaPayloadRequest) ToServicePayload() service.CaptchaVerifyPayload {
 		CaptchaID:      strings.TrimSpace(r.CaptchaID),
 		CaptchaCode:    strings.TrimSpace(r.CaptchaCode),
 		TurnstileToken: strings.TrimSpace(r.TurnstileToken),
+		CapToken:       strings.TrimSpace(r.CapToken),
 	}
 }

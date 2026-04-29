@@ -44,12 +44,21 @@ type CaptchaTurnstileSetting struct {
 	TimeoutMS int    `json:"timeout_ms"`
 }
 
+// CaptchaCapSetting Cap Standalone 配置
+type CaptchaCapSetting struct {
+	Endpoint  string `json:"endpoint"`
+	SiteKey   string `json:"site_key"`
+	SecretKey string `json:"secret_key"`
+	TimeoutMS int    `json:"timeout_ms"`
+}
+
 // CaptchaSetting 验证码配置实体
 type CaptchaSetting struct {
 	Provider  string                  `json:"provider"`
 	Scenes    CaptchaSceneSetting     `json:"scenes"`
 	Image     CaptchaImageSetting     `json:"image"`
 	Turnstile CaptchaTurnstileSetting `json:"turnstile"`
+	Cap       CaptchaCapSetting       `json:"cap"`
 }
 
 // CaptchaScenePatch 场景配置补丁
@@ -80,12 +89,21 @@ type CaptchaTurnstilePatch struct {
 	TimeoutMS *int    `json:"timeout_ms"`
 }
 
+// CaptchaCapPatch Cap 配置补丁
+type CaptchaCapPatch struct {
+	Endpoint  *string `json:"endpoint"`
+	SiteKey   *string `json:"site_key"`
+	SecretKey *string `json:"secret_key"`
+	TimeoutMS *int    `json:"timeout_ms"`
+}
+
 // CaptchaSettingPatch 验证码配置补丁
 type CaptchaSettingPatch struct {
 	Provider  *string                `json:"provider"`
 	Scenes    *CaptchaScenePatch     `json:"scenes"`
 	Image     *CaptchaImagePatch     `json:"image"`
 	Turnstile *CaptchaTurnstilePatch `json:"turnstile"`
+	Cap       *CaptchaCapPatch       `json:"cap"`
 }
 
 // CaptchaDefaultSetting 根据静态配置生成默认验证码设置
@@ -114,6 +132,12 @@ func CaptchaDefaultSetting(cfg config.CaptchaConfig) CaptchaSetting {
 			VerifyURL: strings.TrimSpace(cfg.Turnstile.VerifyURL),
 			TimeoutMS: cfg.Turnstile.TimeoutMS,
 		},
+		Cap: CaptchaCapSetting{
+			Endpoint:  strings.TrimRight(strings.TrimSpace(cfg.Cap.Endpoint), "/"),
+			SiteKey:   strings.TrimSpace(cfg.Cap.SiteKey),
+			SecretKey: strings.TrimSpace(cfg.Cap.SecretKey),
+			TimeoutMS: cfg.Cap.TimeoutMS,
+		},
 	}
 	return NormalizeCaptchaSetting(setting)
 }
@@ -122,7 +146,7 @@ func CaptchaDefaultSetting(cfg config.CaptchaConfig) CaptchaSetting {
 func NormalizeCaptchaSetting(setting CaptchaSetting) CaptchaSetting {
 	provider := strings.ToLower(strings.TrimSpace(setting.Provider))
 	switch provider {
-	case constants.CaptchaProviderImage, constants.CaptchaProviderTurnstile, constants.CaptchaProviderNone:
+	case constants.CaptchaProviderImage, constants.CaptchaProviderTurnstile, constants.CaptchaProviderCap, constants.CaptchaProviderNone:
 		setting.Provider = provider
 	default:
 		setting.Provider = constants.CaptchaProviderNone
@@ -160,6 +184,13 @@ func NormalizeCaptchaSetting(setting CaptchaSetting) CaptchaSetting {
 		setting.Turnstile.TimeoutMS = 2000
 	}
 
+	setting.Cap.Endpoint = strings.TrimRight(strings.TrimSpace(setting.Cap.Endpoint), "/")
+	setting.Cap.SiteKey = strings.TrimSpace(setting.Cap.SiteKey)
+	setting.Cap.SecretKey = strings.TrimSpace(setting.Cap.SecretKey)
+	if setting.Cap.TimeoutMS <= 0 {
+		setting.Cap.TimeoutMS = 2000
+	}
+
 	return setting
 }
 
@@ -168,7 +199,7 @@ func ValidateCaptchaSetting(setting CaptchaSetting) error {
 	normalized := NormalizeCaptchaSetting(setting)
 
 	switch normalized.Provider {
-	case constants.CaptchaProviderNone, constants.CaptchaProviderImage, constants.CaptchaProviderTurnstile:
+	case constants.CaptchaProviderNone, constants.CaptchaProviderImage, constants.CaptchaProviderTurnstile, constants.CaptchaProviderCap:
 	default:
 		return fmt.Errorf("%w: 验证码提供方无效", ErrCaptchaConfigInvalid)
 	}
@@ -185,6 +216,17 @@ func ValidateCaptchaSetting(setting CaptchaSetting) error {
 			return fmt.Errorf("%w: Turnstile Secret Key 不能为空", ErrCaptchaConfigInvalid)
 		}
 	}
+	if normalized.Provider == constants.CaptchaProviderCap {
+		if strings.TrimSpace(normalized.Cap.Endpoint) == "" {
+			return fmt.Errorf("%w: Cap Endpoint 不能为空", ErrCaptchaConfigInvalid)
+		}
+		if strings.TrimSpace(normalized.Cap.SiteKey) == "" {
+			return fmt.Errorf("%w: Cap Site Key 不能为空", ErrCaptchaConfigInvalid)
+		}
+		if strings.TrimSpace(normalized.Cap.SecretKey) == "" {
+			return fmt.Errorf("%w: Cap Secret Key 不能为空", ErrCaptchaConfigInvalid)
+		}
+	}
 
 	if normalized.Image.Length < 4 || normalized.Image.Length > 8 {
 		return fmt.Errorf("%w: 图片验证码长度需在 4-8 之间", ErrCaptchaConfigInvalid)
@@ -197,6 +239,9 @@ func ValidateCaptchaSetting(setting CaptchaSetting) error {
 	}
 	if normalized.Turnstile.TimeoutMS < 500 || normalized.Turnstile.TimeoutMS > 10000 {
 		return fmt.Errorf("%w: Turnstile 超时时间需在 500-10000ms", ErrCaptchaConfigInvalid)
+	}
+	if normalized.Cap.TimeoutMS < 500 || normalized.Cap.TimeoutMS > 10000 {
+		return fmt.Errorf("%w: Cap 超时时间需在 500-10000ms", ErrCaptchaConfigInvalid)
 	}
 
 	return nil
@@ -229,6 +274,12 @@ func CaptchaSettingToConfig(setting CaptchaSetting) config.CaptchaConfig {
 			VerifyURL: normalized.Turnstile.VerifyURL,
 			TimeoutMS: normalized.Turnstile.TimeoutMS,
 		},
+		Cap: config.CaptchaCapConfig{
+			Endpoint:  normalized.Cap.Endpoint,
+			SiteKey:   normalized.Cap.SiteKey,
+			SecretKey: normalized.Cap.SecretKey,
+			TimeoutMS: normalized.Cap.TimeoutMS,
+		},
 	}
 }
 
@@ -258,6 +309,12 @@ func CaptchaSettingToMap(setting CaptchaSetting) map[string]interface{} {
 			"secret_key": normalized.Turnstile.SecretKey,
 			"verify_url": normalized.Turnstile.VerifyURL,
 			"timeout_ms": normalized.Turnstile.TimeoutMS,
+		},
+		"cap": map[string]interface{}{
+			"endpoint":   normalized.Cap.Endpoint,
+			"site_key":   normalized.Cap.SiteKey,
+			"secret_key": normalized.Cap.SecretKey,
+			"timeout_ms": normalized.Cap.TimeoutMS,
 		},
 	}
 }
@@ -290,6 +347,13 @@ func MaskCaptchaSettingForAdmin(setting CaptchaSetting) models.JSON {
 			"verify_url": normalized.Turnstile.VerifyURL,
 			"timeout_ms": normalized.Turnstile.TimeoutMS,
 		},
+		"cap": map[string]interface{}{
+			"endpoint":   normalized.Cap.Endpoint,
+			"site_key":   normalized.Cap.SiteKey,
+			"secret_key": "",
+			"has_secret": normalized.Cap.SecretKey != "",
+			"timeout_ms": normalized.Cap.TimeoutMS,
+		},
 	}
 }
 
@@ -309,6 +373,12 @@ func PublicCaptchaSetting(setting CaptchaSetting) models.JSON {
 	if normalized.Provider == constants.CaptchaProviderTurnstile {
 		public["turnstile"] = map[string]interface{}{
 			"site_key": normalized.Turnstile.SiteKey,
+		}
+	}
+	if normalized.Provider == constants.CaptchaProviderCap {
+		public["cap"] = map[string]interface{}{
+			"endpoint": normalized.Cap.Endpoint,
+			"site_key": normalized.Cap.SiteKey,
 		}
 	}
 	return public
@@ -418,6 +488,23 @@ func (s *SettingService) PatchCaptchaSetting(defaultCfg config.CaptchaConfig, pa
 			next.Turnstile.TimeoutMS = *patch.Turnstile.TimeoutMS
 		}
 	}
+	if patch.Cap != nil {
+		if patch.Cap.Endpoint != nil {
+			next.Cap.Endpoint = strings.TrimRight(strings.TrimSpace(*patch.Cap.Endpoint), "/")
+		}
+		if patch.Cap.SiteKey != nil {
+			next.Cap.SiteKey = strings.TrimSpace(*patch.Cap.SiteKey)
+		}
+		if patch.Cap.SecretKey != nil {
+			secret := strings.TrimSpace(*patch.Cap.SecretKey)
+			if secret != "" {
+				next.Cap.SecretKey = secret
+			}
+		}
+		if patch.Cap.TimeoutMS != nil {
+			next.Cap.TimeoutMS = *patch.Cap.TimeoutMS
+		}
+	}
 
 	normalized := NormalizeCaptchaSetting(next)
 	if err := ValidateCaptchaSetting(normalized); err != nil {
@@ -469,6 +556,16 @@ func captchaSettingFromJSON(raw models.JSON, fallback CaptchaSetting) CaptchaSet
 			next.Turnstile.SecretKey = readString(turnstileMap, "secret_key", next.Turnstile.SecretKey)
 			next.Turnstile.VerifyURL = readString(turnstileMap, "verify_url", next.Turnstile.VerifyURL)
 			next.Turnstile.TimeoutMS = readInt(turnstileMap, "timeout_ms", next.Turnstile.TimeoutMS)
+		}
+	}
+
+	capRaw, ok := raw["cap"]
+	if ok {
+		if capMap := toStringAnyMap(capRaw); capMap != nil {
+			next.Cap.Endpoint = readString(capMap, "endpoint", next.Cap.Endpoint)
+			next.Cap.SiteKey = readString(capMap, "site_key", next.Cap.SiteKey)
+			next.Cap.SecretKey = readString(capMap, "secret_key", next.Cap.SecretKey)
+			next.Cap.TimeoutMS = readInt(capMap, "timeout_ms", next.Cap.TimeoutMS)
 		}
 	}
 
