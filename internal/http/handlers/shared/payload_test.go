@@ -46,3 +46,25 @@ func TestBuildChannelIdentityResponse(t *testing.T) {
 		t.Fatalf("display name mismatch: %#v", userPayload["display_name"])
 	}
 }
+
+func TestCaptchaPayloadRequestToServicePayloadIncludesCapToken(t *testing.T) {
+	payload := CaptchaPayloadRequest{
+		CaptchaID:      " image-id ",
+		CaptchaCode:    " abcd ",
+		TurnstileToken: " turnstile-token ",
+		CapToken:       " cap-token ",
+	}.ToServicePayload()
+
+	if payload.CaptchaID != "image-id" {
+		t.Fatalf("captcha id = %q", payload.CaptchaID)
+	}
+	if payload.CaptchaCode != "abcd" {
+		t.Fatalf("captcha code = %q", payload.CaptchaCode)
+	}
+	if payload.TurnstileToken != "turnstile-token" {
+		t.Fatalf("turnstile token = %q", payload.TurnstileToken)
+	}
+	if payload.CapToken != "cap-token" {
+		t.Fatalf("cap token = %q", payload.CapToken)
+	}
+}
