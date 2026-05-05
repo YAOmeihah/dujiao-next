@@ -2,6 +2,9 @@ package vpay
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -93,6 +96,46 @@ func TestCreatePaymentPostsSignedFormAndBuildsRedirectURL(t *testing.T) {
 	}
 }
 
+func TestCreatePaymentPostsHMACSignType(t *testing.T) {
+	var gotForm url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form failed: %v", err)
+		}
+		gotForm = r.PostForm
+
+		if got := gotForm.Get("signType"); got != "HMAC_SHA256" {
+			t.Fatalf("signType = %s", got)
+		}
+		wantSign := expectedHMACSHA256Hex("DJP1002"+"DJORDER1002"+"1"+"88.00", "secret-key")
+		if got := gotForm.Get("sign"); got != wantSign {
+			t.Fatalf("sign = %s, want %s", got, wantSign)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":1,"msg":"成功","data":{"payId":"DJP1002","orderId":"VP202604250002","payType":1,"price":"88.00","reallyPrice":"88.01","payUrl":"weixin://pay","state":0}}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		GatewayURL: server.URL,
+		SignKey:    "secret-key",
+		NotifyURL:  "https://api.example.com/api/v1/payments/callback",
+		ReturnURL:  "https://shop.example.com/pay?order_no=DJORDER1002",
+		SignType:   "HMAC_SHA256",
+	}
+	cfg.Normalize()
+
+	if _, err := CreatePayment(context.Background(), cfg, CreateInput{
+		PayID:       "DJP1002",
+		Param:       "DJORDER1002",
+		ChannelType: constants.PaymentChannelTypeWechat,
+		Price:       "88.00",
+	}); err != nil {
+		t.Fatalf("CreatePayment failed: %v", err)
+	}
+}
+
 func TestVerifyCallbackUsesReceivedFieldText(t *testing.T) {
 	cfg := &Config{SignKey: "secret-key"}
 	form := map[string][]string{
@@ -114,6 +157,38 @@ func TestVerifyCallbackUsesReceivedFieldText(t *testing.T) {
 	}
 }
 
+func TestVerifyCallbackUsesReceivedHMACSignType(t *testing.T) {
+	cfg := &Config{SignKey: "secret-key"}
+	form := map[string][]string{
+		"payId":       {"DJP1003"},
+		"param":       {"DJORDER1003"},
+		"type":        {"1"},
+		"price":       {"66.00"},
+		"reallyPrice": {"66.01"},
+		"signType":    {"HMAC_SHA256"},
+	}
+	form["sign"] = []string{expectedHMACSHA256Hex("DJP1003"+"DJORDER1003"+"1"+"66.00"+"66.01", "secret-key")}
+
+	if err := VerifyCallback(cfg, form); err != nil {
+		t.Fatalf("VerifyCallback failed: %v", err)
+	}
+}
+
+func TestValidateConfigRejectsUnsupportedSignType(t *testing.T) {
+	cfg := &Config{
+		GatewayURL: "https://pay.example.com",
+		SignKey:    "secret-key",
+		NotifyURL:  "https://api.example.com/api/v1/payments/callback",
+		ReturnURL:  "https://shop.example.com/pay",
+		SignType:   "SHA1",
+	}
+	cfg.Normalize()
+
+	if err := ValidateConfig(cfg); err == nil {
+		t.Fatalf("ValidateConfig should reject unsupported sign_type")
+	}
+}
+
 func TestResolvePayType(t *testing.T) {
 	tests := []struct {
 		channelType string
@@ -129,4 +204,10 @@ func TestResolvePayType(t *testing.T) {
 			t.Fatalf("resolvePayType(%s) = %s, want %s", tc.channelType, got, tc.want)
 		}
 	}
+}
+
+func expectedHMACSHA256Hex(payload, key string) string {
+	mac := hmac.New(sha256.New, []byte(key))
+	_, _ = mac.Write([]byte(payload))
+	return hex.EncodeToString(mac.Sum(nil))
 }

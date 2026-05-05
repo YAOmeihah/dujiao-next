@@ -3,7 +3,9 @@ package vpay
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -22,6 +24,8 @@ import (
 const (
 	defaultCreateOrderPath = "/createOrder"
 	defaultPayPagePath     = "/payPage/pay.html"
+	SignTypeMD5            = "MD5"
+	SignTypeHMACSHA256     = "HMAC_SHA256"
 )
 
 var (
@@ -39,6 +43,7 @@ type Config struct {
 	MerchantKey     string `json:"merchant_key"`
 	NotifyURL       string `json:"notify_url"`
 	ReturnURL       string `json:"return_url"`
+	SignType        string `json:"sign_type"`
 	CreateOrderPath string `json:"create_order_path"`
 	PayPagePath     string `json:"pay_page_path"`
 }
@@ -82,6 +87,7 @@ func (c *Config) Normalize() {
 	}
 	c.NotifyURL = strings.TrimSpace(c.NotifyURL)
 	c.ReturnURL = strings.TrimSpace(c.ReturnURL)
+	c.SignType = normalizeSignType(c.SignType)
 	c.CreateOrderPath = normalizePath(c.CreateOrderPath, defaultCreateOrderPath)
 	c.PayPagePath = normalizePath(c.PayPagePath, defaultPayPagePath)
 }
@@ -102,6 +108,9 @@ func ValidateConfig(cfg *Config) error {
 	}
 	if strings.TrimSpace(cfg.ReturnURL) == "" {
 		return fmt.Errorf("%w: return_url is required", ErrConfigInvalid)
+	}
+	if !isSupportedSignType(cfg.SignType) {
+		return fmt.Errorf("%w: sign_type is unsupported", ErrConfigInvalid)
 	}
 	return nil
 }
@@ -143,7 +152,13 @@ func CreatePayment(ctx context.Context, cfg *Config, input CreateInput) (*Create
 		"notifyUrl": notifyURL,
 		"returnUrl": returnURL,
 	}
-	params["sign"] = signCreateOrder(params["payId"], params["param"], params["type"], params["price"], cfg.SignKey)
+	signType := normalizeSignType(cfg.SignType)
+	sign, err := signCreateOrderWithType(params["payId"], params["param"], params["type"], params["price"], cfg.SignKey, signType)
+	if err != nil {
+		return nil, fmt.Errorf("%w: sign_type is unsupported", ErrConfigInvalid)
+	}
+	params["signType"] = signType
+	params["sign"] = sign
 
 	body, err := postForm(ctx, buildEndpoint(cfg.GatewayURL, cfg.CreateOrderPath), params)
 	if err != nil {
@@ -176,14 +191,18 @@ func VerifyCallback(cfg *Config, form map[string][]string) error {
 	if sign == "" {
 		return ErrSignatureInvalid
 	}
-	expected := signCallback(
+	expected, err := signCallbackWithType(
 		firstValue(form, "payId"),
 		firstValue(form, "param"),
 		firstValue(form, "type"),
 		firstValue(form, "price"),
 		firstValue(form, "reallyPrice"),
 		cfg.SignKey,
+		firstValue(form, "signType"),
 	)
+	if err != nil {
+		return ErrSignatureInvalid
+	}
 	if !strings.EqualFold(expected, sign) {
 		return ErrSignatureInvalid
 	}
@@ -215,13 +234,55 @@ func signCreateOrder(payID, param, payType, price, key string) string {
 	return md5Hex(payID + param + payType + price + key)
 }
 
+func signCreateOrderWithType(payID, param, payType, price, key, signType string) (string, error) {
+	return makeSignature(payID+param+payType+price, key, signType)
+}
+
 func signCallback(payID, param, payType, price, reallyPrice, key string) string {
 	return md5Hex(payID + param + payType + price + reallyPrice + key)
+}
+
+func signCallbackWithType(payID, param, payType, price, reallyPrice, key, signType string) (string, error) {
+	return makeSignature(payID+param+payType+price+reallyPrice, key, signType)
+}
+
+func makeSignature(payload, key, signType string) (string, error) {
+	switch normalizeSignType(signType) {
+	case SignTypeMD5:
+		return md5Hex(payload + key), nil
+	case SignTypeHMACSHA256:
+		return hmacSHA256Hex(payload, key), nil
+	default:
+		return "", ErrSignatureInvalid
+	}
 }
 
 func md5Hex(raw string) string {
 	sum := md5.Sum([]byte(raw))
 	return strings.ToLower(hex.EncodeToString(sum[:]))
+}
+
+func hmacSHA256Hex(payload, key string) string {
+	mac := hmac.New(sha256.New, []byte(key))
+	_, _ = mac.Write([]byte(payload))
+	return strings.ToLower(hex.EncodeToString(mac.Sum(nil)))
+}
+
+func normalizeSignType(signType string) string {
+	signType = strings.ToUpper(strings.TrimSpace(signType))
+	if signType == "" {
+		return SignTypeMD5
+	}
+	return signType
+}
+
+func isSupportedSignType(signType string) bool {
+	switch normalizeSignType(signType) {
+	case SignTypeMD5, SignTypeHMACSHA256:
+		return true
+	default:
+		return false
+	}
 }
 
 func postForm(ctx context.Context, endpoint string, params map[string]string) ([]byte, error) {
