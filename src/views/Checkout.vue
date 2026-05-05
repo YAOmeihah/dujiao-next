@@ -1719,7 +1719,7 @@ const mobileStatusText = computed(() => {
     return t('checkout.mobile.buyerMissing')
   }
   if (action === 'choosePayment') {
-    if (mobilePaymentReady.value) return t('checkout.mobile.actionChoosePayment')
+    if (mobilePaymentReady.value) return t('checkout.mobile.readyToSubmit')
     return t('checkout.mobile.paymentMissing')
   }
   return t('checkout.mobile.readyToSubmit')
@@ -1729,7 +1729,11 @@ const mobilePrimaryActionLabel = computed(() => {
   const action = mobileFlowState.value.primaryActionKey
   if (action === 'saveShipping') return t('checkout.mobile.actionSaveShipping')
   if (action === 'continueBuyer') return t('checkout.mobile.actionContinueBuyer')
-  if (action === 'choosePayment') return t('checkout.mobile.actionChoosePayment')
+  if (action === 'choosePayment') {
+    return mobilePaymentReady.value
+      ? t('checkout.mobile.actionSubmit')
+      : t('checkout.mobile.actionChoosePayment')
+  }
   return t('checkout.mobile.actionSubmit')
 })
 
@@ -2023,6 +2027,7 @@ const handleMobilePrimaryAction = async () => {
 
     confirmMobileSection('payment', mobilePaymentFingerprint.value)
     await nextTick()
+    await handleSubmit()
     return
   }
 
