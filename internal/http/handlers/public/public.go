@@ -71,6 +71,7 @@ func (v *publicProductView) toProductResp() dto.ProductResp {
 		ID:                      v.Product.ID,
 		CategoryID:              v.Product.CategoryID,
 		Slug:                    v.Product.Slug,
+		SeoMeta:                 v.Product.SeoMetaJSON,
 		Title:                   v.Product.TitleJSON,
 		Description:             v.Product.DescriptionJSON,
 		Content:                 v.Product.ContentJSON,
@@ -193,6 +194,11 @@ func (h *Handler) GetConfig(c *gin.Context) {
 			"builtin":      map[string]interface{}{"blog": true, "notice": true, "about": true},
 			"custom_items": make([]interface{}, 0),
 		}
+	}
+
+	// 首页公告（仅在启用、处于排期内且内容非空时下发）
+	if announcement, ok := h.SettingService.GetActiveHomeAnnouncement(); ok {
+		data["announcement"] = announcement
 	}
 
 	_ = cache.SetJSON(c.Request.Context(), publicConfigCacheKey, data, publicConfigCacheTTL)
@@ -707,7 +713,7 @@ func (h *Handler) GetHomePopupNotice(c *gin.Context) {
 
 // GetCategories 获取分类列表
 func (h *Handler) GetCategories(c *gin.Context) {
-	categories, err := h.CategoryService.List()
+	categories, err := h.CategoryService.ListActive()
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.category_fetch_failed", err)
 		return
@@ -895,6 +901,14 @@ func (h *Handler) CreateGuestOrderAndPay(c *gin.Context) {
 		resp["interaction_mode"] = result.Payment.InteractionMode
 		resp["pay_url"] = result.Payment.PayURL
 		resp["qr_code"] = result.Payment.QRCode
+		if addr, chainAmount := dto.ExtractUSDTWalletInfo(result.Payment.ProviderType, result.Payment.InteractionMode, result.Payment.ProviderPayload); addr != "" || chainAmount != "" {
+			if addr != "" {
+				resp["wallet_address"] = addr
+			}
+			if chainAmount != "" {
+				resp["chain_amount"] = chainAmount
+			}
+		}
 		resp["expires_at"] = result.Payment.ExpiredAt
 	}
 	response.Success(c, resp)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/dto"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/logger"
@@ -710,16 +711,18 @@ func buildChannelOrderPreviewResponse(preview *service.OrderPreview, locale stri
 	items := make([]gin.H, 0, len(preview.Items))
 	for _, item := range preview.Items {
 		items = append(items, gin.H{
-			"product_id":         item.ProductID,
-			"product_title":      resolveLocalizedJSON(item.TitleJSON, locale, "zh-CN"),
-			"sku_id":             item.SKUID,
-			"sku_name":           channelLocalizedValue(item.SKUSnapshotJSON["spec_values"], locale, "zh-CN"),
-			"quantity":           item.Quantity,
-			"unit_price":         item.UnitPrice.StringFixed(2),
-			"subtotal":           item.TotalPrice.StringFixed(2),
-			"coupon_discount":    item.CouponDiscount.StringFixed(2),
-			"promotion_discount": item.PromotionDiscount.StringFixed(2),
-			"fulfillment_type":   item.FulfillmentType,
+			"product_id":           item.ProductID,
+			"product_title":        resolveLocalizedJSON(item.TitleJSON, locale, "zh-CN"),
+			"sku_id":               item.SKUID,
+			"sku_name":             channelLocalizedValue(item.SKUSnapshotJSON["spec_values"], locale, "zh-CN"),
+			"quantity":             item.Quantity,
+			"original_unit_price":  item.OriginalUnitPrice.StringFixed(2),
+			"unit_price":           item.UnitPrice.StringFixed(2),
+			"original_total_price": item.OriginalTotalPrice.StringFixed(2),
+			"subtotal":             item.TotalPrice.StringFixed(2),
+			"coupon_discount":      item.CouponDiscount.StringFixed(2),
+			"promotion_discount":   item.PromotionDiscount.StringFixed(2),
+			"fulfillment_type":     item.FulfillmentType,
 		})
 	}
 	return gin.H{
@@ -787,17 +790,19 @@ func buildChannelOrderDetailResponse(order *models.Order, locale string) gin.H {
 			instructions = resolveLocalizedJSON(item.InstructionsJSON, locale, "zh-CN")
 		}
 		items = append(items, gin.H{
-			"product_id":         item.ProductID,
-			"product_title":      resolveLocalizedJSON(item.TitleJSON, locale, "zh-CN"),
-			"sku_id":             item.SKUID,
-			"sku_name":           channelLocalizedValue(item.SKUSnapshotJSON["spec_values"], locale, "zh-CN"),
-			"quantity":           item.Quantity,
-			"unit_price":         item.UnitPrice.StringFixed(2),
-			"subtotal":           item.TotalPrice.StringFixed(2),
-			"coupon_discount":    item.CouponDiscount.StringFixed(2),
-			"promotion_discount": item.PromotionDiscount.StringFixed(2),
-			"fulfillment_type":   item.FulfillmentType,
-			"instructions":       instructions,
+			"product_id":           item.ProductID,
+			"product_title":        resolveLocalizedJSON(item.TitleJSON, locale, "zh-CN"),
+			"sku_id":               item.SKUID,
+			"sku_name":             channelLocalizedValue(item.SKUSnapshotJSON["spec_values"], locale, "zh-CN"),
+			"quantity":             item.Quantity,
+			"original_unit_price":  item.OriginalUnitPrice.StringFixed(2),
+			"unit_price":           item.UnitPrice.StringFixed(2),
+			"original_total_price": item.OriginalTotalPrice.StringFixed(2),
+			"subtotal":             item.TotalPrice.StringFixed(2),
+			"coupon_discount":      item.CouponDiscount.StringFixed(2),
+			"promotion_discount":   item.PromotionDiscount.StringFixed(2),
+			"fulfillment_type":     item.FulfillmentType,
+			"instructions":         instructions,
 		})
 	}
 	resp["items"] = items
@@ -896,6 +901,14 @@ func buildChannelPaymentResponse(order *models.Order, payment *models.Payment) g
 		"callback_at":      payment.CallbackAt,
 		"created_at":       payment.CreatedAt,
 		"updated_at":       payment.UpdatedAt,
+	}
+	if addr, chainAmount := dto.ExtractUSDTWalletInfo(payment.ProviderType, payment.InteractionMode, payment.ProviderPayload); addr != "" || chainAmount != "" {
+		if addr != "" {
+			resp["wallet_address"] = addr
+		}
+		if chainAmount != "" {
+			resp["chain_amount"] = chainAmount
+		}
 	}
 	if order != nil {
 		resp["order_no"] = order.OrderNo

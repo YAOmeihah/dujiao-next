@@ -14,13 +14,13 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // OrderService 订单服务
 type OrderService struct {
 	orderRepo             repository.OrderRepository
 	orderRefundRecordRepo repository.OrderRefundRecordRepository
+	paymentRepo           repository.PaymentRepository
 	userRepo              repository.UserRepository
 	productRepo           repository.ProductRepository
 	productSKURepo        repository.ProductSKURepository
@@ -43,6 +43,7 @@ type OrderService struct {
 type OrderServiceOptions struct {
 	OrderRepo             repository.OrderRepository
 	OrderRefundRecordRepo repository.OrderRefundRecordRepository
+	PaymentRepo           repository.PaymentRepository
 	UserRepo              repository.UserRepository
 	ProductRepo           repository.ProductRepository
 	ProductSKURepo        repository.ProductSKURepository
@@ -66,6 +67,7 @@ func NewOrderService(opts OrderServiceOptions) *OrderService {
 	return &OrderService{
 		orderRepo:             opts.OrderRepo,
 		orderRefundRecordRepo: opts.OrderRefundRecordRepo,
+		paymentRepo:           opts.PaymentRepo,
 		userRepo:              opts.UserRepo,
 		productRepo:           opts.ProductRepo,
 		productSKURepo:        opts.ProductSKURepo,
@@ -237,6 +239,7 @@ type orderCreateParams struct {
 	IsGuest             bool
 	ManualFormData      map[string]models.JSON
 	ShippingAddress     models.JSON
+	SkipManualFormCheck bool
 	SkipRiskControl     bool
 	SkipIPRiskControl   bool
 }
@@ -254,18 +257,20 @@ type OrderPreview struct {
 
 // OrderPreviewItem 订单项金额预览
 type OrderPreviewItem struct {
-	ProductID         uint               `json:"product_id"`
-	SKUID             uint               `json:"sku_id"`
-	TitleJSON         models.JSON        `json:"title"`
-	SKUSnapshotJSON   models.JSON        `json:"sku_snapshot"`
-	Tags              models.StringArray `json:"tags"`
-	UnitPrice         models.Money       `json:"unit_price"`
-	Quantity          int                `json:"quantity"`
-	TotalPrice        models.Money       `json:"total_price"`
-	MemberDiscount    models.Money       `json:"member_discount_amount"`
-	CouponDiscount    models.Money       `json:"coupon_discount_amount"`
-	PromotionDiscount models.Money       `json:"promotion_discount_amount"`
-	FulfillmentType   string             `json:"fulfillment_type"`
+	ProductID          uint               `json:"product_id"`
+	SKUID              uint               `json:"sku_id"`
+	TitleJSON          models.JSON        `json:"title"`
+	SKUSnapshotJSON    models.JSON        `json:"sku_snapshot"`
+	Tags               models.StringArray `json:"tags"`
+	OriginalUnitPrice  models.Money       `json:"original_unit_price"`
+	UnitPrice          models.Money       `json:"unit_price"`
+	Quantity           int                `json:"quantity"`
+	OriginalTotalPrice models.Money       `json:"original_total_price"`
+	TotalPrice         models.Money       `json:"total_price"`
+	MemberDiscount     models.Money       `json:"member_discount_amount"`
+	CouponDiscount     models.Money       `json:"coupon_discount_amount"`
+	PromotionDiscount  models.Money       `json:"promotion_discount_amount"`
+	FulfillmentType    string             `json:"fulfillment_type"`
 }
 
 type orderBuildResult struct {
@@ -297,6 +302,7 @@ func (s *OrderService) PreviewOrder(input CreateOrderInput) (*OrderPreview, erro
 		ClientIP:            input.ClientIP,
 		ManualFormData:      input.ManualFormData,
 		ShippingAddress:     input.ShippingAddress,
+		SkipManualFormCheck: true,
 	})
 }
 
@@ -323,6 +329,7 @@ func (s *OrderService) PreviewGuestOrder(input CreateGuestOrderInput) (*OrderPre
 		IsGuest:             true,
 		ManualFormData:      input.ManualFormData,
 		ShippingAddress:     input.ShippingAddress,
+		SkipManualFormCheck: true,
 	})
 }
 
@@ -335,18 +342,20 @@ func (s *OrderService) previewOrder(input orderCreateParams) (*OrderPreview, err
 	for _, plan := range result.Plans {
 		item := plan.Item
 		items = append(items, OrderPreviewItem{
-			ProductID:         item.ProductID,
-			SKUID:             item.SKUID,
-			TitleJSON:         item.TitleJSON,
-			SKUSnapshotJSON:   item.SKUSnapshotJSON,
-			Tags:              item.Tags,
-			UnitPrice:         item.UnitPrice,
-			Quantity:          item.Quantity,
-			TotalPrice:        item.TotalPrice,
-			MemberDiscount:    item.MemberDiscount,
-			CouponDiscount:    item.CouponDiscount,
-			PromotionDiscount: item.PromotionDiscount,
-			FulfillmentType:   item.FulfillmentType,
+			ProductID:          item.ProductID,
+			SKUID:              item.SKUID,
+			TitleJSON:          item.TitleJSON,
+			SKUSnapshotJSON:    item.SKUSnapshotJSON,
+			Tags:               item.Tags,
+			OriginalUnitPrice:  item.OriginalUnitPrice,
+			UnitPrice:          item.UnitPrice,
+			Quantity:           item.Quantity,
+			OriginalTotalPrice: item.OriginalTotalPrice,
+			TotalPrice:         item.TotalPrice,
+			MemberDiscount:     item.MemberDiscount,
+			CouponDiscount:     item.CouponDiscount,
+			PromotionDiscount:  item.PromotionDiscount,
+			FulfillmentType:    item.FulfillmentType,
 		})
 	}
 	return &OrderPreview{
@@ -515,10 +524,8 @@ func (s *OrderService) createOrder(input orderCreateParams) (*models.Order, erro
 					return ErrCardSecretInsufficient
 				}
 				secretRepo := s.cardSecretRepo.WithTx(tx)
-				var rows []models.CardSecret
-				if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-					Where("product_id = ? AND sku_id = ? AND status = ?", plan.Item.ProductID, plan.Item.SKUID, models.CardSecretStatusAvailable).
-					Order("id asc").Limit(plan.Item.Quantity).Find(&rows).Error; err != nil {
+				rows, err := secretRepo.ListAvailableByProductForUpdate(plan.Item.ProductID, plan.Item.SKUID, plan.Item.Quantity)
+				if err != nil {
 					return err
 				}
 				if len(rows) < plan.Item.Quantity {

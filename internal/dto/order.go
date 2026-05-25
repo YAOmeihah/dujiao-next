@@ -9,27 +9,33 @@ import (
 
 // OrderSummary 订单列表响应（精简字段）
 type OrderSummary struct {
-	OrderNo     string          `json:"order_no"`
-	GuestPhone  string          `json:"guest_phone,omitempty"`
-	GuestEmail  string          `json:"guest_email,omitempty"`
-	Status      string          `json:"status"`
-	Currency    string          `json:"currency"`
-	TotalAmount models.Money    `json:"total_amount"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Items       []OrderItemResp `json:"items,omitempty"`
-	Children    []OrderSummary  `json:"children,omitempty"`
+	OrderNo                 string          `json:"order_no"`
+	GuestPhone              string          `json:"guest_phone,omitempty"`
+	GuestEmail              string          `json:"guest_email,omitempty"`
+	Status                  string          `json:"status"`
+	Currency                string          `json:"currency"`
+	DiscountAmount          models.Money    `json:"discount_amount"`
+	MemberDiscountAmount    models.Money    `json:"member_discount_amount"`
+	PromotionDiscountAmount models.Money    `json:"promotion_discount_amount"`
+	TotalAmount             models.Money    `json:"total_amount"`
+	CreatedAt               time.Time       `json:"created_at"`
+	Items                   []OrderItemResp `json:"items,omitempty"`
+	Children                []OrderSummary  `json:"children,omitempty"`
 }
 
 // NewOrderSummary 从 models.Order 构造 OrderSummary
 func NewOrderSummary(o *models.Order) OrderSummary {
 	s := OrderSummary{
-		OrderNo:     o.OrderNo,
-		GuestPhone:  o.GuestPhone,
-		GuestEmail:  o.GuestEmail,
-		Status:      o.Status,
-		Currency:    o.Currency,
-		TotalAmount: o.TotalAmount,
-		CreatedAt:   o.CreatedAt,
+		OrderNo:                 o.OrderNo,
+		GuestPhone:              o.GuestPhone,
+		GuestEmail:              o.GuestEmail,
+		Status:                  o.Status,
+		Currency:                o.Currency,
+		DiscountAmount:          o.DiscountAmount,
+		MemberDiscountAmount:    o.MemberDiscountAmount,
+		PromotionDiscountAmount: o.PromotionDiscountAmount,
+		TotalAmount:             o.TotalAmount,
+		CreatedAt:               o.CreatedAt,
 	}
 	for _, item := range o.Items {
 		resp := newOrderItemResp(&item)
@@ -54,30 +60,30 @@ func NewOrderSummaryList(orders []models.Order) []OrderSummary {
 
 // OrderDetail 订单详情响应（完整字段）
 type OrderDetail struct {
-	OrderNo                  string           `json:"order_no"`
-	GuestPhone               string           `json:"guest_phone,omitempty"`
-	GuestEmail               string           `json:"guest_email,omitempty"`
-	GuestLocale              string           `json:"guest_locale,omitempty"`
-	Status                   string           `json:"status"`
-	Currency                 string           `json:"currency"`
-	OriginalAmount           models.Money     `json:"original_amount"`
-	DiscountAmount           models.Money     `json:"discount_amount"`
-	MemberDiscountAmount     models.Money     `json:"member_discount_amount"`
-	PromotionDiscountAmount  models.Money     `json:"promotion_discount_amount"`
-	TotalAmount              models.Money     `json:"total_amount"`
-	WalletPaidAmount         models.Money     `json:"wallet_paid_amount"`
-	OnlinePaidAmount         models.Money     `json:"online_paid_amount"`
-	RefundedAmount           models.Money     `json:"refunded_amount"`
-	ExpiresAt                *time.Time       `json:"expires_at"`
-	PaidAt                   *time.Time       `json:"paid_at"`
-	CanceledAt               *time.Time       `json:"canceled_at"`
-	CreatedAt                time.Time        `json:"created_at"`
-	AllowedPaymentChannelIDs []uint           `json:"allowed_payment_channel_ids,omitempty"`
+	OrderNo                  string            `json:"order_no"`
+	GuestPhone               string            `json:"guest_phone,omitempty"`
+	GuestEmail               string            `json:"guest_email,omitempty"`
+	GuestLocale              string            `json:"guest_locale,omitempty"`
+	Status                   string            `json:"status"`
+	Currency                 string            `json:"currency"`
+	OriginalAmount           models.Money      `json:"original_amount"`
+	DiscountAmount           models.Money      `json:"discount_amount"`
+	MemberDiscountAmount     models.Money      `json:"member_discount_amount"`
+	PromotionDiscountAmount  models.Money      `json:"promotion_discount_amount"`
+	TotalAmount              models.Money      `json:"total_amount"`
+	WalletPaidAmount         models.Money      `json:"wallet_paid_amount"`
+	OnlinePaidAmount         models.Money      `json:"online_paid_amount"`
+	RefundedAmount           models.Money      `json:"refunded_amount"`
+	ExpiresAt                *time.Time        `json:"expires_at"`
+	PaidAt                   *time.Time        `json:"paid_at"`
+	CanceledAt               *time.Time        `json:"canceled_at"`
+	CreatedAt                time.Time         `json:"created_at"`
+	AllowedPaymentChannelIDs []uint            `json:"allowed_payment_channel_ids,omitempty"`
 	RefundRecords            []OrderRefundResp `json:"refund_records,omitempty"`
-	ShippingAddress          models.JSON      `json:"shipping_address,omitempty"`
-	Items                    []OrderItemResp  `json:"items,omitempty"`
-	Fulfillment              *FulfillmentResp `json:"fulfillment,omitempty"`
-	Children                 []OrderDetail    `json:"children,omitempty"`
+	ShippingAddress          models.JSON       `json:"shipping_address,omitempty"`
+	Items                    []OrderItemResp   `json:"items,omitempty"`
+	Fulfillment              *FulfillmentResp  `json:"fulfillment,omitempty"`
+	Children                 []OrderDetail     `json:"children,omitempty"`
 }
 
 // OrderRefundResp 用户侧订单退款记录响应
@@ -153,7 +159,9 @@ type OrderItemResp struct {
 	SKUSnapshot              models.JSON        `json:"sku_snapshot"`
 	Tags                     models.StringArray `json:"tags"`
 	Quantity                 int                `json:"quantity"`
+	OriginalUnitPrice        models.Money       `json:"original_unit_price"`
 	UnitPrice                models.Money       `json:"unit_price"`
+	OriginalTotalPrice       models.Money       `json:"original_total_price"`
 	TotalPrice               models.Money       `json:"total_price"`
 	CouponDiscountAmount     models.Money       `json:"coupon_discount_amount"`
 	MemberDiscountAmount     models.Money       `json:"member_discount_amount"`
@@ -177,7 +185,9 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 		SKUSnapshot:              item.SKUSnapshotJSON,
 		Tags:                     item.Tags,
 		Quantity:                 item.Quantity,
+		OriginalUnitPrice:        item.OriginalUnitPrice,
 		UnitPrice:                item.UnitPrice,
+		OriginalTotalPrice:       item.OriginalTotalPrice,
 		TotalPrice:               item.TotalPrice,
 		CouponDiscountAmount:     item.CouponDiscount,
 		MemberDiscountAmount:     item.MemberDiscount,

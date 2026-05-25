@@ -43,6 +43,7 @@ const (
 	PaymentProviderOfficial = "official"
 	PaymentProviderEpay     = "epay"
 	PaymentProviderEpusdt   = "epusdt"
+	PaymentProviderBepusdt  = "bepusdt"
 	PaymentProviderOkpay    = "okpay"
 	PaymentProviderTokenpay = "tokenpay"
 	PaymentProviderVpay     = "vpay"
@@ -159,9 +160,15 @@ const (
 	AlipayCallbackFail            = "fail"
 )
 
-// EPUSDT 回调常量
+// BEpusdt 回调常量
 const (
-	EpusdtCallbackSuccess = "success"
+	BepusdtCallbackSuccess = "success"
+	BepusdtCallbackFail    = "fail"
+)
+
+// epusdt（GMPay）回调常量
+const (
+	EpusdtCallbackSuccess = "ok"
 	EpusdtCallbackFail    = "fail"
 )
 
@@ -435,10 +442,12 @@ const (
 	SettingKeyOrderRiskControlConfig = "order_risk_control_config"
 
 	SettingKeyCallbackRoutesConfig = "callback_routes_config"
-	SettingFieldPaymentCallback    = "payment_callback"
-	SettingFieldPaypalWebhook      = "paypal_webhook"
-	SettingFieldStripeWebhook      = "stripe_webhook"
-	SettingFieldUpstreamCallback   = "upstream_callback"
+
+	SettingKeyHomeAnnouncement   = "home_announcement"
+	SettingFieldPaymentCallback  = "payment_callback"
+	SettingFieldPaypalWebhook    = "paypal_webhook"
+	SettingFieldStripeWebhook    = "stripe_webhook"
+	SettingFieldUpstreamCallback = "upstream_callback"
 
 	// 默认回调路由路径
 	DefaultPaymentCallbackPath  = "/api/v1/payments/callback"
