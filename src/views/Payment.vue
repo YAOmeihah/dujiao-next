@@ -250,13 +250,21 @@
               </div>
               <div class="theme-surface-soft border rounded-xl p-3">
                 <div class="text-xs theme-text-muted">{{ t('orderDetail.amountDiscount') }}</div>
-                <div class="theme-text-primary font-mono mt-1">{{ formatMoney(order.discount_amount,
-                  order.currency) }}</div>
+                <div
+                  class="font-mono mt-1"
+                  :class="hasDiscountAmount(order.discount_amount) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+                >
+                  {{ formatDiscountMoney(order.discount_amount, order.currency) }}
+                </div>
               </div>
               <div class="theme-surface-soft border rounded-xl p-3">
                 <div class="text-xs theme-text-muted">{{ t('orderDetail.promotionDiscountLabel') }}</div>
-                <div class="theme-text-primary font-mono mt-1">{{ formatMoney(order.promotion_discount_amount,
-                  order.currency) }}</div>
+                <div
+                  class="font-mono mt-1"
+                  :class="hasDiscountAmount(order.promotion_discount_amount) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+                >
+                  {{ formatDiscountMoney(order.promotion_discount_amount, order.currency) }}
+                </div>
               </div>
             </div>
             <div class="mt-3 text-sm theme-text-muted">
@@ -1468,6 +1476,16 @@ const formatMoney = (amount?: string, currency?: string) => {
     return String(amount)
   }
   return `${amount} ${currency}`
+}
+
+const hasDiscountAmount = (amount?: string) => {
+  if (amount === null || amount === undefined || amount === '') return false
+  const valueCents = amountToCents(amount)
+  return valueCents !== null && valueCents > 0
+}
+
+const formatDiscountMoney = (amount?: string, currency?: string) => {
+  return hasDiscountAmount(amount) ? `-${formatMoney(amount, currency)}` : formatMoney(amount, currency)
 }
 
 const getLocalizedText = (jsonData: any) => {

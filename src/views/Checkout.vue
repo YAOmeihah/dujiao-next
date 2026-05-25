@@ -45,7 +45,7 @@
                   ? 'border-amber-200 bg-amber-50/60 dark:border-amber-700 dark:bg-amber-950/20'
                   : 'border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-black/20'"
               >
-                <div class="flex items-start gap-3">
+                <div class="flex min-w-0 items-start gap-3">
                   <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-black/30">
                     <SmartImage
                       :src="checkoutItemImage(item)"
@@ -62,29 +62,33 @@
                     <div
                       v-if="itemStockHint(item)"
                       class="mt-1 text-xs"
-                      :class="itemStockExceeded(item) ? 'text-amber-600 dark:text-amber-300' : 'theme-text-muted'"
+                      :class="itemStockExceeded(item)
+                        ? 'text-amber-600 dark:text-amber-300'
+                        : 'theme-text-muted'"
                     >
                       {{ itemStockHint(item) }}
                     </div>
-                    <div class="mt-2 flex flex-wrap gap-2">
+                    <div class="mt-2 flex flex-wrap items-baseline gap-3">
                       <span
-                        class="theme-badge text-xs uppercase tracking-wider"
-                        :class="item.purchaseType === 'guest'
-                          ? 'theme-badge-warning'
-                          : 'theme-badge-success'"
+                        class="inline-flex items-baseline whitespace-nowrap"
+                        :class="checkoutItemHasPriceDiscount(item) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
                       >
-                        {{ item.purchaseType === 'guest' ? t('productPurchase.guest') : t('productPurchase.member') }}
+                        <span class="text-xl font-black leading-none">{{ checkoutItemPriceParts(item).integer }}</span>
+                        <span class="text-xs font-semibold">{{ checkoutItemPriceParts(item).decimal }}</span>
+                        <span class="ml-1 text-xs font-semibold">{{ checkoutItemCurrency }}</span>
+                        <span v-if="checkoutItemHasPriceDiscount(item)" class="ml-1.5 text-xs font-normal">
+                          {{ t('checkout.discountedPriceLabel') }}
+                        </span>
                       </span>
                       <span
-                        class="theme-badge text-xs uppercase tracking-wider"
-                        :class="item.fulfillmentType === 'auto'
-                          ? 'theme-badge-info'
-                          : 'theme-badge-neutral'"
+                        v-if="checkoutItemHasPriceDiscount(item)"
+                        class="inline-flex items-baseline whitespace-nowrap text-xs text-gray-400 dark:text-gray-500"
                       >
-                        {{ item.fulfillmentType === 'auto' ? t('products.fulfillmentType.auto') : t('products.fulfillmentType.manual') }}
+                        <span>{{ checkoutItemOriginalPriceParts(item).integer }}</span>
+                        <span>{{ checkoutItemOriginalPriceParts(item).decimal }}</span>
+                        <span class="ml-1">{{ checkoutItemCurrency }}</span>
                       </span>
                     </div>
-                    <div class="mt-2 text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
                   </div>
                 </div>
               </div>
@@ -419,7 +423,22 @@
                     </div>
                     <div class="text-right">
                       <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('checkout.previewTotal') }}</div>
-                      <div class="text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
+                      <div
+                        class="mt-1 inline-flex items-baseline whitespace-nowrap"
+                        :class="checkoutItemHasPriceDiscount(item) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+                      >
+                        <span class="text-xl font-black leading-none">{{ checkoutItemPriceParts(item).integer }}</span>
+                        <span class="text-xs font-semibold">{{ checkoutItemPriceParts(item).decimal }}</span>
+                        <span class="ml-1 text-xs font-semibold">{{ checkoutItemCurrency }}</span>
+                      </div>
+                      <div
+                        v-if="checkoutItemHasPriceDiscount(item)"
+                        class="mt-1 inline-flex items-baseline whitespace-nowrap text-xs text-gray-400 dark:text-gray-500"
+                      >
+                        <span>{{ checkoutItemOriginalPriceParts(item).integer }}</span>
+                        <span>{{ checkoutItemOriginalPriceParts(item).decimal }}</span>
+                        <span class="ml-1">{{ checkoutItemCurrency }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -953,6 +972,16 @@ const previewCoupon = computed(() => preview.value?.discount_amount ?? '0')
 const previewPromotion = computed(() => preview.value?.promotion_discount_amount ?? '0')
 const previewMemberDiscount = computed(() => preview.value?.member_discount_amount ?? '0')
 const previewTotal = computed(() => preview.value?.total_amount ?? totalAmount.value)
+const checkoutItemCurrency = computed(() => previewCurrency.value)
+
+const previewItemsByKey = computed(() => {
+  const map = new Map<string, any>()
+  const items = Array.isArray(preview.value?.items) ? preview.value.items : []
+  for (const item of items) {
+    map.set(`${item.product_id}:${normalizeSkuId(item.sku_id)}`, item)
+  }
+  return map
+})
 
 const checkoutMode = ref<'guest' | 'member'>('guest')
 const guestPhone = ref('')
@@ -2373,13 +2402,52 @@ const checkoutItemImage = (item: CartItem) => {
   return getImageUrl(rawImage)
 }
 
-const itemSubtotal = (item: CartItem) => {
+const cartItemSubtotalCents = (item: CartItem) => {
   const amountCents = amountToCents(item.priceAmount)
   const qty = parseInteger(item.quantity)
   if (amountCents === null || qty === null) {
-    return formatPrice('-', totalCurrency.value)
+    return null
   }
-  return formatPrice(centsToAmount(amountCents * qty), totalCurrency.value)
+  return amountCents * qty
+}
+
+const checkoutItemPreview = (item: CartItem) => previewItemsByKey.value.get(cartItemKey(item))
+
+const checkoutItemOriginalCents = (item: CartItem) => {
+  const previewItem = checkoutItemPreview(item)
+  const previewOriginalCents = amountToCents(previewItem?.original_total_price)
+  if (previewOriginalCents !== null) return previewOriginalCents
+  return cartItemSubtotalCents(item)
+}
+
+const checkoutItemPayableCents = (item: CartItem) => {
+  const previewItem = checkoutItemPreview(item)
+  const previewPayableCents = amountToCents(previewItem?.total_price)
+  if (previewPayableCents !== null) {
+    const couponDiscountCents = amountToCents(previewItem?.coupon_discount_amount) || 0
+    return Math.max(0, previewPayableCents - couponDiscountCents)
+  }
+  return checkoutItemOriginalCents(item)
+}
+
+const pricePartsFromCents = (cents: number | null) => {
+  if (cents === null) return { integer: '-', decimal: '' }
+  const amount = centsToAmount(Math.max(0, cents))
+  const [integer, decimal = ''] = amount.split('.')
+  return {
+    integer,
+    decimal: decimal ? `.${decimal}` : '',
+  }
+}
+
+const checkoutItemPriceParts = (item: CartItem) => pricePartsFromCents(checkoutItemPayableCents(item))
+
+const checkoutItemOriginalPriceParts = (item: CartItem) => pricePartsFromCents(checkoutItemOriginalCents(item))
+
+const checkoutItemHasPriceDiscount = (item: CartItem) => {
+  const originalCents = checkoutItemOriginalCents(item)
+  const payableCents = checkoutItemPayableCents(item)
+  return originalCents !== null && payableCents !== null && originalCents > payableCents
 }
 
 const normalizeStockNumber = (value: unknown) => {

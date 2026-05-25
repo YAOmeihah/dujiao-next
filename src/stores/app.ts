@@ -22,49 +22,31 @@ export const useAppStore = defineStore('app', () => {
         localStorage.setItem('locale', newLocale)
     }
 
-    // 全局响应式 SEO 配置
+    // 全局 head 默认值（标题/描述/keywords/favicon/html lang）。
+    // canonical / og / twitter 等页面级别字段交由各页面通过 usePageSeo 接管，
+    // 避免与页面级 useHead 冲突或产生重复标签。
     useHead({
+        htmlAttrs: { lang: computed(() => locale.value) },
         title: () => {
             const seo = config.value?.seo
-            if (!seo) return undefined
             const lang = locale.value
-            return seo.title && seo.title[lang] ? seo.title[lang] : undefined
+            const localized = seo?.title?.[lang]
+            if (localized) return String(localized).trim() || undefined
+            const siteName = String(config.value?.brand?.site_name || '').trim()
+            return siteName || undefined
         },
         link: () => [{ key: 'favicon', rel: 'icon', href: siteIconHref.value }],
         meta: () => {
             const seo = config.value?.seo
             if (!seo) return []
             const lang = locale.value
-            const tags = []
-
-            // 基础 SEO 标签
+            const tags: Array<{ name?: string; property?: string; content: string }> = []
             if (seo.keywords && seo.keywords[lang]) {
-                tags.push({ name: 'keywords', content: seo.keywords[lang] })
+                tags.push({ name: 'keywords', content: String(seo.keywords[lang]) })
             }
             if (seo.description && seo.description[lang]) {
-                tags.push({ name: 'description', content: seo.description[lang] })
+                tags.push({ name: 'description', content: String(seo.description[lang]) })
             }
-
-            // Open Graph 标签
-            tags.push({ property: 'og:type', content: 'website' })
-            if (seo.title && seo.title[lang]) {
-                tags.push({ property: 'og:title', content: seo.title[lang] })
-            }
-            if (seo.description && seo.description[lang]) {
-                tags.push({ property: 'og:description', content: seo.description[lang] })
-            }
-            tags.push({ property: 'og:url', content: window.location.href })
-            // 注意：全局设置通常可以设置一个通用的 default_og_image
-
-            // Twitter Card 标签
-            tags.push({ name: 'twitter:card', content: 'summary_large_image' })
-            if (seo.title && seo.title[lang]) {
-                tags.push({ name: 'twitter:title', content: seo.title[lang] })
-            }
-            if (seo.description && seo.description[lang]) {
-                tags.push({ name: 'twitter:description', content: seo.description[lang] })
-            }
-
             return tags
         }
     })

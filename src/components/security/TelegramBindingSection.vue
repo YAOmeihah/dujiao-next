@@ -79,6 +79,19 @@
         }}
       </button>
       <div v-else-if="showTelegramWidget" ref="telegramWidgetRef" class="flex justify-start"></div>
+      <div v-else-if="showTelegramOidcBind" class="space-y-2">
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="bindingTelegram"
+          @click="$emit('oidcBind')"
+        >
+          {{ t('personalCenter.security.telegramOidcBindButton') }}
+        </button>
+        <p class="text-xs theme-text-muted">
+          {{ t('personalCenter.security.telegramOidcBindHint') }}
+        </p>
+      </div>
       <div v-if="showTelegramMiniAppEntry" class="space-y-2 rounded-xl border border-dashed border-gray-200/80 px-4 py-3 dark:border-white/10">
         <p class="text-xs theme-text-muted">
           {{ t('personalCenter.security.telegramMiniAppEntryHint') }}
@@ -114,6 +127,7 @@ defineProps<{
   showTelegramMiniAppEntry: boolean
   showMiniAppBindAction: boolean
   showTelegramWidget: boolean
+  showTelegramOidcBind?: boolean
   bindingTelegram: boolean
   miniAppInitData: string
 }>()
@@ -122,6 +136,7 @@ defineEmits<{
   unbind: []
   miniAppBind: []
   openMiniAppEntry: []
+  oidcBind: []
 }>()
 
 const telegramWidgetRef = ref<HTMLDivElement | null>(null)
