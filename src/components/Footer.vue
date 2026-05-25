@@ -1,6 +1,7 @@
 <template>
   <footer
-    class="relative theme-panel-strong theme-text-secondary border-t theme-border overflow-hidden">
+    class="relative theme-panel-strong theme-text-secondary border-t theme-border overflow-hidden"
+    :class="route.name === 'checkout' ? 'pb-28 lg:pb-0' : ''">
     <div class="container mx-auto px-4 py-16 relative">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-16">
         <!-- Brand -->
@@ -113,10 +114,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const route = useRoute()
 
 const config = computed(() => appStore.config)
 
