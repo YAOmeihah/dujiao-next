@@ -145,10 +145,10 @@
               <div class="mt-2 text-lg font-bold theme-text-primary">{{ formatMoney(order.total_amount, order.currency) }}</div>
               <div v-if="hasDiscount(order)" class="mt-2 flex flex-wrap gap-2 text-xs theme-text-muted">
                 <span v-if="hasDiscountAmount(order.discount_amount)" class="theme-badge theme-badge-success px-2.5 py-1">
-                  {{ t('orderDetail.couponDiscountLabel') }}：{{ formatMoney(order.discount_amount, order.currency) }}
+                  {{ t('orderDetail.couponDiscountLabel') }}：{{ formatDiscountMoney(order.discount_amount, order.currency) }}
                 </span>
                 <span v-if="hasDiscountAmount(order.promotion_discount_amount)" class="theme-badge theme-badge-danger px-2.5 py-1">
-                  {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatMoney(order.promotion_discount_amount, order.currency) }}
+                  {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatDiscountMoney(order.promotion_discount_amount, order.currency) }}
                 </span>
               </div>
               <div class="mt-2 text-xs theme-text-muted">{{ formatDate(order.created_at) }}</div>
@@ -510,6 +510,10 @@ const formatMoney = (amount?: string, currency?: string) => {
   if (amount === null || amount === undefined || amount === '') return '-'
   if (currency === null || currency === undefined || currency === '') return String(amount)
   return `${amount} ${currency}`
+}
+
+const formatDiscountMoney = (amount?: string, currency?: string) => {
+  return hasDiscountAmount(amount) ? `-${formatMoney(amount, currency)}` : formatMoney(amount, currency)
 }
 
 const hasDiscountAmount = (amount?: string) => {

@@ -133,10 +133,16 @@ import { useAppStore } from '../stores/app'
 import { postAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { debounceAsync } from '../utils/debounce'
+import { usePageSeo } from '../composables/usePageSeo'
 
 const router = useRouter()
 const { t } = useI18n()
 const appStore = useAppStore()
+
+usePageSeo({
+  title: () => t('nav.blog'),
+  canonicalPath: () => '/blog',
+})
 
 const loading = ref(true)
 const posts = ref<any[]>([])

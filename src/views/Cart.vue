@@ -106,7 +106,7 @@
                   </div>
 
                   <div class="text-right">
-                    <p class="text-xs uppercase tracking-wider theme-text-muted">{{ t('checkout.previewTotal') }}</p>
+                    <p class="text-xs uppercase tracking-wider theme-text-muted">{{ t('checkout.totalPriceLabel') }}</p>
                     <p class="text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</p>
                   </div>
                 </div>

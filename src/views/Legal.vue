@@ -37,12 +37,18 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
+import { usePageSeo } from '../composables/usePageSeo'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   type: 'terms' | 'privacy'
 }>()
+
+usePageSeo({
+  title: () => props.type === 'terms' ? t('footer.terms') : t('footer.privacy'),
+  canonicalPath: () => props.type === 'terms' ? '/terms' : '/privacy',
+})
 
 const appStore = useAppStore()
 

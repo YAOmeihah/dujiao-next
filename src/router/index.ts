@@ -289,6 +289,11 @@ const router = createRouter({
             meta: { userGuest: true }
         },
         {
+            path: '/auth/telegram/callback',
+            name: 'user-telegram-callback',
+            component: () => import('../views/auth/TelegramCallback.vue'),
+        },
+        {
             path: '/:pathMatch(.*)*',
             name: 'not-found',
             component: () => import('../views/NotFound.vue'),

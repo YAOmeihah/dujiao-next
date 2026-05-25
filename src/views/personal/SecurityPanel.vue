@@ -30,12 +30,14 @@
         :show-telegram-mini-app-entry="showTelegramMiniAppEntry"
         :show-mini-app-bind-action="showMiniAppBindAction"
         :show-telegram-widget="showTelegramWidget"
+        :show-telegram-oidc-bind="showTelegramOidcBind"
         :binding-telegram="userProfileStore.bindingTelegram"
         :mini-app-init-data="miniAppInitData"
         ref="telegramSectionRef"
         @unbind="handleUnbindTelegram"
         @mini-app-bind="handleTelegramMiniAppBind"
         @open-mini-app-entry="openTelegramMiniAppEntry"
+        @oidc-bind="startTelegramOidcBind"
       />
 
       <EmailChangeForm
@@ -76,7 +78,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { pageAlertClass, type PageAlert } from '../../utils/alerts'
+import { userProfileAPI } from '../../api/user'
 import type { TelegramAuthPayload } from '../../api'
 import { useAppStore } from '../../stores/app'
 import { useTelegramMiniAppStore } from '../../stores/telegramMiniApp'
@@ -90,6 +94,8 @@ import PasswordChangeForm from '../../components/security/PasswordChangeForm.vue
 import TwoFactorSection from '../../components/security/TwoFactorSection.vue'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
 const telegramMiniAppStore = useTelegramMiniAppStore()
 const userProfileStore = useUserProfileStore()
@@ -117,12 +123,14 @@ const telegramCallbackName = '__dujiaoSecurityTelegramBind'
 const telegramConfig = computed(() => appStore.config?.telegram_auth || null)
 const telegramBotUsername = computed(() => String(telegramConfig.value?.bot_username || '').trim())
 const telegramMiniAppURL = computed(() => String(telegramConfig.value?.mini_app_url || '').trim())
+const telegramLoginMode = computed(() => String(telegramConfig.value?.mode || '').trim())
 const telegramEnabled = computed(() => !!telegramConfig.value?.enabled && telegramBotUsername.value !== '')
 const telegramBound = computed(() => !!userProfileStore.telegramBinding?.bound)
 const isTelegramMiniApp = computed(() => telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady)
 const miniAppInitData = computed(() => String(telegramMiniAppStore.initData || '').trim())
 const showMiniAppBindAction = computed(() => telegramEnabled.value && !telegramBound.value && isTelegramMiniApp.value)
-const showTelegramWidget = computed(() => telegramEnabled.value && !telegramBound.value && !isTelegramMiniApp.value)
+const showTelegramWidget = computed(() => telegramLoginMode.value !== 'oidc' && telegramEnabled.value && !telegramBound.value && !isTelegramMiniApp.value)
+const showTelegramOidcBind = computed(() => telegramLoginMode.value === 'oidc' && telegramEnabled.value && !telegramBound.value && !isTelegramMiniApp.value)
 const telegramMiniAppEntryLink = computed(() => buildTelegramMiniAppEntryLink(telegramBotUsername.value, telegramMiniAppURL.value))
 const showTelegramMiniAppEntry = computed(() => !isTelegramMiniApp.value && telegramMiniAppEntryLink.value !== '')
 const emailChangeMode = computed(() => userProfileStore.profile?.email_change_mode || 'change_with_old_and_new')
@@ -338,6 +346,10 @@ const clearTelegramWidget = () => {
 }
 
 const renderTelegramWidget = () => {
+  if (telegramLoginMode.value === 'oidc') {
+    clearTelegramWidget()
+    return
+  }
   const widgetEl = telegramSectionRef.value?.telegramWidgetRef
   if (!showTelegramWidget.value || !widgetEl) {
     clearTelegramWidget()
@@ -411,6 +423,28 @@ const handleTelegramMiniAppBind = async () => {
   }
 }
 
+const startTelegramOidcBind = async () => {
+  securityAlert.value = null
+  try {
+    sessionStorage.setItem('tg_oidc_intent', 'bind')
+    const res = await userProfileAPI.telegramOidcBindStart()
+    const url = String(res?.data?.data?.auth_url || '')
+    if (!url) {
+      securityAlert.value = {
+        level: 'error',
+        message: t('personalCenter.security.telegramOidcBindFailed'),
+      }
+      return
+    }
+    window.location.href = url
+  } catch (err: any) {
+    securityAlert.value = {
+      level: 'error',
+      message: err?.message || t('personalCenter.security.telegramOidcBindFailed'),
+    }
+  }
+}
+
 const handleUnbindTelegram = async () => {
   securityAlert.value = null
   const ok = await userProfileStore.unbindTelegram()
@@ -444,6 +478,17 @@ onMounted(async () => {
   const win = window as Window & Record<string, any>
   win[telegramCallbackName] = handleTelegramBind
   renderTelegramWidget()
+
+  if (route.query.tgBound === '1') {
+    await userProfileStore.loadTelegramBinding()
+    securityAlert.value = {
+      level: 'success',
+      message: t('personalCenter.security.telegramBoundOk'),
+    }
+    const nextQuery = { ...route.query }
+    delete nextQuery.tgBound
+    router.replace({ path: route.path, query: nextQuery })
+  }
 })
 
 onUnmounted(() => {

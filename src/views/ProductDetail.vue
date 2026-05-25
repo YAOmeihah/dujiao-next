@@ -893,7 +893,9 @@ const debouncedLoadProduct = debounceAsync(loadProduct, 300)
 
 const canonicalUrl = computed(() => {
   if (!product.value?.slug) return ''
-  return `${window.location.origin}/products/${product.value.slug}`
+  const fromConfig = String(appStore.config?.brand?.site_url || '').trim().replace(/\/+$/, '')
+  const base = fromConfig || window.location.origin.replace(/\/+$/, '')
+  return `${base}/products/${product.value.slug}`
 })
 
 useHead({

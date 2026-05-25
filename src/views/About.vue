@@ -74,9 +74,15 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
+import { usePageSeo } from '../composables/usePageSeo'
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 const appStore = useAppStore()
+
+usePageSeo({
+  title: () => t('nav.about'),
+  canonicalPath: () => '/about',
+})
 
 const aboutConfig = computed(() => appStore.config?.about || null)
 const contactConfig = computed(() => appStore.config?.contact || null)

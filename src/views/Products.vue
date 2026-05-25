@@ -102,10 +102,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useProductList } from '../composables/useProductList'
+import { usePageSeo } from '../composables/usePageSeo'
+import { useLocalized } from '../composables/useProduct'
 import ProductCard from '../components/ProductCard.vue'
 import ProductQuickBuy from '../components/ProductQuickBuy.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
@@ -125,6 +127,7 @@ const {
   showFilterDrawer,
   expandedParentIds,
   categoryGroups,
+  categoryMap,
   selectCategory,
   toggleParentCategory,
   changePage,
@@ -132,6 +135,24 @@ const {
   initialize,
   cleanup,
 } = useProductList({ pageSize: 12, homeRouteName: 'products' })
+
+// ==================== SEO ====================
+const route = useRoute()
+const { getLocalizedText } = useLocalized()
+const seoCategoryName = computed(() => {
+  if (!selectedCategory.value) return ''
+  const cat = categoryMap.value.get(selectedCategory.value)
+  return cat ? getLocalizedText(cat.name) : ''
+})
+usePageSeo({
+  canonicalPath: () => route.path,
+  title: () => {
+    if (route.name === 'category-products') {
+      return seoCategoryName.value || t('nav.products')
+    }
+    return t('nav.products')
+  },
+})
 
 const quickBuyProduct = ref<any>(null)
 const quickBuyVisible = ref(false)

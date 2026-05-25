@@ -134,6 +134,7 @@ import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
 import { debounceAsync } from '../utils/debounce'
 import { useLocalized } from '../composables/useProduct'
+import { usePageSeo } from '../composables/usePageSeo'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -159,6 +160,14 @@ const formatDate = (dateString: string) => {
     day: 'numeric',
   })
 }
+
+usePageSeo({
+  title: () => post.value ? getLocalizedText(post.value.title) : '',
+  description: () => post.value ? getLocalizedText(post.value.summary) : '',
+  image: () => post.value?.thumbnail || '',
+  canonicalPath: () => `/blog/${(route.params.slug as string) || ''}`,
+  type: () => 'article',
+})
 
 const backLink = computed(() => {
   if (!post.value) return '/blog'

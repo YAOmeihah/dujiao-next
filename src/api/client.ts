@@ -56,7 +56,7 @@ function getHttpErrorMessage(status: number): string {
 }
 
 const isAuthEndpoint = (url: string) =>
-    /\/auth\/(login|register|telegram\/login|telegram\/miniapp\/login|forgot-password)/.test(url)
+    /\/auth\/(login|register|telegram\/login|telegram\/miniapp\/login|telegram\/oidc\/start|telegram\/oidc\/callback|forgot-password)/.test(url)
 
 function createClient(injectAuth: boolean) {
     const baseURL = `${API_BASE_URL}${API_PREFIX}`

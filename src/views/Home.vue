@@ -425,12 +425,19 @@
         </section>
       </div>
     </Transition>
+
+    <AnnouncementModal
+      v-if="activeAnnouncement"
+      :announcement="activeAnnouncement"
+      :visible="announcementVisible"
+      @update:visible="announcementVisible = $event"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { postAPI, productAPI } from '../api'
 import { getImageUrl } from '../utils/image'
@@ -438,6 +445,7 @@ import { useLocalized } from '../composables/useProduct'
 import { useBannerCarousel } from '../composables/useBannerCarousel'
 import { useProductList } from '../composables/useProductList'
 import { useProductListGroups } from '../composables/useProductListGroups'
+import { usePageSeo } from '../composables/usePageSeo'
 import { useAppStore } from '../stores/app'
 import ProductCard from '../components/ProductCard.vue'
 import ProductListItem from '../components/ProductListItem.vue'
@@ -445,6 +453,8 @@ import ProductQuickBuy from '../components/ProductQuickBuy.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
 import { resolveHomePopupNoticeHtml } from '../utils/homePopupNotice'
+import AnnouncementModal from '../components/AnnouncementModal.vue'
+import { useAnnouncement, type HomeAnnouncement } from '../composables/useAnnouncement'
 
 const HOME_POPUP_SNOOZE_KEY = 'home_popup_notice_snooze'
 
@@ -466,6 +476,10 @@ const homePopupNotice = ref<any | null>(null)
 const homePopupVisible = ref(false)
 const quickBuyProduct = ref<any>(null)
 const quickBuyVisible = ref(false)
+
+const { shouldShow } = useAnnouncement()
+const activeAnnouncement = ref<HomeAnnouncement | null>(null)
+const announcementVisible = ref(false)
 
 const openQuickBuy = (product: any) => {
   quickBuyProduct.value = product
@@ -517,6 +531,24 @@ const {
 } = useProductList({ pageSize: 20, homeRouteName: 'home' })
 
 const listProductGroups = useProductListGroups(listProducts, listCategoryMap)
+
+// ==================== SEO ====================
+const route = useRoute()
+const seoCategoryName = computed(() => {
+  if (!listSelectedCategory.value) return ''
+  const cat = listCategoryMap.value.get(listSelectedCategory.value)
+  return cat ? getLocalizedText(cat.name) : ''
+})
+usePageSeo({
+  canonicalPath: () => route.path,
+  title: () => {
+    if (route.name === 'category-products') {
+      return seoCategoryName.value || t('nav.products')
+    }
+    if (route.name === 'products') return t('nav.products')
+    return undefined
+  },
+})
 
 // ==================== Card Mode ====================
 const formatDate = (dateString: string) => {
@@ -613,12 +645,22 @@ const loadHomePopupNotice = async () => {
 }
 
 // ==================== Lifecycle ====================
+const showAnnouncementIfNeeded = () => {
+  const announcement = appStore.config?.announcement as HomeAnnouncement | undefined
+  if (announcement && shouldShow(announcement)) {
+    activeAnnouncement.value = announcement
+    announcementVisible.value = true
+  }
+}
+
 onMounted(async () => {
+  await appStore.loadConfig()
   if (templateMode.value === 'list') {
     await Promise.all([loadBanners(), listInitialize(), loadHomePopupNotice()])
   } else {
     await Promise.all([loadBanners(), loadFeaturedProducts(), loadLatestPosts(), loadHomePopupNotice()])
   }
+  showAnnouncementIfNeeded()
 })
 
 onUnmounted(() => {

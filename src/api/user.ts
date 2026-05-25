@@ -19,5 +19,8 @@ export const userProfileAPI = {
     bindTelegram: (data: TelegramAuthPayload) => userApi.post('/me/telegram/bind', data),
     bindTelegramMiniApp: (data: TelegramMiniAppAuthPayload) =>
         userApi.post('/me/telegram/miniapp/bind', data),
+    telegramOidcBindStart: () => userApi.get('/me/telegram/oidc/start'),
+    telegramOidcBindCallback: (data: { code: string; state: string }) =>
+        userApi.post('/me/telegram/oidc/callback', data),
     unbindTelegram: () => userApi.delete('/me/telegram/unbind'),
 }

@@ -10,6 +10,9 @@ export const userAuthAPI = {
     telegramLogin: (data: TelegramAuthPayload) => userApi.post('/auth/telegram/login', data),
     telegramMiniAppLogin: (data: TelegramMiniAppAuthPayload) =>
         userApi.post('/auth/telegram/miniapp/login', data),
+    telegramOidcStart: () => userApi.get('/auth/telegram/oidc/start'),
+    telegramOidcCallback: (data: { code: string; state: string }) =>
+        userApi.post('/auth/telegram/oidc/callback', data),
     forgotPassword: (data: any) => userApi.post('/auth/forgot-password', data),
 }
 

@@ -91,8 +91,12 @@
             </div>
             <div class="theme-surface-soft border rounded-xl p-4">
               <div class="text-xs theme-text-muted">{{ t('orderDetail.amountDiscount') }}</div>
-              <div class="theme-text-primary font-mono mt-1">{{ formatMoney(order.discount_amount,
-                order.currency) }}</div>
+              <div
+                class="font-mono mt-1"
+                :class="hasDiscountAmount(order.discount_amount) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+              >
+                {{ formatDiscountMoney(order.discount_amount, order.currency) }}
+              </div>
             </div>
             <div class="theme-surface-soft border rounded-xl p-4">
               <div class="text-xs theme-text-muted">{{ t('orderDetail.amountTotal') }}</div>
@@ -116,7 +120,7 @@
             </div>
             <div v-if="hasDiscountAmount(order.member_discount_amount)" class="border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30 rounded-xl p-4">
               <div class="text-xs text-amber-700 dark:text-amber-400">{{ t('orderDetail.amountMemberDiscount') }}</div>
-              <div class="text-amber-700 dark:text-amber-400 font-mono mt-1">{{ formatMoney(order.member_discount_amount,
+              <div class="text-amber-700 dark:text-amber-400 font-mono mt-1">{{ formatDiscountMoney(order.member_discount_amount,
                 order.currency) }}</div>
             </div>
           </div>
@@ -206,19 +210,25 @@
                 </div>
               </div>
               <div class="shrink-0 pl-[4.25rem] sm:pl-0 text-left sm:text-right text-sm theme-text-muted space-y-1">
-                <div>{{ t('orderDetail.unitPriceLabel') }}：{{ formatMoney(item.unit_price, order.currency) }}</div>
-                <div>{{ t('orderDetail.totalPriceLabel') }}：{{ formatMoney(item.total_price, order.currency) }}</div>
+                <div>{{ t('orderDetail.unitPriceLabel') }}：{{ formatMoney(item.original_unit_price, order.currency) }}</div>
+                <div>{{ t('orderDetail.totalPriceLabel') }}：{{ formatMoney(item.original_total_price, order.currency) }}</div>
                 <div v-if="hasDiscountAmount(item.coupon_discount_amount)">
-                  {{ t('orderDetail.couponDiscountLabel') }}：{{ formatMoney(item.coupon_discount_amount, order.currency)
+                  {{ t('orderDetail.couponDiscountLabel') }}：{{ formatDiscountMoney(item.coupon_discount_amount, order.currency)
                   }}
                 </div>
                 <div v-if="hasDiscountAmount(item.promotion_discount_amount)">
-                  {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatMoney(item.promotion_discount_amount,
+                  {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatDiscountMoney(item.promotion_discount_amount,
                   order.currency) }}
                 </div>
-                <div v-if="hasDiscountAmount(item.member_discount_amount)" class="text-amber-700 dark:text-amber-400">
-                  {{ t('orderDetail.memberDiscountLabel') }}：{{ formatMoney(item.member_discount_amount,
+                <div v-if="hasDiscountAmount(item.member_discount_amount)">
+                  {{ t('orderDetail.memberDiscountLabel') }}：{{ formatDiscountMoney(item.member_discount_amount,
                   order.currency) }}
+                </div>
+                <div v-if="hasItemDiscount(item)" class="font-medium text-rose-600 dark:text-rose-300">
+                  {{ t('orderDetail.itemDiscountTotalLabel') }}：{{ formatItemDiscountTotal(item, order.currency) }}
+                </div>
+                <div class="font-medium theme-text-primary">
+                  {{ t('orderDetail.itemPaidAmountLabel') }}：{{ formatItemPaidAmount(item, order.currency) }}
                 </div>
               </div>
             </div>
@@ -290,21 +300,27 @@
                       </div>
                     </div>
                     <div class="shrink-0 pl-[4.25rem] sm:pl-0 text-left sm:text-right text-sm theme-text-muted space-y-1">
-                      <div>{{ t('orderDetail.unitPriceLabel') }}：{{ formatMoney(item.unit_price, order.currency) }}
+                      <div>{{ t('orderDetail.unitPriceLabel') }}：{{ formatMoney(item.original_unit_price, order.currency) }}
                       </div>
-                      <div>{{ t('orderDetail.totalPriceLabel') }}：{{ formatMoney(item.total_price, order.currency) }}
+                      <div>{{ t('orderDetail.totalPriceLabel') }}：{{ formatMoney(item.original_total_price, order.currency) }}
                       </div>
                       <div v-if="hasDiscountAmount(item.coupon_discount_amount)">
-                        {{ t('orderDetail.couponDiscountLabel') }}：{{ formatMoney(item.coupon_discount_amount,
+                        {{ t('orderDetail.couponDiscountLabel') }}：{{ formatDiscountMoney(item.coupon_discount_amount,
                         order.currency) }}
                       </div>
                       <div v-if="hasDiscountAmount(item.promotion_discount_amount)">
-                        {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatMoney(item.promotion_discount_amount,
+                        {{ t('orderDetail.promotionDiscountLabel') }}：{{ formatDiscountMoney(item.promotion_discount_amount,
                         order.currency) }}
                       </div>
-                      <div v-if="hasDiscountAmount(item.member_discount_amount)" class="text-amber-700 dark:text-amber-400">
-                        {{ t('orderDetail.memberDiscountLabel') }}：{{ formatMoney(item.member_discount_amount,
+                      <div v-if="hasDiscountAmount(item.member_discount_amount)">
+                        {{ t('orderDetail.memberDiscountLabel') }}：{{ formatDiscountMoney(item.member_discount_amount,
                         order.currency) }}
+                      </div>
+                      <div v-if="hasItemDiscount(item)" class="font-medium text-rose-600 dark:text-rose-300">
+                        {{ t('orderDetail.itemDiscountTotalLabel') }}：{{ formatItemDiscountTotal(item, order.currency) }}
+                      </div>
+                      <div class="font-medium theme-text-primary">
+                        {{ t('orderDetail.itemPaidAmountLabel') }}：{{ formatItemPaidAmount(item, order.currency) }}
                       </div>
                     </div>
                   </div>
@@ -439,7 +455,7 @@ import { orderStatusClass, orderStatusLabel } from '../utils/status'
 import { fulfillmentStatusLabel, fulfillmentTypeLabel } from '../utils/fulfillment'
 import { debounceAsync } from '../utils/debounce'
 import { copyText } from '../utils/clipboard'
-import { amountToCents } from '../utils/money'
+import { amountToCents, centsToAmount } from '../utils/money'
 import { buildSkuDisplayTextFromSnapshot } from '../utils/sku'
 import { getImageUrl } from '../utils/image'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
@@ -622,10 +638,41 @@ const formatMoney = (amount?: string, currency?: string) => {
   return `${amount} ${currency}`
 }
 
+const formatDiscountMoney = (amount?: string, currency?: string) => {
+  return hasDiscountAmount(amount) ? `-${formatMoney(amount, currency)}` : formatMoney(amount, currency)
+}
+
 const hasDiscountAmount = (amount?: string) => {
   if (amount === null || amount === undefined || amount === '') return false
   const valueCents = amountToCents(amount)
   return valueCents !== null && valueCents > 0
+}
+
+const positiveAmountCents = (amount?: string) => {
+  const valueCents = amountToCents(amount)
+  return valueCents !== null && valueCents > 0 ? valueCents : 0
+}
+
+const itemDiscountTotalCents = (item: any) => {
+  return positiveAmountCents(item?.promotion_discount_amount)
+    + positiveAmountCents(item?.member_discount_amount)
+    + positiveAmountCents(item?.coupon_discount_amount)
+}
+
+const hasItemDiscount = (item: any) => itemDiscountTotalCents(item) > 0
+
+const formatItemDiscountTotal = (item: any, currency?: string) => {
+  return formatMoney(centsToAmount(itemDiscountTotalCents(item)), currency)
+}
+
+const itemPaidAmountCents = (item: any) => {
+  const totalCents = amountToCents(item?.total_price)
+  const paidCents = (totalCents !== null ? totalCents : 0) - positiveAmountCents(item?.coupon_discount_amount)
+  return Math.max(0, paidCents)
+}
+
+const formatItemPaidAmount = (item: any, currency?: string) => {
+  return formatMoney(centsToAmount(itemPaidAmountCents(item)), currency)
 }
 
 const hasAmount = (amount?: string) => {

@@ -253,18 +253,23 @@
             <p class="text-center text-xs theme-text-muted">
               {{ t('auth.login.telegramHint') }}
             </p>
-            <div v-if="showTelegramMiniAppEntry" class="space-y-2">
-              <p class="text-center text-xs theme-text-muted">
-                {{ t('auth.login.telegramMiniAppEntryHint') }}
-              </p>
-              <button
-                type="button"
-                class="inline-flex w-full items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
-                @click="openTelegramMiniAppEntry"
-              >
-                {{ t('auth.login.telegramMiniAppEntryAction') }}
-              </button>
+          </div>
+          <div v-else-if="showTelegramOidc" class="space-y-3 pt-1">
+            <div class="flex items-center gap-3 text-[11px] uppercase tracking-[0.12em] theme-text-muted">
+              <span class="h-px flex-1 border-t border-gray-200/80 dark:border-white/10"></span>
+              <span>{{ t('auth.login.telegramOr') }}</span>
+              <span class="h-px flex-1 border-t border-gray-200/80 dark:border-white/10"></span>
             </div>
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
+              @click="startTelegramOidc"
+            >
+              {{ t('auth.login.telegramOidcButton') }}
+            </button>
+            <p class="text-center text-xs theme-text-muted">
+              {{ t('auth.login.telegramOidcHint') }}
+            </p>
           </div>
           <div v-else-if="showMiniAppLoginHint" class="space-y-3 pt-1">
             <div class="flex items-center gap-3 text-[11px] uppercase tracking-[0.12em] theme-text-muted">
@@ -275,6 +280,18 @@
             <p class="text-center text-xs theme-text-muted">
               {{ attemptingMiniAppLogin ? t('auth.login.telegramMiniAppLoggingIn') : t('auth.login.telegramMiniAppHint') }}
             </p>
+          </div>
+          <div v-if="showTelegramMiniAppEntry" class="space-y-2 pt-1">
+            <p class="text-center text-xs theme-text-muted">
+              {{ t('auth.login.telegramMiniAppEntryHint') }}
+            </p>
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
+              @click="openTelegramMiniAppEntry"
+            >
+              {{ t('auth.login.telegramMiniAppEntryAction') }}
+            </button>
           </div>
         </form>
       </div>
@@ -300,6 +317,7 @@ import { debounceAsync } from '../../utils/debounce'
 import { useAppStore } from '../../stores/app'
 import { useTelegramMiniAppStore } from '../../stores/telegramMiniApp'
 import { buildTelegramMiniAppEntryLink, isTelegramUrlEnvironment, openTelegramCompatibleLink } from '../../utils/telegramMiniApp'
+import { userAuthAPI } from '../../api'
 import type { CaptchaPayload, TelegramAuthPayload } from '../../api'
 import ImageCaptcha from '../../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../../components/captcha/TurnstileCaptcha.vue'
@@ -355,15 +373,18 @@ const telegramConfig = computed(() => appStore.config?.telegram_auth || null)
 const telegramBotUsername = computed(() => String(telegramConfig.value?.bot_username || '').trim())
 const telegramMiniAppURL = computed(() => String(telegramConfig.value?.mini_app_url || '').trim())
 const telegramEnabled = computed(() => !!telegramConfig.value?.enabled && telegramBotUsername.value !== '')
+const telegramLoginMode = computed(() => String(telegramConfig.value?.mode || '').trim())
+const isWidgetMode = computed(() => telegramLoginMode.value === 'widget' || (telegramLoginMode.value === '' && telegramEnabled.value))
 const registrationEnabled = computed(() => appStore.config?.registration_enabled !== false)
 const emailVerificationEnabled = computed(() => appStore.config?.email_verification_enabled !== false)
-const isTelegramMiniApp = computed(() => telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady)
+const isTelegramUrlEnv = isTelegramUrlEnvironment()
+const isTelegramMiniApp = computed(() => (telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady) || isTelegramUrlEnv)
 const miniAppInitData = computed(() => String(telegramMiniAppStore.initData || '').trim())
-const showTelegramWidget = computed(() => telegramEnabled.value && !isTelegramMiniApp.value)
+const showTelegramWidget = computed(() => isWidgetMode.value && telegramEnabled.value && !isTelegramMiniApp.value)
+const showTelegramOidc = computed(() => telegramLoginMode.value === 'oidc' && telegramEnabled.value && !isTelegramMiniApp.value)
 const showMiniAppLoginHint = computed(() => isTelegramMiniApp.value)
 const telegramMiniAppEntryLink = computed(() => buildTelegramMiniAppEntryLink(telegramBotUsername.value, telegramMiniAppURL.value))
-const isTelegramUrlEnv = isTelegramUrlEnvironment()
-const showTelegramMiniAppEntry = computed(() => !isTelegramMiniApp.value && isTelegramUrlEnv && telegramMiniAppEntryLink.value !== '')
+const showTelegramMiniAppEntry = computed(() => !isTelegramMiniApp.value && telegramMiniAppEntryLink.value !== '')
 const telegramCallbackName = '__dujiaoUserTelegramLogin'
 const miniAppLoginAttempted = ref(false)
 const attemptingMiniAppLogin = ref(false)
@@ -606,7 +627,33 @@ const clearTelegramWidget = () => {
   }
 }
 
+const startTelegramOidc = async () => {
+  error.value = ''
+  try {
+    sessionStorage.removeItem('tg_oidc_intent')
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+    if (redirect) {
+      sessionStorage.setItem('tg_oidc_redirect', redirect)
+    } else {
+      sessionStorage.removeItem('tg_oidc_redirect')
+    }
+    const res = await userAuthAPI.telegramOidcStart()
+    const url = String(res?.data?.data?.auth_url || '')
+    if (!url) {
+      error.value = t('auth.login.telegramLoginFailed')
+      return
+    }
+    window.location.href = url
+  } catch (err: any) {
+    error.value = err?.message || t('auth.login.telegramLoginFailed')
+  }
+}
+
 const renderTelegramWidget = () => {
+  if (telegramLoginMode.value === 'oidc') {
+    clearTelegramWidget()
+    return
+  }
   if (!showTelegramWidget.value || !telegramWidgetRef.value) {
     clearTelegramWidget()
     return
@@ -631,6 +678,13 @@ onMounted(async () => {
   const win = window as Window & Record<string, any>
   win[telegramCallbackName] = handleTelegramAuth
   renderTelegramWidget()
+
+  if (route.query.tg2fa === '1' && userAuthStore.challengeToken) {
+    enter2FAStep()
+    const nextQuery = { ...route.query }
+    delete nextQuery.tg2fa
+    router.replace({ path: route.path, query: nextQuery })
+  }
 
   const reason = typeof route.query.reason === 'string' ? route.query.reason : ''
   if (reason === 'password_changed') {
