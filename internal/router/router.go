@@ -63,14 +63,22 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 	}
 
 	// 中间件
-	r.Use(gin.Recovery())
+	// RequestIDMiddleware 必须前置于 RecoveryMiddleware:
+	// 它本身不会 panic(仅做 uuid 生成 + c.Set + Header.Set),先注入 request_id 才能
+	// 保证 RecoveryMiddleware 在 panic 时拿到的 request_id 一定不为空——既用于日志关联,
+	// 也用于 response body 的 request_id 字段。
 	r.Use(RequestIDMiddleware())
+	r.Use(RecoveryMiddleware())
 	r.Use(LoggerMiddleware(log))
 	r.Use(CORSMiddleware(cfg.CORS))
 	r.Use(CallbackRouteMiddleware(c.SettingService, publicHandler, upstreamHandler))
 
 	// 静态文件服务（上传的图片）- 必须放在最前面
 	r.Static("/uploads", "./uploads")
+
+	// SEO 资源（动态生成）
+	r.GET("/sitemap.xml", publicHandler.GetSitemap)
+	r.GET("/robots.txt", publicHandler.GetRobots)
 
 	// API 路由组
 	apiV1 := r.Group("/api/v1")
@@ -119,6 +127,8 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			auth.POST("/login/verify-2fa", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.VerifyUser2FA)
 			auth.POST("/telegram/login", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.UserTelegramLogin)
 			auth.POST("/telegram/miniapp/login", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.UserTelegramMiniAppLogin)
+			auth.GET("/telegram/oidc/start", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.StartTelegramOIDCLogin)
+			auth.POST("/telegram/oidc/callback", RateLimitMiddleware(redisClient, loginRule, KeyByIP), publicHandler.TelegramOIDCLoginCallback)
 			auth.POST("/forgot-password", publicHandler.UserForgotPassword)
 		}
 
@@ -133,6 +143,8 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			user.GET("/me/telegram", publicHandler.GetMyTelegramBinding)
 			user.POST("/me/telegram/bind", publicHandler.BindMyTelegram)
 			user.POST("/me/telegram/miniapp/bind", publicHandler.BindMyTelegramMiniApp)
+			user.GET("/me/telegram/oidc/start", publicHandler.StartTelegramOIDCBind)
+			user.POST("/me/telegram/oidc/callback", publicHandler.TelegramOIDCBindCallback)
 			user.DELETE("/me/telegram/unbind", publicHandler.UnbindMyTelegram)
 			user.POST("/me/email/send-verify-code", publicHandler.SendChangeEmailCode)
 			user.POST("/me/email/change", publicHandler.ChangeEmail)
@@ -290,6 +302,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/categories", adminHandler.GetAdminCategories)
 				authorized.POST("/categories", adminHandler.CreateCategory)
 				authorized.PUT("/categories/:id", adminHandler.UpdateCategory)
+				authorized.PATCH("/categories/:id/active", adminHandler.PatchCategoryActive)
 				authorized.DELETE("/categories/:id", adminHandler.DeleteCategory)
 
 				// 设置管理
@@ -424,6 +437,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/users", adminHandler.GetAdminUsers)
 				authorized.GET("/user-login-logs", adminHandler.GetUserLoginLogs)
 				authorized.PUT("/users/batch-status", adminHandler.BatchUpdateUserStatus)
+				authorized.DELETE("/users/:id/oauth/telegram", adminHandler.UnbindAdminUserTelegram)
 				authorized.GET("/users/:id", adminHandler.GetAdminUser)
 				authorized.PUT("/users/:id", adminHandler.UpdateAdminUser)
 				authorized.GET("/users/:id/coupon-usages", adminHandler.GetAdminUserCouponUsages)
