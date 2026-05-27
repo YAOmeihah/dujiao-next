@@ -8,6 +8,7 @@ import (
 	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/i18n"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/service"
 
@@ -461,21 +462,19 @@ type batchProductFailureItem struct {
 	Message   string `json:"message"`
 }
 
-func productBatchFailureFromError(id uint, err error) batchProductFailureItem {
-	item := batchProductFailureItem{
-		ID:        id,
-		ErrorCode: "product_update_failed",
-		Message:   "product update failed",
-	}
+func productBatchFailureFromError(locale string, id uint, err error) batchProductFailureItem {
+	errorCode := "product_update_failed"
 	switch {
 	case errors.Is(err, service.ErrProductCategoryInvalid):
-		item.ErrorCode = "product_category_invalid"
-		item.Message = "Please select a valid category before activating this product."
+		errorCode = "product_category_invalid"
 	case errors.Is(err, service.ErrNotFound):
-		item.ErrorCode = "product_not_found"
-		item.Message = "Product not found."
+		errorCode = "product_not_found"
 	}
-	return item
+	return batchProductFailureItem{
+		ID:        id,
+		ErrorCode: errorCode,
+		Message:   i18n.T(locale, "error."+errorCode),
+	}
 }
 
 // BatchUpdateProductStatus 批量上架/下架
@@ -485,6 +484,7 @@ func (h *Handler) BatchUpdateProductStatus(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
+	locale := i18n.ResolveLocale(c)
 	successCount := 0
 	failedItems := make([]batchProductFailureItem, 0)
 	for _, id := range req.IDs {
@@ -492,7 +492,7 @@ func (h *Handler) BatchUpdateProductStatus(c *gin.Context) {
 		if err == nil {
 			successCount++
 		} else {
-			failedItems = append(failedItems, productBatchFailureFromError(id, err))
+			failedItems = append(failedItems, productBatchFailureFromError(locale, id, err))
 		}
 	}
 	response.Success(c, gin.H{"total": len(req.IDs), "success_count": successCount, "failed_items": failedItems})

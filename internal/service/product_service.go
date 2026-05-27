@@ -1003,7 +1003,19 @@ func quickUpdateCategoryID(value interface{}) (uint, error) {
 		return v, nil
 	case uint64:
 		return uint(v), nil
+	case uint32:
+		return uint(v), nil
 	case int:
+		if v < 0 {
+			return 0, ErrProductCategoryInvalid
+		}
+		return uint(v), nil
+	case int64:
+		if v < 0 {
+			return 0, ErrProductCategoryInvalid
+		}
+		return uint(v), nil
+	case int32:
 		if v < 0 {
 			return 0, ErrProductCategoryInvalid
 		}

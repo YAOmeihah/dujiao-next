@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/dujiao-next/internal/constants"
@@ -701,5 +702,75 @@ func TestImportUpstreamProductRejectsInactive(t *testing.T) {
 	}
 	if productCount != 0 {
 		t.Fatalf("expected no local product created when import rejected, got %d", productCount)
+	}
+}
+
+// TestFindOrCreateLocalCategoryRestoresSoftDeleted 验证当存在同 slug 的软删除分类时，
+// 自动创建路径会复活该分类而非触发 UNIQUE 约束失败。
+func TestFindOrCreateLocalCategoryRestoresSoftDeleted(t *testing.T) {
+	dsn := "file:product_mapping_restore_soft_deleted?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Category{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	categoryRepo := repository.NewCategoryRepository(db)
+	categoryService := NewCategoryService(categoryRepo)
+
+	// 创建一个分类后软删除
+	existing := &models.Category{
+		ParentID: 0,
+		Slug:     "softdel-streaming",
+		NameJSON: models.JSON{"zh-CN": "旧名"},
+		IsActive: true,
+	}
+	if err := categoryRepo.Create(existing); err != nil {
+		t.Fatalf("create category failed: %v", err)
+	}
+	if err := categoryRepo.Delete(strconv.FormatUint(uint64(existing.ID), 10)); err != nil {
+		t.Fatalf("soft delete category failed: %v", err)
+	}
+
+	// 确认软删除后 GetBySlug 找不到，但 Unscoped 能找到
+	if got, err := categoryRepo.GetBySlug("softdel-streaming"); err != nil || got != nil {
+		t.Fatalf("expected slug to be invisible after soft delete, got=%v err=%v", got, err)
+	}
+
+	svc := &ProductMappingService{categoryRepo: categoryRepo}
+	svc.SetCategoryService(categoryService)
+
+	restored, err := svc.findOrCreateLocalCategory("softdel-streaming", models.JSON{"zh-CN": "新名"}, 0)
+	if err != nil {
+		t.Fatalf("findOrCreateLocalCategory failed: %v", err)
+	}
+	if restored == nil || restored.ID != existing.ID {
+		t.Fatalf("expected restored category id=%d, got=%+v", existing.ID, restored)
+	}
+
+	// 复活后应再次可见，且 NameJSON 已刷新
+	visible, err := categoryRepo.GetBySlug("softdel-streaming")
+	if err != nil {
+		t.Fatalf("GetBySlug after restore failed: %v", err)
+	}
+	if visible == nil {
+		t.Fatalf("expected category to be visible after restore")
+	}
+	if name, _ := visible.NameJSON["zh-CN"].(string); name != "新名" {
+		t.Fatalf("expected NameJSON refreshed to 新名, got %q", name)
+	}
+	if !visible.IsActive {
+		t.Fatalf("expected restored category to be active")
+	}
+
+	// 数据库中应该只有一行（且未被软删除）
+	var total int64
+	if err := db.Unscoped().Model(&models.Category{}).Where("slug = ?", "softdel-streaming").Count(&total).Error; err != nil {
+		t.Fatalf("count categories failed: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("expected 1 row for slug after restore, got %d", total)
 	}
 }

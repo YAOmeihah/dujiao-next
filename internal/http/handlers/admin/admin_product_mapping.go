@@ -142,27 +142,32 @@ func (h *Handler) BatchImportUpstreamProducts(c *gin.Context) {
 		return
 	}
 
-	results := make([]BatchImportUpstreamProductResult, len(req.UpstreamProductIDs))
-	successCount := 0
-
-	for i, upstreamProductID := range req.UpstreamProductIDs {
-		result := BatchImportUpstreamProductResult{
-			UpstreamProductID: upstreamProductID,
+	outcomes, err := h.ProductMappingService.BatchImportUpstreamProducts(
+		req.ConnectionID,
+		req.UpstreamProductIDs,
+		req.CategoryID,
+		req.AutoCreateCategory,
+	)
+	if err != nil {
+		if errors.Is(err, service.ErrConnectionNotFound) {
+			shared.RespondError(c, response.CodeNotFound, "error.connection_not_found", nil)
+			return
 		}
-		_, err := h.ProductMappingService.ImportUpstreamProductWithAutoCategory(
-			req.ConnectionID,
-			upstreamProductID,
-			req.CategoryID,
-			"", // auto-generate slug
-			req.AutoCreateCategory,
-		)
-		if err != nil {
-			result.Error = err.Error()
+		shared.RespondError(c, response.CodeInternal, "error.mapping_import_failed", err)
+		return
+	}
+
+	results := make([]BatchImportUpstreamProductResult, len(outcomes))
+	successCount := 0
+	for i, o := range outcomes {
+		item := BatchImportUpstreamProductResult{UpstreamProductID: o.UpstreamProductID}
+		if o.Err != nil {
+			item.Error = o.Err.Error()
 		} else {
-			result.Success = true
+			item.Success = true
 			successCount++
 		}
-		results[i] = result
+		results[i] = item
 	}
 
 	response.Success(c, gin.H{
