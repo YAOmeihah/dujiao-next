@@ -61,6 +61,11 @@ func ParseQueryBoolPtr(c *gin.Context, key string) (*bool, error) {
 	if !ok {
 		return nil, nil
 	}
+	return ParseOptionalBoolValue(raw)
+}
+
+// ParseOptionalBoolValue 解析可选布尔字符串，空白返回 nil。
+func ParseOptionalBoolValue(raw string) (*bool, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return nil, nil

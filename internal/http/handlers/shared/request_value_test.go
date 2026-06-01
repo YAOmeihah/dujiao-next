@@ -82,6 +82,49 @@ func TestParseQueryBoolPtr(t *testing.T) {
 	}
 }
 
+func TestParseOptionalBoolValue(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		wantNil bool
+		want    bool
+		wantErr bool
+	}{
+		{name: "empty value returns nil", raw: "", wantNil: true},
+		{name: "blank value returns nil", raw: "  ", wantNil: true},
+		{name: "parses trimmed true", raw: " true ", want: true},
+		{name: "parses false", raw: "false", want: false},
+		{name: "rejects invalid bool", raw: "maybe", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseOptionalBoolValue(tt.raw)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ParseOptionalBoolValue: %v", err)
+			}
+			if tt.wantNil {
+				if got != nil {
+					t.Fatalf("expected nil bool, got %v", *got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("expected bool value, got nil")
+			}
+			if *got != tt.want {
+				t.Fatalf("expected %v, got %v", tt.want, *got)
+			}
+		})
+	}
+}
+
 func TestParseQueryBoolDefaultsMissingAndBlankToFalse(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

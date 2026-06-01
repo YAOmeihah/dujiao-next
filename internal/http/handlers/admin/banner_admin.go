@@ -27,6 +27,32 @@ type BannerUpsertRequest struct {
 	SortOrder    int                    `json:"sort_order"`
 }
 
+func buildBannerInputFromRequest(req BannerUpsertRequest) (service.BannerInput, error) {
+	startAt, err := shared.ParseTimeNullable(req.StartAt)
+	if err != nil {
+		return service.BannerInput{}, err
+	}
+	endAt, err := shared.ParseTimeNullable(req.EndAt)
+	if err != nil {
+		return service.BannerInput{}, err
+	}
+	return service.BannerInput{
+		Name:         req.Name,
+		Position:     req.Position,
+		TitleJSON:    req.TitleJSON,
+		SubtitleJSON: req.SubtitleJSON,
+		Image:        req.Image,
+		MobileImage:  req.MobileImage,
+		LinkType:     req.LinkType,
+		LinkValue:    req.LinkValue,
+		OpenInNewTab: req.OpenInNewTab,
+		IsActive:     req.IsActive,
+		StartAt:      startAt,
+		EndAt:        endAt,
+		SortOrder:    req.SortOrder,
+	}, nil
+}
+
 // GetAdminBanners 获取后台 Banner 列表
 func (h *Handler) GetAdminBanners(c *gin.Context) {
 	page, pageSize := shared.ParsePagination(c)
@@ -73,32 +99,13 @@ func (h *Handler) CreateBanner(c *gin.Context) {
 		return
 	}
 
-	startAt, err := shared.ParseTimeNullable(req.StartAt)
-	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
-	}
-	endAt, err := shared.ParseTimeNullable(req.EndAt)
+	input, err := buildBannerInputFromRequest(req)
 	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	banner, err := h.BannerService.Create(service.BannerInput{
-		Name:         req.Name,
-		Position:     req.Position,
-		TitleJSON:    req.TitleJSON,
-		SubtitleJSON: req.SubtitleJSON,
-		Image:        req.Image,
-		MobileImage:  req.MobileImage,
-		LinkType:     req.LinkType,
-		LinkValue:    req.LinkValue,
-		OpenInNewTab: req.OpenInNewTab,
-		IsActive:     req.IsActive,
-		StartAt:      startAt,
-		EndAt:        endAt,
-		SortOrder:    req.SortOrder,
-	})
+	banner, err := h.BannerService.Create(input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidBanner):
@@ -126,32 +133,13 @@ func (h *Handler) UpdateBanner(c *gin.Context) {
 		return
 	}
 
-	startAt, err := shared.ParseTimeNullable(req.StartAt)
-	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
-	}
-	endAt, err := shared.ParseTimeNullable(req.EndAt)
+	input, err := buildBannerInputFromRequest(req)
 	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	banner, err := h.BannerService.Update(id, service.BannerInput{
-		Name:         req.Name,
-		Position:     req.Position,
-		TitleJSON:    req.TitleJSON,
-		SubtitleJSON: req.SubtitleJSON,
-		Image:        req.Image,
-		MobileImage:  req.MobileImage,
-		LinkType:     req.LinkType,
-		LinkValue:    req.LinkValue,
-		OpenInNewTab: req.OpenInNewTab,
-		IsActive:     req.IsActive,
-		StartAt:      startAt,
-		EndAt:        endAt,
-		SortOrder:    req.SortOrder,
-	})
+	banner, err := h.BannerService.Update(id, input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidBanner):

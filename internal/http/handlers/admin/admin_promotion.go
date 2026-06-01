@@ -25,26 +25,16 @@ type CreatePromotionRequest struct {
 	IsActive   *bool   `json:"is_active"`
 }
 
-// CreatePromotion 创建活动价
-func (h *Handler) CreatePromotion(c *gin.Context) {
-	var req CreatePromotionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		shared.RespondBindError(c, err)
-		return
-	}
-
+func buildCreatePromotionInputFromRequest(req CreatePromotionRequest) (service.CreatePromotionInput, error) {
 	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
+		return service.CreatePromotionInput{}, err
 	}
 	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
+		return service.CreatePromotionInput{}, err
 	}
-
-	promotion, err := h.PromotionAdminService.Create(service.CreatePromotionInput{
+	return service.CreatePromotionInput{
 		Name:       req.Name,
 		Type:       req.Type,
 		ScopeRefID: req.ScopeRefID,
@@ -53,7 +43,32 @@ func (h *Handler) CreatePromotion(c *gin.Context) {
 		StartsAt:   startsAt,
 		EndsAt:     endsAt,
 		IsActive:   req.IsActive,
-	})
+	}, nil
+}
+
+func buildUpdatePromotionInputFromRequest(req CreatePromotionRequest) (service.UpdatePromotionInput, error) {
+	input, err := buildCreatePromotionInputFromRequest(req)
+	if err != nil {
+		return service.UpdatePromotionInput{}, err
+	}
+	return service.UpdatePromotionInput(input), nil
+}
+
+// CreatePromotion 创建活动价
+func (h *Handler) CreatePromotion(c *gin.Context) {
+	var req CreatePromotionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondBindError(c, err)
+		return
+	}
+
+	input, err := buildCreatePromotionInputFromRequest(req)
+	if err != nil {
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
+		return
+	}
+
+	promotion, err := h.PromotionAdminService.Create(input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrPromotionInvalid):
@@ -80,27 +95,13 @@ func (h *Handler) UpdatePromotion(c *gin.Context) {
 		return
 	}
 
-	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
-	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
-	}
-	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
+	input, err := buildUpdatePromotionInputFromRequest(req)
 	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	promotion, err := h.PromotionAdminService.Update(promotionID, service.UpdatePromotionInput{
-		Name:       req.Name,
-		Type:       req.Type,
-		ScopeRefID: req.ScopeRefID,
-		Value:      models.NewMoneyFromDecimal(decimal.NewFromFloat(req.Value)),
-		MinAmount:  models.NewMoneyFromDecimal(decimal.NewFromFloat(req.MinAmount)),
-		StartsAt:   startsAt,
-		EndsAt:     endsAt,
-		IsActive:   req.IsActive,
-	})
+	promotion, err := h.PromotionAdminService.Update(promotionID, input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrPromotionNotFound):

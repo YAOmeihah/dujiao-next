@@ -2,7 +2,6 @@ package admin
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
@@ -126,13 +125,12 @@ type AdminPostProductRef struct {
 
 // GetAdminPostProductIDs 获取文章关联商品列表（后台编辑回填）
 func (h *Handler) GetAdminPostProductIDs(c *gin.Context) {
-	idStr := c.Param("id")
-	id64, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil || id64 == 0 {
+	id, err := shared.ParseParamUint(c, "id")
+	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.invalid_id", nil)
 		return
 	}
-	products, err := h.PostService.ListRelatedProducts(uint(id64))
+	products, err := h.PostService.ListRelatedProducts(id)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.post_fetch_failed", err)
 		return

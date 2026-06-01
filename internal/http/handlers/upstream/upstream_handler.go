@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -504,13 +503,13 @@ func (h *Handler) GetOrder(c *gin.Context) {
 		return
 	}
 
-	orderID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	orderID, err := shared.ParseParamUint(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, "bad_request", "invalid order id")
 		return
 	}
 
-	order, err := h.OrderService.GetOrderByUser(uint(orderID), userID)
+	order, err := h.OrderService.GetOrderByUser(orderID, userID)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
 			errorResponse(c, http.StatusNotFound, "order_not_found", "order not found")
@@ -605,13 +604,13 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	orderID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	orderID, err := shared.ParseParamUint(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, "bad_request", "invalid order id")
 		return
 	}
 
-	order, err := h.OrderService.CancelOrder(uint(orderID), userID)
+	order, err := h.OrderService.CancelOrder(orderID, userID)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
 			errorResponse(c, http.StatusNotFound, "order_not_found", "order not found")

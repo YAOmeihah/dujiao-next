@@ -2,7 +2,6 @@ package admin
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/dujiao-next/internal/http/handlers/shared"
@@ -70,12 +69,12 @@ func (h *Handler) CreateTelegramBroadcast(c *gin.Context) {
 
 // GetTelegramBroadcast 获取单条 Telegram 群发详情。
 func (h *Handler) GetTelegramBroadcast(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
+	id, err := shared.ParseParamUint(c, "id")
+	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", errors.New("invalid broadcast id"))
 		return
 	}
-	broadcast, err := h.TelegramBroadcastService.GetBroadcast(uint(id))
+	broadcast, err := h.TelegramBroadcastService.GetBroadcast(id)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.bad_request", err)
 		return

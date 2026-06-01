@@ -30,26 +30,16 @@ type CreateCouponRequest struct {
 	IsActive     *bool    `json:"is_active"`
 }
 
-// CreateCoupon 创建优惠券
-func (h *Handler) CreateCoupon(c *gin.Context) {
-	var req CreateCouponRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		shared.RespondBindError(c, err)
-		return
-	}
-
+func buildCreateCouponInputFromRequest(req CreateCouponRequest) (service.CreateCouponInput, error) {
 	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
 	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
+		return service.CreateCouponInput{}, err
 	}
 	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
 	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
+		return service.CreateCouponInput{}, err
 	}
-
-	coupon, err := h.CouponAdminService.Create(service.CreateCouponInput{
+	return service.CreateCouponInput{
 		Code:         req.Code,
 		Type:         req.Type,
 		Value:        models.NewMoneyFromDecimal(decimal.NewFromFloat(req.Value)),
@@ -63,7 +53,32 @@ func (h *Handler) CreateCoupon(c *gin.Context) {
 		StartsAt:     startsAt,
 		EndsAt:       endsAt,
 		IsActive:     req.IsActive,
-	})
+	}, nil
+}
+
+func buildUpdateCouponInputFromRequest(req CreateCouponRequest) (service.UpdateCouponInput, error) {
+	input, err := buildCreateCouponInputFromRequest(req)
+	if err != nil {
+		return service.UpdateCouponInput{}, err
+	}
+	return service.UpdateCouponInput(input), nil
+}
+
+// CreateCoupon 创建优惠券
+func (h *Handler) CreateCoupon(c *gin.Context) {
+	var req CreateCouponRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondBindError(c, err)
+		return
+	}
+
+	input, err := buildCreateCouponInputFromRequest(req)
+	if err != nil {
+		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
+		return
+	}
+
+	coupon, err := h.CouponAdminService.Create(input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCouponInvalid):
@@ -92,32 +107,13 @@ func (h *Handler) UpdateCoupon(c *gin.Context) {
 		return
 	}
 
-	startsAt, err := shared.ParseTimeNullable(req.StartsAt)
-	if err != nil {
-		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
-		return
-	}
-	endsAt, err := shared.ParseTimeNullable(req.EndsAt)
+	input, err := buildUpdateCouponInputFromRequest(req)
 	if err != nil {
 		shared.RespondError(c, response.CodeBadRequest, "error.bad_request", err)
 		return
 	}
 
-	coupon, err := h.CouponAdminService.Update(couponID, service.UpdateCouponInput{
-		Code:         req.Code,
-		Type:         req.Type,
-		Value:        models.NewMoneyFromDecimal(decimal.NewFromFloat(req.Value)),
-		MinAmount:    models.NewMoneyFromDecimal(decimal.NewFromFloat(req.MinAmount)),
-		MaxDiscount:  models.NewMoneyFromDecimal(decimal.NewFromFloat(req.MaxDiscount)),
-		UsageLimit:   req.UsageLimit,
-		PerUserLimit: req.PerUserLimit,
-		PaymentRoles: req.PaymentRoles,
-		MemberLevels: req.MemberLevels,
-		ScopeRefIDs:  req.ScopeRefIDs,
-		StartsAt:     startsAt,
-		EndsAt:       endsAt,
-		IsActive:     req.IsActive,
-	})
+	coupon, err := h.CouponAdminService.Update(couponID, input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCouponNotFound):

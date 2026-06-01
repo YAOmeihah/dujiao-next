@@ -219,49 +219,57 @@ var guestOrderPreviewExtraErrorRules = []mappedHandlerError{
 	{target: service.ErrPromotionInvalid, code: response.CodeBadRequest, key: "error.promotion_invalid"},
 }
 
-var paymentCreateErrorRules = []mappedHandlerError{
-	{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
-	{target: service.ErrOrderNotFound, code: response.CodeNotFound, key: "error.order_not_found"},
-	{target: service.ErrOrderStatusInvalid, code: response.CodeBadRequest, key: "error.order_status_invalid"},
-	{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
-	{target: service.ErrPaymentChannelInactive, code: response.CodeBadRequest, key: "error.payment_channel_inactive"},
+var paymentProviderGatewayErrorRules = []mappedHandlerError{
 	{target: service.ErrPaymentProviderNotSupported, code: response.CodeBadRequest, key: "error.payment_provider_not_supported"},
 	{target: service.ErrPaymentChannelConfigInvalid, code: response.CodeBadRequest, key: "error.payment_channel_config_invalid"},
 	{target: service.ErrPaymentGatewayRequestFailed, code: response.CodeBadRequest, key: "error.payment_gateway_request_failed"},
 	{target: service.ErrPaymentGatewayResponseInvalid, code: response.CodeBadRequest, key: "error.payment_gateway_response_invalid"},
-	{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
-	{target: service.ErrWalletNotSupportedForGuest, code: response.CodeBadRequest, key: "error.payment_invalid"},
-	{target: service.ErrPaymentChannelNotAllowedForProduct, code: response.CodeBadRequest, key: "error.payment_channel_not_allowed_for_product"},
-	{target: service.ErrPaymentChannelNotAllowedForRecharge, code: response.CodeBadRequest, key: "error.payment_channel_not_allowed_for_recharge"},
-	{target: service.ErrWalletOnlyPaymentRequired, code: response.CodeBadRequest, key: "error.wallet_only_payment_required"},
 }
 
-var paymentCaptureErrorRules = []mappedHandlerError{
-	{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
-	{target: service.ErrPaymentNotFound, code: response.CodeNotFound, key: "error.payment_not_found"},
-	{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
-	{target: service.ErrPaymentProviderNotSupported, code: response.CodeBadRequest, key: "error.payment_provider_not_supported"},
-	{target: service.ErrPaymentChannelConfigInvalid, code: response.CodeBadRequest, key: "error.payment_channel_config_invalid"},
-	{target: service.ErrPaymentGatewayRequestFailed, code: response.CodeBadRequest, key: "error.payment_gateway_request_failed"},
-	{target: service.ErrPaymentGatewayResponseInvalid, code: response.CodeBadRequest, key: "error.payment_gateway_response_invalid"},
-	{target: service.ErrPaymentStatusInvalid, code: response.CodeBadRequest, key: "error.payment_status_invalid"},
-	{target: service.ErrPaymentAmountMismatch, code: response.CodeBadRequest, key: "error.payment_amount_mismatch"},
-	{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
-	{target: service.ErrOrderNotFound, code: response.CodeNotFound, key: "error.order_not_found"},
-}
+var paymentCreateErrorRules = concatMappedHandlerErrors(
+	[]mappedHandlerError{
+		{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
+		{target: service.ErrOrderNotFound, code: response.CodeNotFound, key: "error.order_not_found"},
+		{target: service.ErrOrderStatusInvalid, code: response.CodeBadRequest, key: "error.order_status_invalid"},
+		{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
+		{target: service.ErrPaymentChannelInactive, code: response.CodeBadRequest, key: "error.payment_channel_inactive"},
+	},
+	paymentProviderGatewayErrorRules,
+	[]mappedHandlerError{
+		{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
+		{target: service.ErrWalletNotSupportedForGuest, code: response.CodeBadRequest, key: "error.payment_invalid"},
+		{target: service.ErrPaymentChannelNotAllowedForProduct, code: response.CodeBadRequest, key: "error.payment_channel_not_allowed_for_product"},
+		{target: service.ErrPaymentChannelNotAllowedForRecharge, code: response.CodeBadRequest, key: "error.payment_channel_not_allowed_for_recharge"},
+		{target: service.ErrWalletOnlyPaymentRequired, code: response.CodeBadRequest, key: "error.wallet_only_payment_required"},
+	},
+)
 
-var paymentCallbackErrorRules = []mappedHandlerError{
-	{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
-	{target: service.ErrPaymentNotFound, code: response.CodeNotFound, key: "error.payment_not_found"},
-	{target: service.ErrPaymentStatusInvalid, code: response.CodeBadRequest, key: "error.payment_status_invalid"},
-	{target: service.ErrPaymentAmountMismatch, code: response.CodeBadRequest, key: "error.payment_amount_mismatch"},
-	{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
-	{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
-	{target: service.ErrPaymentProviderNotSupported, code: response.CodeBadRequest, key: "error.payment_provider_not_supported"},
-	{target: service.ErrPaymentChannelConfigInvalid, code: response.CodeBadRequest, key: "error.payment_channel_config_invalid"},
-	{target: service.ErrPaymentGatewayRequestFailed, code: response.CodeBadRequest, key: "error.payment_gateway_request_failed"},
-	{target: service.ErrPaymentGatewayResponseInvalid, code: response.CodeBadRequest, key: "error.payment_gateway_response_invalid"},
-}
+var paymentCaptureErrorRules = concatMappedHandlerErrors(
+	[]mappedHandlerError{
+		{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
+		{target: service.ErrPaymentNotFound, code: response.CodeNotFound, key: "error.payment_not_found"},
+		{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
+	},
+	paymentProviderGatewayErrorRules,
+	[]mappedHandlerError{
+		{target: service.ErrPaymentStatusInvalid, code: response.CodeBadRequest, key: "error.payment_status_invalid"},
+		{target: service.ErrPaymentAmountMismatch, code: response.CodeBadRequest, key: "error.payment_amount_mismatch"},
+		{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
+		{target: service.ErrOrderNotFound, code: response.CodeNotFound, key: "error.order_not_found"},
+	},
+)
+
+var paymentCallbackErrorRules = concatMappedHandlerErrors(
+	[]mappedHandlerError{
+		{target: service.ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
+		{target: service.ErrPaymentNotFound, code: response.CodeNotFound, key: "error.payment_not_found"},
+		{target: service.ErrPaymentStatusInvalid, code: response.CodeBadRequest, key: "error.payment_status_invalid"},
+		{target: service.ErrPaymentAmountMismatch, code: response.CodeBadRequest, key: "error.payment_amount_mismatch"},
+		{target: service.ErrPaymentCurrencyMismatch, code: response.CodeBadRequest, key: "error.payment_currency_mismatch"},
+		{target: service.ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},
+	},
+	paymentProviderGatewayErrorRules,
+)
 
 func respondUserOrderPreviewError(c *gin.Context, err error) {
 	respondWithMappedError(c, err, concatMappedHandlerErrors(userOrderCommonErrorRules, userOrderPreviewExtraErrorRules), response.CodeInternal, "error.order_create_failed")
