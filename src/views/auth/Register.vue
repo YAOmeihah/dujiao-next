@@ -39,17 +39,50 @@
               </svg>
               {{ t('auth.register.emailLabel') }}
             </label>
+            <div v-if="emailDomainSelectionRequired" class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,auto)]">
+              <input
+                v-model="emailLocalPart"
+                type="text"
+                required
+                autocomplete="username"
+                class="w-full form-input-lg"
+                :class="{ 'ring-2 ring-red-400/50': formValidation.hasError('email') }"
+                :placeholder="t('auth.register.emailLocalPlaceholder')"
+                @blur="touchRegistrationEmail"
+              />
+              <select
+                v-model="selectedEmailDomain"
+                required
+                class="w-full form-input-lg"
+                :class="{ 'ring-2 ring-red-400/50': formValidation.hasError('email') }"
+                @change="touchRegistrationEmail"
+                @blur="touchRegistrationEmail"
+              >
+                <option v-for="domain in allowedEmailDomains" :key="domain" :value="domain">
+                  @{{ domain }}
+                </option>
+              </select>
+            </div>
             <input
+              v-else
               v-model="email"
               type="email"
               required
               class="w-full form-input-lg"
               :class="{ 'ring-2 ring-red-400/50': formValidation.hasError('email') }"
               :placeholder="t('auth.register.emailPlaceholder')"
-              @blur="formValidation.touchField('email', email)"
+              @blur="touchRegistrationEmail"
             />
             <p v-if="formValidation.hasError('email')" class="mt-1.5 text-xs text-red-500">
               {{ formValidation.getError('email') }}
+            </p>
+            <p v-else-if="emailDomainSelectionRequired" class="mt-1.5 text-xs theme-text-muted">
+              {{ t('auth.register.emailDomainSelectHint') }}
+            </p>
+            <p v-else-if="emailDomainAllowlistEnabled" class="mt-1.5 text-xs theme-text-muted">
+              {{ allowedEmailDomains.length > 0
+                ? t('auth.register.allowedEmailDomainsHint', { domains: allowedEmailDomainsText })
+                : t('auth.register.noAllowedEmailDomainsHint') }}
             </p>
           </div>
 
@@ -206,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserAuthStore } from '../../stores/userAuth'
 import { useI18n } from 'vue-i18n'
@@ -229,16 +262,12 @@ const brandSiteName = computed(() => {
 })
 
 const email = ref('')
+const emailLocalPart = ref('')
+const selectedEmailDomain = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const code = ref('')
 const agreed = ref(false)
-
-const formValidation = useFormValidation(['email', 'password'])
-formValidation.addRule('email', formValidation.requiredRule())
-formValidation.addRule('email', formValidation.emailRule())
-formValidation.addRule('password', formValidation.requiredRule())
-formValidation.addRule('password', formValidation.minLengthRule(6))
 
 const passwordStrength = computed(() => getPasswordStrength(password.value))
 const error = ref('')
@@ -260,6 +289,72 @@ const capEndpoint = computed(() => String(captchaConfig.value?.cap?.endpoint || 
 const capSiteKey = computed(() => String(captchaConfig.value?.cap?.site_key || ''))
 const registrationEnabled = computed(() => appStore.config?.registration_enabled !== false)
 const emailVerificationEnabled = computed(() => appStore.config?.email_verification_enabled !== false)
+const emailDomainAllowlistEnabled = computed(() => appStore.config?.email_domain_allowlist_enabled === true)
+const allowedEmailDomains = computed(() => {
+  const raw = appStore.config?.allowed_email_domains
+  if (!Array.isArray(raw)) return []
+
+  const seen = new Set<string>()
+  const domains: string[] = []
+  raw
+    .map((item) => String(item || '').trim().replace(/^@+/, '').toLowerCase())
+    .filter(Boolean)
+    .forEach((domain) => {
+      if (seen.has(domain)) return
+      seen.add(domain)
+      domains.push(domain)
+    })
+  return domains
+})
+const allowedEmailDomainsText = computed(() => allowedEmailDomains.value.join(', '))
+const emailDomainSelectionRequired = computed(() => emailDomainAllowlistEnabled.value && allowedEmailDomains.value.length > 0)
+
+watch(allowedEmailDomains, (domains) => {
+  if (domains.length === 0) {
+    selectedEmailDomain.value = ''
+    return
+  }
+  if (!domains.includes(selectedEmailDomain.value)) {
+    selectedEmailDomain.value = domains[0] || ''
+  }
+}, { immediate: true })
+
+const registrationEmail = computed(() => {
+  if (!emailDomainSelectionRequired.value) return email.value.trim()
+  const localPart = emailLocalPart.value.trim()
+  const domain = selectedEmailDomain.value.trim()
+  if (!localPart || !domain) return ''
+  return `${localPart}@${domain}`
+})
+
+const getEmailDomain = (value: string): string => {
+  const normalized = value.trim().toLowerCase()
+  const at = normalized.lastIndexOf('@')
+  if (at <= 0 || at === normalized.length - 1) return ''
+  return normalized.slice(at + 1)
+}
+
+const emailDomainRule = (value: string): string | null => {
+  if (!emailDomainAllowlistEnabled.value) return null
+  const domain = getEmailDomain(value)
+  if (!domain) return null
+  if (allowedEmailDomains.value.length === 0) {
+    return t('auth.register.errors.emailDomainUnavailable')
+  }
+  if (allowedEmailDomains.value.includes(domain)) return null
+  return t('auth.register.errors.emailDomainNotAllowed', { domains: allowedEmailDomainsText.value })
+}
+
+const touchRegistrationEmail = () => {
+  formValidation.touchField('email', registrationEmail.value)
+}
+
+const formValidation = useFormValidation(['email', 'password'])
+formValidation.addRule('email', formValidation.requiredRule())
+formValidation.addRule('email', formValidation.emailRule())
+formValidation.addRule('email', emailDomainRule)
+formValidation.addRule('password', formValidation.requiredRule())
+formValidation.addRule('password', formValidation.minLengthRule(6))
 
 const startCountdown = () => {
   countdown.value = 60
@@ -302,10 +397,13 @@ const handleCaptchaConfigStale = async () => {
 
 const performSendCode = async () => {
   error.value = ''
-  if (!email.value) {
+  const currentEmail = registrationEmail.value
+  if (!currentEmail) {
     error.value = t('auth.register.errors.emailRequired')
     return
   }
+  touchRegistrationEmail()
+  if (formValidation.hasError('email')) return
   if (countdown.value > 0) return
 
   if (sendCodeCaptchaEnabled.value && captchaProvider.value === 'image') {
@@ -330,7 +428,7 @@ const performSendCode = async () => {
   sending.value = true
   try {
     await userAuthStore.sendVerifyCode({
-      email: email.value,
+      email: currentEmail,
       purpose: 'register',
       captcha_payload: getCaptchaPayload(),
     })
@@ -355,7 +453,8 @@ const performSendCode = async () => {
 
 const performRegister = async () => {
   error.value = ''
-  if (!email.value || !password.value) return
+  const currentEmail = registrationEmail.value
+  if (!formValidation.validateAll({ email: currentEmail, password: password.value })) return
   if (emailVerificationEnabled.value && !code.value) return
   if (!agreed.value) {
     error.value = t('auth.register.errors.agreementRequired')
@@ -363,7 +462,7 @@ const performRegister = async () => {
   }
   try {
     await userAuthStore.register({
-      email: email.value,
+      email: currentEmail,
       password: password.value,
       code: emailVerificationEnabled.value ? code.value : '',
       agreement_accepted: agreed.value,

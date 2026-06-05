@@ -110,13 +110,47 @@
                   >
                     {{ getStockStatusLabel(product) }}
                   </span>
+                  <span
+                    v-if="hasSelectedSkuWholesalePrice"
+                    class="theme-badge theme-badge-success text-[10px] px-1.5 py-px"
+                  >
+                    {{ t('products.wholesaleTag') }}
+                  </span>
+                  <span
+                    v-if="showSelectedSkuMemberBadge"
+                    class="theme-badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] px-1.5 py-px"
+                  >
+                    {{ t('products.memberPriceTag') }}
+                  </span>
                 </div>
 
                 <!-- Price -->
                 <div class="mt-auto pt-1">
-                  <template v-if="selectedSku && hasSkuPromotionPrice(selectedSku)">
-                    <span class="text-lg md:text-xl font-bold text-rose-600 dark:text-rose-400">
-                      {{ formatPrice(getSkuPromotionPriceAmount(selectedSku), siteCurrency) }}
+                  <template v-if="selectedSku && hasSelectedSkuWholesalePrice">
+                    <span
+                      class="text-lg md:text-xl font-bold"
+                      :class="selectedSkuWholesaleFinalIsMember ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-400'"
+                    >
+                      {{ formatPrice(selectedSkuWholesaleFinalPrice!, siteCurrency) }}
+                    </span>
+                    <span class="ml-1.5 text-xs theme-text-muted line-through">
+                      {{ formatPrice(selectedSku.price_amount, siteCurrency) }}
+                    </span>
+                  </template>
+                  <template v-else-if="selectedSku && hasSkuPromotionPrice(selectedSku)">
+                    <span
+                      class="text-lg md:text-xl font-bold"
+                      :class="selectedSkuPromotionFinalIsMember ? 'text-amber-600 dark:text-amber-300' : 'text-rose-600 dark:text-rose-400'"
+                    >
+                      {{ formatPrice(selectedSkuPromotionFinalPrice!, siteCurrency) }}
+                    </span>
+                    <span class="ml-1.5 text-xs theme-text-muted line-through">
+                      {{ formatPrice(selectedSku.price_amount, siteCurrency) }}
+                    </span>
+                  </template>
+                  <template v-else-if="selectedSku && hasMemberPrice">
+                    <span class="text-lg md:text-xl font-bold text-amber-600 dark:text-amber-300">
+                      {{ formatPrice(selectedSkuMemberPrice!, siteCurrency) }}
                     </span>
                     <span class="ml-1.5 text-xs theme-text-muted line-through">
                       {{ formatPrice(selectedSku.price_amount, siteCurrency) }}
@@ -164,6 +198,17 @@
             </p>
 
             <!-- Promotion rules -->
+            <div v-if="hasWholesalePrices(product)" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+              <div class="mb-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                {{ t('products.wholesaleRulesTitle') }}
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <span v-for="tier in getWholesalePrices(product)" :key="tier.min_quantity" class="rounded-full border border-emerald-200 bg-white/70 px-2 py-0.5 text-[10px] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {{ formatWholesaleTier(tier) }}
+                </span>
+              </div>
+            </div>
+
             <div v-if="hasPromotionRules(product)" class="mb-4 rounded-lg border border-orange-200 dark:border-orange-800/50 bg-orange-50/50 dark:bg-orange-950/20 px-3 py-2">
               <div class="flex items-center gap-1 mb-1">
                 <svg class="w-3.5 h-3.5 text-orange-500 dark:text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,6 +366,7 @@ import { useAppStore } from '../stores/app'
 import { useCartStore } from '../stores/cart'
 import { useBuyNowStore } from '../stores/buyNow'
 import { useUserAuthStore } from '../stores/userAuth'
+import { useUserProfileStore } from '../stores/userProfile'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
 import { normalizeSkuId, buildSkuDisplayText } from '../utils/sku'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
@@ -342,6 +388,7 @@ const appStore = useAppStore()
 const cartStore = useCartStore()
 const buyNowStore = useBuyNowStore()
 const userAuthStore = useUserAuthStore()
+const userProfileStore = useUserProfileStore()
 
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
 const {
@@ -355,6 +402,10 @@ const {
   getSkuPromotionPriceAmount,
   hasPromotionRules,
   getPromotionRules,
+  hasWholesalePrices,
+  getWholesalePrices,
+  resolveWholesalePriceAmount,
+  resolveMemberPriceAmount,
 } = useProductLabels()
 
 const selectedSkuId = ref(0)
@@ -399,6 +450,89 @@ const activeSkus = computed(() => {
 const selectedSku = computed(() => {
   if (selectedSkuId.value <= 0) return null
   return activeSkus.value.find((sku: any) => normalizeSkuId(sku?.id) === selectedSkuId.value) || null
+})
+
+const userMemberLevelId = computed(() => Number(userAuthStore.user?.member_level_id || 0))
+
+const currentMemberDiscountRate = computed(() => {
+  if (!userMemberLevelId.value) return 0
+  const level = userProfileStore.memberLevels.find((item: any) => Number(item?.id || 0) === userMemberLevelId.value)
+  return Number(level?.discount_rate || 0)
+})
+
+const ensureMemberLevels = () => {
+  if (userMemberLevelId.value > 0 && userProfileStore.memberLevels.length === 0) {
+    void userProfileStore.loadMemberLevels()
+  }
+}
+
+const getMemberPriceForSku = (skuId: number, basePrice: any): number | null => {
+  const price = resolveMemberPriceAmount(props.product, skuId, basePrice, userMemberLevelId.value, currentMemberDiscountRate.value)
+  return price === null ? null : Number(price)
+}
+
+const selectedSkuMemberPrice = computed(() => {
+  if (!selectedSku.value) return null
+  return getMemberPriceForSku(normalizeSkuId(selectedSku.value.id), selectedSku.value.price_amount)
+})
+
+const hasMemberPrice = computed(() => {
+  if (!selectedSku.value || selectedSkuMemberPrice.value === null) return false
+  return selectedSkuMemberPrice.value < Number(selectedSku.value.price_amount || 0)
+})
+
+const selectedSkuWholesalePrice = computed(() => {
+  if (!props.product || !selectedSku.value) return null
+  return resolveWholesalePriceAmount(props.product, selectedSku.value.price_amount, quantity.value)
+})
+
+const hasSelectedSkuWholesalePrice = computed(() => {
+  if (!selectedSku.value || !selectedSkuWholesalePrice.value) return false
+  const comparisonPrice = hasSkuPromotionPrice(selectedSku.value)
+    ? Number(getSkuPromotionPriceAmount(selectedSku.value))
+    : Number(selectedSku.value.price_amount || 0)
+  return Number(selectedSkuWholesalePrice.value) < comparisonPrice
+})
+
+const selectedSkuWholesaleMemberPrice = computed(() => {
+  if (!selectedSku.value || !selectedSkuWholesalePrice.value) return null
+  return getMemberPriceForSku(normalizeSkuId(selectedSku.value.id), selectedSkuWholesalePrice.value)
+})
+
+const selectedSkuWholesaleFinalIsMember = computed(() => hasSelectedSkuWholesalePrice.value && selectedSkuWholesaleMemberPrice.value !== null)
+
+const selectedSkuWholesaleFinalPrice = computed(() => {
+  if (!hasSelectedSkuWholesalePrice.value || selectedSkuWholesalePrice.value === null) return null
+  return selectedSkuWholesaleMemberPrice.value !== null ? selectedSkuWholesaleMemberPrice.value : selectedSkuWholesalePrice.value
+})
+
+const selectedSkuPromotionPrice = computed(() => {
+  if (!selectedSku.value || !hasSkuPromotionPrice(selectedSku.value)) return null
+  return getSkuPromotionPriceAmount(selectedSku.value)
+})
+
+const selectedSkuPromotionMemberPrice = computed(() => {
+  if (!selectedSku.value || selectedSkuPromotionPrice.value === null) return null
+  return getMemberPriceForSku(normalizeSkuId(selectedSku.value.id), selectedSkuPromotionPrice.value)
+})
+
+const selectedSkuPromotionFinalIsMember = computed(() => selectedSkuPromotionMemberPrice.value !== null)
+
+const selectedSkuPromotionFinalPrice = computed(() => {
+  if (selectedSkuPromotionPrice.value === null) return null
+  return selectedSkuPromotionMemberPrice.value !== null ? selectedSkuPromotionMemberPrice.value : selectedSkuPromotionPrice.value
+})
+
+const showSelectedSkuMemberBadge = computed(() => {
+  if (!selectedSku.value) return false
+  if (hasSelectedSkuWholesalePrice.value) return selectedSkuWholesaleFinalIsMember.value
+  if (hasSkuPromotionPrice(selectedSku.value)) return selectedSkuPromotionFinalIsMember.value
+  return hasMemberPrice.value
+})
+
+const formatWholesaleTier = (tier: any) => t('products.wholesaleTier', {
+  count: Number(tier?.min_quantity || 0),
+  price: formatPrice(tier?.unit_price, siteCurrency.value),
 })
 
 // Stock helpers (same logic as ProductDetail)
@@ -476,6 +610,7 @@ watch(() => [props.product, props.visible], () => {
     purchaseWarning.value = ''
     quantity.value = effectiveMin.value
     syncSelectedSku()
+    ensureMemberLevels()
   }
 }, { immediate: true })
 
@@ -613,6 +748,7 @@ const handleAddToCart = () => {
     slug: props.product.slug,
     title: props.product.title,
     priceAmount: String(sku?.price_amount || props.product.price_amount || '0.00'),
+    wholesalePrices: Array.isArray(props.product.wholesale_prices) ? props.product.wholesale_prices : undefined,
     image: images[0] || '',
     minPurchaseQuantity: normalizeOptionalLimitNumber(props.product.min_purchase_quantity) ?? undefined,
     maxPurchaseQuantity: normalizeOptionalLimitNumber(props.product.max_purchase_quantity) ?? undefined,
@@ -661,6 +797,7 @@ const handleBuyNow = () => {
     slug: props.product.slug,
     title: props.product.title,
     priceAmount: String(sku?.price_amount || props.product.price_amount || '0.00'),
+    wholesalePrices: Array.isArray(props.product.wholesale_prices) ? props.product.wholesale_prices : undefined,
     image: images[0] || '',
     minPurchaseQuantity: normalizeOptionalLimitNumber(props.product.min_purchase_quantity) ?? undefined,
     maxPurchaseQuantity: normalizeOptionalLimitNumber(props.product.max_purchase_quantity) ?? undefined,
