@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/dujiao-next/internal/models"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/dujiao-next/internal/repository"
