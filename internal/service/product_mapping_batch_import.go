@@ -10,6 +10,60 @@ import (
 	"github.com/dujiao-next/internal/upstream"
 )
 
+// BatchUpstreamProductImportOutcome 单个商品批量导入结果（供 handler 组装响应）
+type BatchUpstreamProductImportOutcome struct {
+	UpstreamProductID uint
+	Mapping           *models.ProductMapping
+	Err               error
+}
+
+// BatchImportUpstreamProducts 批量按 ID 导入上游商品。
+// 当 autoCreateCategory 为 true 且未指定本地分类时，会一次性预拉取上游分类列表，
+// 避免逐个商品都触发一次 ListCategories（N+1）。
+func (s *ProductMappingService) BatchImportUpstreamProducts(
+	connectionID uint,
+	upstreamProductIDs []uint,
+	categoryID uint,
+	autoCreateCategory bool,
+) ([]BatchUpstreamProductImportOutcome, error) {
+	if len(upstreamProductIDs) == 0 {
+		return nil, nil
+	}
+
+	var catMap map[uint]upstream.UpstreamCategory
+	if autoCreateCategory && categoryID == 0 {
+		conn, err := s.connService.GetByID(connectionID)
+		if err != nil {
+			return nil, err
+		}
+		if conn == nil {
+			return nil, ErrConnectionNotFound
+		}
+		adapter, err := s.connService.GetAdapter(conn)
+		if err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		fetched, fetchErr := s.fetchUpstreamCategoryMap(ctx, adapter)
+		if fetchErr != nil {
+			return nil, fmt.Errorf("prefetch upstream categories: %w", fetchErr)
+		}
+		catMap = fetched
+	}
+
+	outcomes := make([]BatchUpstreamProductImportOutcome, 0, len(upstreamProductIDs))
+	for _, id := range upstreamProductIDs {
+		mapping, importErr := s.importUpstreamProduct(connectionID, id, categoryID, "", autoCreateCategory, catMap)
+		outcomes = append(outcomes, BatchUpstreamProductImportOutcome{
+			UpstreamProductID: id,
+			Mapping:           mapping,
+			Err:               importErr,
+		})
+	}
+	return outcomes, nil
+}
+
 // BatchImportByCategoryResult 按分类批量导入结果
 type BatchImportByCategoryResult struct {
 	Total        int    `json:"total"`
@@ -160,6 +214,20 @@ func (s *ProductMappingService) findOrCreateLocalCategory(slug string, nameJSON 
 	}
 	if existing != nil {
 		return existing, nil
+	}
+
+	deleted, err := s.categoryRepo.GetBySlugUnscoped(slug)
+	if err != nil {
+		return nil, err
+	}
+	if deleted != nil {
+		deleted.ParentID = parentID
+		deleted.NameJSON = nameJSON
+		deleted.IsActive = true
+		if err := s.categoryRepo.Restore(deleted); err != nil {
+			return nil, err
+		}
+		return deleted, nil
 	}
 
 	// 不存在，创建新分类

@@ -109,6 +109,7 @@ type Container struct {
 	MediaService              *service.MediaService
 	OrderRiskControlService   *service.OrderRiskControlService
 	AddressService            *service.AddressService
+	ComplianceService         *service.ComplianceService
 
 	// 支付网关 Provider 注册表(P1.2 Phase 1 引入,pilot 阶段仅注册 stripe + paypal)
 	PaymentProviderRegistry *paymentprovider.Registry
@@ -231,6 +232,7 @@ func (c *Container) initServices() {
 	}
 
 	c.SettingService = service.NewSettingService(c.SettingRepo, c.Config.Order)
+	c.ComplianceService = service.NewComplianceService(c.SettingRepo)
 	smtpSetting, err := c.SettingService.GetSMTPSetting(c.Config.Email)
 	if err != nil {
 		logger.Warnw("provider_load_smtp_setting_failed", "error", err)
@@ -261,7 +263,7 @@ func (c *Container) initServices() {
 	c.UserAuthService = service.NewUserAuthService(c.Config, c.UserRepo, c.UserOAuthIdentityRepo, c.EmailVerifyCodeRepo, c.SettingService, c.EmailService, c.TelegramAuthService)
 	c.UploadService = service.NewUploadService(c.Config)
 	c.AffiliateService = service.NewAffiliateService(c.AffiliateRepo, c.UserRepo, c.OrderRepo, c.ProductRepo, c.SettingService)
-	c.ProductService = service.NewProductService(c.ProductRepo, c.ProductSKURepo, c.CardSecretRepo, c.CardSecretBatchRepo, c.CategoryRepo, c.MemberLevelPriceRepo, c.CartRepo, c.ProductMappingRepo, c.OrderRepo)
+	c.ProductService = service.NewProductService(c.ProductRepo, c.ProductSKURepo, c.CardSecretRepo, c.CardSecretBatchRepo, c.CategoryRepo, c.MemberLevelPriceRepo, c.CartRepo, c.ProductMappingRepo, c.OrderRepo, c.PaymentChannelRepo)
 	c.PostService = service.NewPostService(c.PostRepo)
 	c.CategoryService = service.NewCategoryService(c.CategoryRepo)
 	c.SitemapService = service.NewSitemapService(c.ProductRepo, c.CategoryRepo, c.PostRepo)
@@ -311,6 +313,8 @@ func (c *Container) initServices() {
 	c.SiteConnectionService = service.NewSiteConnectionService(c.SiteConnectionRepo, c.Config.App.SecretKey, "uploads")
 	c.ProductMappingService = service.NewProductMappingService(c.ProductMappingRepo, c.SKUMappingRepo, c.ProductRepo, c.ProductSKURepo, c.CategoryRepo, c.SiteConnectionService)
 	c.ProductMappingService.SetCategoryService(c.CategoryService)
+	c.ProductMappingService.SetSettingService(c.SettingService)
+	c.OrderService.SetProductMappingService(c.ProductMappingService)
 	c.DownstreamCallbackService = service.NewDownstreamCallbackService(c.DownstreamOrderRefRepo, c.OrderRepo, c.ApiCredentialRepo, c.QueueClient)
 	c.PaymentService = service.NewPaymentService(service.PaymentServiceOptions{
 		OrderRepo:               c.OrderRepo,

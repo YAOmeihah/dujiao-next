@@ -20,10 +20,17 @@ import (
 
 // ImportUpstreamProduct 从上游导入商品（克隆为本地商品 + 建立映射）
 func (s *ProductMappingService) ImportUpstreamProduct(connectionID uint, upstreamProductID uint, categoryID uint, slug string) (*models.ProductMapping, error) {
-	if err := validateProductCategoryAssignment(s.categoryRepo, categoryID, 0); err != nil {
-		return nil, err
-	}
+	return s.importUpstreamProduct(connectionID, upstreamProductID, categoryID, slug, false, nil)
+}
 
+// ImportUpstreamProductWithAutoCategory 从上游导入商品，并按上游分类自动创建/匹配本地分类。
+func (s *ProductMappingService) ImportUpstreamProductWithAutoCategory(connectionID uint, upstreamProductID uint, categoryID uint, slug string, autoCreateCategory bool) (*models.ProductMapping, error) {
+	return s.importUpstreamProduct(connectionID, upstreamProductID, categoryID, slug, autoCreateCategory, nil)
+}
+
+// importUpstreamProduct 内部导入实现。catMap 可由批量入口预先注入以避免 N+1 的上游 ListCategories 调用；
+// 为 nil 时在需要时单次拉取。
+func (s *ProductMappingService) importUpstreamProduct(connectionID uint, upstreamProductID uint, categoryID uint, slug string, autoCreateCategory bool, catMap map[uint]upstream.UpstreamCategory) (*models.ProductMapping, error) {
 	// 检查是否已存在映射
 	existing, err := s.mappingRepo.GetByConnectionAndUpstreamID(connectionID, upstreamProductID)
 	if err != nil {
@@ -66,6 +73,24 @@ func (s *ProductMappingService) ImportUpstreamProduct(connectionID uint, upstrea
 	// 新版上游对下架商品返回 200 + is_active=false → 同样禁止导入
 	if !upProduct.IsActive {
 		return nil, ErrUpstreamProductNotFound
+	}
+
+	if autoCreateCategory && categoryID == 0 && upProduct.CategoryID > 0 {
+		if catMap == nil {
+			fetched, fetchErr := s.fetchUpstreamCategoryMap(ctx, adapter)
+			if fetchErr != nil {
+				return nil, fmt.Errorf("auto create category: %w", fetchErr)
+			}
+			catMap = fetched
+		}
+		category, createErr := s.findOrCreateCategoryFromUpstream(upProduct.CategoryID, catMap)
+		if createErr != nil {
+			return nil, fmt.Errorf("auto create category: %w", createErr)
+		}
+		categoryID = category.ID
+	}
+	if err := validateProductCategoryAssignment(s.categoryRepo, categoryID, 0); err != nil {
+		return nil, err
 	}
 
 	// 下载图片到本地
@@ -121,6 +146,7 @@ func (s *ProductMappingService) ImportUpstreamProduct(connectionID uint, upstrea
 		ManualFormSchemaJSON: upProduct.ManualFormSchema,
 		PriceAmount:          models.NewMoneyFromDecimal(priceAmount.Round(2)),
 		CostPriceAmount:      models.NewMoneyFromDecimal(costPriceAmount.Round(2)),
+		WholesalePrices:      convertUpstreamWholesalePrices(upProduct.WholesalePrices, exchangeRate, markupPercent, roundingMode),
 		Images:               models.StringArray(localImages),
 		Tags:                 models.StringArray(upProduct.Tags),
 		PurchaseType:         constants.ProductPurchaseMember,
@@ -216,6 +242,19 @@ func (s *ProductMappingService) ImportUpstreamProduct(connectionID uint, upstrea
 	return mapping, nil
 }
 
+// fetchUpstreamCategoryMap 拉取上游分类列表并构建 ID → 分类映射，供批量导入预取共用。
+func (s *ProductMappingService) fetchUpstreamCategoryMap(ctx context.Context, adapter upstream.Adapter) (map[uint]upstream.UpstreamCategory, error) {
+	catResult, err := adapter.ListCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	catMap := make(map[uint]upstream.UpstreamCategory, len(catResult.Categories))
+	for _, c := range catResult.Categories {
+		catMap[c.ID] = c
+	}
+	return catMap, nil
+}
+
 func createSKUMappingsWithRepo(
 	skuMappingRepo repository.SKUMappingRepository,
 	mappingID uint,
@@ -264,6 +303,58 @@ func createSKUMappingsWithRepo(
 	}
 
 	return nil
+}
+
+func convertUpstreamWholesalePrices(tiers models.WholesalePriceTiers, exchangeRate, markupPercent decimal.Decimal, roundingMode string) models.WholesalePriceTiers {
+	if len(tiers) == 0 {
+		return models.WholesalePriceTiers{}
+	}
+	converted := make([]WholesalePriceInput, 0, len(tiers))
+	skipped := 0
+	for idx, tier := range tiers {
+		if tier.MinQuantity <= 0 || tier.UnitPrice.Decimal.LessThanOrEqual(decimal.Zero) {
+			skipped++
+			logger.Warnw("convert_upstream_wholesale_price_invalid",
+				"index", idx,
+				"min_quantity", tier.MinQuantity,
+				"unit_price", tier.UnitPrice.String(),
+			)
+			continue
+		}
+		localPrice := CalculateLocalPrice(tier.UnitPrice.Decimal, exchangeRate, markupPercent, roundingMode)
+		if localPrice.LessThanOrEqual(decimal.Zero) {
+			skipped++
+			logger.Warnw("convert_upstream_wholesale_price_invalid",
+				"index", idx,
+				"min_quantity", tier.MinQuantity,
+				"unit_price", tier.UnitPrice.String(),
+				"local_price", localPrice.String(),
+			)
+			continue
+		}
+		converted = append(converted, WholesalePriceInput{
+			MinQuantity: tier.MinQuantity,
+			UnitPrice:   localPrice,
+		})
+	}
+	normalized, err := normalizeWholesalePriceInputs(converted)
+	if err != nil {
+		logger.Warnw("convert_upstream_wholesale_prices_failed",
+			"error", err,
+			"tier_count", len(tiers),
+			"valid_tier_count", len(converted),
+			"skipped_tier_count", skipped,
+		)
+		return models.WholesalePriceTiers{}
+	}
+	if skipped > 0 {
+		logger.Warnw("convert_upstream_wholesale_prices_skipped_invalid",
+			"tier_count", len(tiers),
+			"valid_tier_count", len(converted),
+			"skipped_tier_count", skipped,
+		)
+	}
+	return normalized
 }
 
 // downloadImages 下载上游图片到本地

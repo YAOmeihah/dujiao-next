@@ -17,6 +17,7 @@ type OrderSummary struct {
 	DiscountAmount          models.Money    `json:"discount_amount"`
 	MemberDiscountAmount    models.Money    `json:"member_discount_amount"`
 	PromotionDiscountAmount models.Money    `json:"promotion_discount_amount"`
+	WholesaleDiscountAmount models.Money    `json:"wholesale_discount_amount"`
 	TotalAmount             models.Money    `json:"total_amount"`
 	CreatedAt               time.Time       `json:"created_at"`
 	Items                   []OrderItemResp `json:"items,omitempty"`
@@ -34,6 +35,7 @@ func NewOrderSummary(o *models.Order) OrderSummary {
 		DiscountAmount:          o.DiscountAmount,
 		MemberDiscountAmount:    o.MemberDiscountAmount,
 		PromotionDiscountAmount: o.PromotionDiscountAmount,
+		WholesaleDiscountAmount: o.WholesaleDiscountAmount,
 		TotalAmount:             o.TotalAmount,
 		CreatedAt:               o.CreatedAt,
 	}
@@ -70,6 +72,7 @@ type OrderDetail struct {
 	DiscountAmount           models.Money      `json:"discount_amount"`
 	MemberDiscountAmount     models.Money      `json:"member_discount_amount"`
 	PromotionDiscountAmount  models.Money      `json:"promotion_discount_amount"`
+	WholesaleDiscountAmount  models.Money      `json:"wholesale_discount_amount"`
 	TotalAmount              models.Money      `json:"total_amount"`
 	WalletPaidAmount         models.Money      `json:"wallet_paid_amount"`
 	OnlinePaidAmount         models.Money      `json:"online_paid_amount"`
@@ -109,6 +112,7 @@ func NewOrderDetail(o *models.Order) OrderDetail {
 		DiscountAmount:          o.DiscountAmount,
 		MemberDiscountAmount:    o.MemberDiscountAmount,
 		PromotionDiscountAmount: o.PromotionDiscountAmount,
+		WholesaleDiscountAmount: o.WholesaleDiscountAmount,
 		TotalAmount:             o.TotalAmount,
 		WalletPaidAmount:        o.WalletPaidAmount,
 		OnlinePaidAmount:        o.OnlinePaidAmount,
@@ -166,6 +170,7 @@ type OrderItemResp struct {
 	CouponDiscountAmount     models.Money       `json:"coupon_discount_amount"`
 	MemberDiscountAmount     models.Money       `json:"member_discount_amount"`
 	PromotionDiscountAmount  models.Money       `json:"promotion_discount_amount"`
+	WholesaleDiscountAmount  models.Money       `json:"wholesale_discount_amount"`
 	FulfillmentType          string             `json:"fulfillment_type"`
 	ManualFormSchemaSnapshot models.JSON        `json:"manual_form_schema_snapshot"`
 	ManualFormSubmission     models.JSON        `json:"manual_form_submission"`
@@ -192,6 +197,7 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 		CouponDiscountAmount:     item.CouponDiscount,
 		MemberDiscountAmount:     item.MemberDiscount,
 		PromotionDiscountAmount:  item.PromotionDiscount,
+		WholesaleDiscountAmount:  item.WholesaleDiscount,
 		FulfillmentType:          ft,
 		ManualFormSchemaSnapshot: item.ManualFormSchemaSnapshotJSON,
 		ManualFormSubmission:     item.ManualFormSubmissionJSON,

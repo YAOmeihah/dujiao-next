@@ -2,7 +2,6 @@ package public
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -76,6 +75,7 @@ func (v *publicProductView) toProductResp() dto.ProductResp {
 		Description:             v.Product.DescriptionJSON,
 		Content:                 v.Product.ContentJSON,
 		PriceAmount:             v.Product.PriceAmount,
+		WholesalePrices:         dto.NewWholesalePriceRespList(v.Product.WholesalePrices),
 		Images:                  v.Product.Images,
 		Tags:                    v.Product.Tags,
 		PurchaseType:            v.Product.PurchaseType,
@@ -184,6 +184,13 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	emailVerificationEnabled, _ := h.SettingService.GetEmailVerificationEnabled(true)
 	data["registration_enabled"] = registrationEnabled
 	data["email_verification_enabled"] = emailVerificationEnabled
+	emailDomainPolicy, policyErr := h.SettingService.GetRegistrationEmailDomainPolicy()
+	if policyErr != nil {
+		shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", policyErr)
+		return
+	}
+	data["email_domain_allowlist_enabled"] = emailDomainPolicy.Enabled
+	data["allowed_email_domains"] = emailDomainPolicy.AllowedDomains
 
 	// 导航配置
 	navConfigVal, _ := h.SettingService.GetByKey(constants.SettingKeyNavConfig)
@@ -235,9 +242,7 @@ func (h *Handler) GetPublicMemberLevels(c *gin.Context) {
 // GetProducts 获取商品列表
 func (h *Handler) GetProducts(c *gin.Context) {
 	// 获取分页参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = shared.NormalizePagination(page, pageSize)
+	page, pageSize := shared.ParsePagination(c)
 
 	// 获取筛选参数
 	categoryID := c.Query("category_id")
@@ -653,9 +658,7 @@ func (h *Handler) decorateUpstreamStock(product *models.Product, item *publicPro
 // GetPosts 获取文章/公告列表
 func (h *Handler) GetPosts(c *gin.Context) {
 	// 获取分页参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = shared.NormalizePagination(page, pageSize)
+	page, pageSize := shared.ParsePagination(c)
 
 	// 获取类型参数
 	postType := c.Query("type") // blog 或 notice
@@ -990,9 +993,7 @@ func (h *Handler) ListGuestOrders(c *gin.Context) {
 		return
 	}
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page, pageSize = shared.NormalizePagination(page, pageSize)
+	page, pageSize := shared.ParsePagination(c)
 
 	orders, total, err := h.OrderService.ListOrdersByGuest(phone, password, page, pageSize)
 	if err != nil {

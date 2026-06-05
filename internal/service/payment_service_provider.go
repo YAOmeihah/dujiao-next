@@ -90,9 +90,10 @@ func (s *PaymentService) applyProviderPayment(input CreatePaymentInput, order *m
 	if result.ProviderRef != "" {
 		payment.ProviderRef = result.ProviderRef
 	}
-	// 确保 ProviderRef 始终有值（各 adapter 可能返回空，如 wechat CreatePayment 阶段）
+	// 确保 ProviderRef 始终有值（各 adapter 可能返回空，如 wechat CreatePayment 阶段）。
+	// 主动查询必须使用实际提交到网关的订单号，而不是业务订单号。
 	if payment.ProviderRef == "" {
-		payment.ProviderRef = order.OrderNo
+		payment.ProviderRef = providerOrderNo
 	}
 	if result.Payload != nil {
 		payment.ProviderPayload = result.Payload
@@ -189,20 +190,6 @@ func (s *PaymentService) ValidateChannel(channel *models.PaymentChannel) error {
 		return mapProviderErrorToService(err)
 	}
 	return nil
-}
-
-func mapPaypalStatus(status string) (string, bool) {
-	status = strings.ToUpper(strings.TrimSpace(status))
-	switch status {
-	case "COMPLETED":
-		return constants.PaymentStatusSuccess, true
-	case "PENDING", "APPROVED", "CREATED", "SAVED":
-		return constants.PaymentStatusPending, true
-	case "DECLINED", "DENIED", "FAILED", "VOIDED":
-		return constants.PaymentStatusFailed, true
-	default:
-		return "", false
-	}
 }
 
 func resolveTokenPayOrderUserKey(order *models.Order) string {
