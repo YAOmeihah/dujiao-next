@@ -122,6 +122,11 @@
               {{ t('products.promotionTag') }}
             </span>
           </div>
+          <div v-else-if="hasWholesalePrices(product)" class="mt-0.5 flex flex-wrap items-center gap-1.5">
+            <span class="theme-badge theme-badge-success theme-badge-xs">
+              {{ t('products.wholesaleTag') }}
+            </span>
+          </div>
           <div v-else-if="hasPromotionRules(product)" class="mt-0.5 flex flex-wrap items-center gap-1.5">
             <span class="theme-badge theme-badge-warning theme-badge-xs">
               {{ t('products.promotionBadge') }}
@@ -192,7 +197,7 @@ defineEmits<{
 
 const { t } = useI18n()
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
-const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeClass, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules } = useProductLabels()
+const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeClass, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices } = useProductLabels()
 
 const imageErrored = ref(false)
 const attemptIdx = ref(0)

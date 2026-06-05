@@ -16,6 +16,7 @@ export interface CartItem {
     slug: string
     title: any
     priceAmount: string
+    wholesalePrices?: Array<{ min_quantity: number; unit_price: string | number }>
     image?: string
     quantity: number
     minPurchaseQuantity?: number
@@ -144,6 +145,7 @@ export const useCartStore = defineStore('cart', () => {
             existing.slug = normalizedItem.slug
             existing.title = normalizedItem.title
             existing.priceAmount = normalizedItem.priceAmount
+            existing.wholesalePrices = normalizedItem.wholesalePrices
             existing.image = normalizedItem.image
             existing.minPurchaseQuantity = normalizedItem.minPurchaseQuantity
             existing.maxPurchaseQuantity = normalizedItem.maxPurchaseQuantity

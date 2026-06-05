@@ -111,6 +111,50 @@ export function useProductLabels() {
 
   const hasPromotionRules = (product: any) => product?.promotion_rules?.length > 0
   const getPromotionRules = (product: any): any[] => product?.promotion_rules ?? []
+  const getWholesalePrices = (product: any): any[] => {
+    if (Array.isArray(product?.wholesale_prices)) return product.wholesale_prices
+    if (Array.isArray(product?.wholesalePrices)) return product.wholesalePrices
+    return []
+  }
+  const hasWholesalePrices = (product: any) => getWholesalePrices(product).length > 0
+
+  const resolveWholesalePriceAmount = (product: any, basePrice: any, quantity: number) => {
+    const base = parsePriceAmount(basePrice)
+    if (base === null || !Number.isFinite(quantity) || quantity <= 0) return null
+    let matched: any = null
+    for (const tier of getWholesalePrices(product)) {
+      const minQuantity = Number(tier?.min_quantity || 0)
+      const priceCents = parsePriceAmount(tier?.unit_price)
+      if (!Number.isFinite(minQuantity) || minQuantity <= 0 || priceCents === null) continue
+      if (quantity >= minQuantity && (!matched || minQuantity > Number(matched.min_quantity || 0))) {
+        matched = tier
+      }
+    }
+    if (!matched) return null
+    const tierCents = parsePriceAmount(matched.unit_price)
+    if (tierCents === null || tierCents >= base) return null
+    return centsToAmount(tierCents)
+  }
+
+  const resolveMemberPriceAmount = (product: any, skuId: any, basePrice: any, memberLevelId: any, discountRate?: any) => {
+    const base = parsePriceAmount(basePrice)
+    const levelId = Number(memberLevelId || 0)
+    if (base === null || base <= 0 || !Number.isFinite(levelId) || levelId <= 0) return null
+
+    const prices = Array.isArray(product?.member_prices) ? product.member_prices : []
+    const normalizedSkuId = Number(skuId || 0)
+    const skuPrice = prices.find((p: any) => Number(p?.member_level_id || 0) === levelId && Number(p?.sku_id || 0) === normalizedSkuId)
+    const productPrice = prices.find((p: any) => Number(p?.member_level_id || 0) === levelId && Number(p?.sku_id || 0) === 0)
+    const overrideCents = parsePriceAmount(skuPrice?.price_amount ?? productPrice?.price_amount)
+    if (overrideCents !== null && overrideCents > 0) {
+      return overrideCents < base ? centsToAmount(overrideCents) : null
+    }
+
+    const rate = Number(discountRate || 0)
+    if (!Number.isFinite(rate) || rate <= 0 || rate >= 100) return null
+    const memberCents = Math.round((base * rate) / 100)
+    return memberCents < base ? centsToAmount(memberCents) : null
+  }
 
   return {
     getPurchaseTypeLabel,
@@ -126,5 +170,9 @@ export function useProductLabels() {
     getSkuPromotionSaveAmount,
     hasPromotionRules,
     getPromotionRules,
+    hasWholesalePrices,
+    getWholesalePrices,
+    resolveWholesalePriceAmount,
+    resolveMemberPriceAmount,
   }
 }

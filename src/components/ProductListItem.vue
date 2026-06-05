@@ -92,7 +92,10 @@
           <span class="text-xs sm:text-sm font-bold theme-text-primary whitespace-nowrap">
             {{ formatPrice(product.price_amount, siteCurrency) }}
           </span>
-          <div v-if="hasPromotionRules(product)">
+          <div v-if="hasWholesalePrices(product)">
+            <span class="theme-badge theme-badge-success text-[9px] px-1 py-0 leading-tight">{{ t('products.wholesaleTag') }}</span>
+          </div>
+          <div v-else-if="hasPromotionRules(product)">
             <span class="theme-badge theme-badge-warning text-[9px] px-1 py-0 leading-tight">{{ t('products.promotionBadge') }}</span>
           </div>
         </div>
@@ -144,5 +147,5 @@ defineEmits<{
 
 const { t } = useI18n()
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
-const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeClass, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules } = useProductLabels()
+const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeClass, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices } = useProductLabels()
 </script>

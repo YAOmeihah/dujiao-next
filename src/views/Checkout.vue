@@ -632,11 +632,30 @@
               </div>
               <div class="flex items-center justify-between">
                 <span>{{ t('checkout.previewCoupon') }}</span>
-                <span class="font-mono theme-text-primary">{{ formatPrice(previewCoupon, previewCurrency) }}</span>
+                <span
+                  class="font-mono"
+                  :class="hasPositiveAmount(previewCoupon) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+                >
+                  {{ formatDiscountPrice(previewCoupon, previewCurrency) }}
+                </span>
               </div>
               <div class="flex items-center justify-between">
                 <span>{{ t('checkout.previewPromotion') }}</span>
-                <span class="font-mono theme-text-primary">{{ formatPrice(previewPromotion, previewCurrency) }}</span>
+                <span
+                  class="font-mono"
+                  :class="hasPositiveAmount(previewPromotion) ? 'text-rose-600 dark:text-rose-300' : 'theme-text-primary'"
+                >
+                  {{ formatDiscountPrice(previewPromotion, previewCurrency) }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>{{ t('checkout.previewWholesale') }}</span>
+                <span
+                  class="font-mono"
+                  :class="hasPositiveAmount(previewWholesale) ? 'text-emerald-600 dark:text-emerald-300' : 'theme-text-primary'"
+                >
+                  {{ formatDiscountPrice(previewWholesale, previewCurrency) }}
+                </span>
               </div>
               <div v-if="Number(previewMemberDiscount) > 0" class="flex items-center justify-between">
                 <span>{{ t('checkout.previewMemberDiscount') }}</span>
@@ -779,7 +798,7 @@ import {
   resolveExpandedMobileSection,
   type MobileCheckoutSectionKey,
 } from '../composables/useMobileCheckoutFlow'
-import { useLocalized } from '../composables/useProduct'
+import { useLocalized, useProductLabels } from '../composables/useProduct'
 import type { ShippingAddressFormValue } from '../types/address'
 
 const router = useRouter()
@@ -791,6 +810,7 @@ const userAuthStore = useUserAuthStore()
 const { t } = useI18n()
 
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
+const { resolveWholesalePriceAmount } = useProductLabels()
 
 const isBuyNowMode = computed(() => route.query.mode === 'buynow')
 const cartItems = computed<CartItem[]>(() => {
@@ -970,6 +990,7 @@ const previewCurrency = computed(() => preview.value?.currency || totalCurrency.
 const previewOriginal = computed(() => preview.value?.original_amount ?? totalAmount.value)
 const previewCoupon = computed(() => preview.value?.discount_amount ?? '0')
 const previewPromotion = computed(() => preview.value?.promotion_discount_amount ?? '0')
+const previewWholesale = computed(() => preview.value?.wholesale_discount_amount ?? '0')
 const previewMemberDiscount = computed(() => preview.value?.member_discount_amount ?? '0')
 const previewTotal = computed(() => preview.value?.total_amount ?? totalAmount.value)
 const checkoutItemCurrency = computed(() => previewCurrency.value)
@@ -982,6 +1003,26 @@ const previewItemsByKey = computed(() => {
   }
   return map
 })
+
+const cartProductQuantities = computed(() => {
+  const map = new Map<number, number>()
+  for (const item of cartItems.value) {
+    const productId = Number(item.productId || 0)
+    const qty = parseInteger(item.quantity)
+    if (!Number.isFinite(productId) || productId <= 0 || qty === null || qty <= 0) continue
+    map.set(productId, (map.get(productId) || 0) + qty)
+  }
+  return map
+})
+
+const hasPositiveAmount = (amount: any) => {
+  const cents = amountToCents(amount)
+  return cents !== null && cents > 0
+}
+
+const formatDiscountPrice = (amount: any, currency?: any) => {
+  return hasPositiveAmount(amount) ? `-${formatPrice(amount, currency)}` : formatPrice(amount, currency)
+}
 
 const checkoutMode = ref<'guest' | 'member'>('guest')
 const guestPhone = ref('')
@@ -2411,6 +2452,18 @@ const cartItemSubtotalCents = (item: CartItem) => {
   return amountCents * qty
 }
 
+const cartItemWholesaleSubtotalCents = (item: CartItem) => {
+  const qty = parseInteger(item.quantity)
+  if (qty === null || qty <= 0 || !Array.isArray(item.wholesalePrices)) {
+    return null
+  }
+  const productId = Number(item.productId || 0)
+  const matchQuantity = cartProductQuantities.value.get(productId) || qty
+  const matchedPriceCents = amountToCents(resolveWholesalePriceAmount(item, item.priceAmount, matchQuantity))
+  if (matchedPriceCents === null) return null
+  return matchedPriceCents * qty
+}
+
 const checkoutItemPreview = (item: CartItem) => previewItemsByKey.value.get(cartItemKey(item))
 
 const checkoutItemOriginalCents = (item: CartItem) => {
@@ -2427,6 +2480,8 @@ const checkoutItemPayableCents = (item: CartItem) => {
     const couponDiscountCents = amountToCents(previewItem?.coupon_discount_amount) || 0
     return Math.max(0, previewPayableCents - couponDiscountCents)
   }
+  const wholesaleSubtotal = cartItemWholesaleSubtotalCents(item)
+  if (wholesaleSubtotal !== null) return wholesaleSubtotal
   return checkoutItemOriginalCents(item)
 }
 
