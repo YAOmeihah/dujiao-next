@@ -98,6 +98,18 @@ func (r *resellerPricingRepoStub) UpsertSiteConfig(config models.ResellerSiteCon
 	return nil, errors.New("not implemented")
 }
 
+func (r *resellerPricingRepoStub) GetSiteConfigByResellerID(resellerID uint) (*models.ResellerSiteConfig, error) {
+	return nil, nil
+}
+
+func (r *resellerPricingRepoStub) DeleteSiteConfigByResellerID(resellerID uint) error {
+	return nil
+}
+
+func (r *resellerPricingRepoStub) ListSiteConfigs(filter repository.ResellerSiteConfigListFilter) ([]models.ResellerSiteConfig, int64, error) {
+	return nil, 0, nil
+}
+
 func (r *resellerPricingRepoStub) ListProductSettingsForPricing(resellerID uint, productIDs []uint, skuIDs []uint) ([]models.ResellerProductSetting, error) {
 	r.settingsQueries++
 	rows := make([]models.ResellerProductSetting, len(r.settings))

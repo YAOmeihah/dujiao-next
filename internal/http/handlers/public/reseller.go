@@ -29,6 +29,7 @@ var userResellerManagementErrorRules = []mappedHandlerError{
 	{target: service.ErrResellerDomainInvalid, code: response.CodeBadRequest, key: "error.bad_request"},
 	{target: service.ErrResellerDomainMainHostNotAllowed, code: response.CodeBadRequest, key: "error.bad_request"},
 	{target: service.ErrResellerDomainConflict, code: response.CodeBadRequest, key: "error.bad_request"},
+	{target: service.ErrResellerSiteConfigInvalid, code: response.CodeBadRequest, key: "error.bad_request"},
 }
 
 func respondUserResellerFinanceError(c *gin.Context, err error, fallbackKey string) {
@@ -45,6 +46,32 @@ type ResellerApplyRequest struct {
 
 type ResellerCustomDomainRequest struct {
 	Domain string `json:"domain" binding:"required"`
+}
+
+type ResellerSiteConfigRequest struct {
+	SiteName     string                            `json:"site_name"`
+	Logo         string                            `json:"logo"`
+	Favicon      string                            `json:"favicon"`
+	Announcement service.ResellerAnnouncementInput `json:"announcement"`
+	Support      service.ResellerSupportInput      `json:"support"`
+	SEO          service.ResellerSEOInput          `json:"seo"`
+	FooterLinks  []service.ResellerFooterLinkInput `json:"footer_links"`
+	NavConfig    service.ResellerNavConfigInput    `json:"nav_config"`
+	Theme        service.ResellerThemeInput        `json:"theme"`
+}
+
+func (req ResellerSiteConfigRequest) toServiceInput() service.ResellerSiteConfigInput {
+	return service.ResellerSiteConfigInput{
+		SiteName:     req.SiteName,
+		Logo:         req.Logo,
+		Favicon:      req.Favicon,
+		Announcement: req.Announcement,
+		Support:      req.Support,
+		SEO:          req.SEO,
+		FooterLinks:  req.FooterLinks,
+		NavConfig:    req.NavConfig,
+		Theme:        req.Theme,
+	}
 }
 
 // GetResellerManagementSnapshot 获取当前用户的分销商准入与域名状态。
@@ -131,6 +158,47 @@ func (h *Handler) SubmitResellerCustomDomain(c *gin.Context) {
 		return
 	}
 	response.Success(c, dto.NewResellerDomainResp(row))
+}
+
+// GetResellerSiteConfig 获取当前用户的分销站点配置。
+func (h *Handler) GetResellerSiteConfig(c *gin.Context) {
+	uid, ok := shared.GetUserID(c)
+	if !ok {
+		return
+	}
+	if h.ResellerSiteConfigService == nil {
+		shared.RespondError(c, response.CodeInternal, "error.user_fetch_failed", nil)
+		return
+	}
+	profile, row, canEdit, err := h.ResellerSiteConfigService.GetUserSiteConfig(uid)
+	if err != nil {
+		respondUserResellerManagementError(c, err, "error.user_fetch_failed")
+		return
+	}
+	response.Success(c, dto.NewResellerSiteConfigSnapshotResp(profile, row, canEdit))
+}
+
+// UpdateResellerSiteConfig 更新当前用户的分销站点配置。
+func (h *Handler) UpdateResellerSiteConfig(c *gin.Context) {
+	uid, ok := shared.GetUserID(c)
+	if !ok {
+		return
+	}
+	if h.ResellerSiteConfigService == nil {
+		shared.RespondError(c, response.CodeInternal, "error.save_failed", nil)
+		return
+	}
+	var req ResellerSiteConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondBindError(c, err)
+		return
+	}
+	row, err := h.ResellerSiteConfigService.UpdateUserSiteConfig(c.Request.Context(), uid, req.toServiceInput())
+	if err != nil {
+		respondUserResellerManagementError(c, err, "error.save_failed")
+		return
+	}
+	response.Success(c, dto.NewResellerSiteConfigResp(row))
 }
 
 // GetResellerDashboard 获取当前用户的分销商财务看板。

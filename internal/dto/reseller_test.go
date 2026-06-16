@@ -87,3 +87,29 @@ func TestResellerDomainRespExposesVerificationTokenForOwner(t *testing.T) {
 		t.Fatalf("expected verification token exposed to owner/admin DTO, got %+v", resp)
 	}
 }
+
+func TestResellerSiteConfigRespUsesSafeFields(t *testing.T) {
+	row := &models.ResellerSiteConfig{
+		ID:         10,
+		ResellerID: 3,
+		SiteName:   "Alice Store",
+		Logo:       "/uploads/logo.png",
+		Favicon:    "/uploads/favicon.png",
+		SupportJSON: models.JSON{
+			"telegram": "https://t.me/alice",
+		},
+		SEOJSON: models.JSON{
+			"title": map[string]interface{}{"zh-CN": "标题"},
+		},
+		FooterLinksJSON: models.JSON{
+			"items": []interface{}{map[string]interface{}{"url": "https://example.test"}},
+		},
+	}
+	resp := NewResellerSiteConfigResp(row)
+	if resp.ID != 10 || resp.SiteName != "Alice Store" || resp.Support["telegram"] != "https://t.me/alice" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+	if len(resp.FooterLinks) != 1 {
+		t.Fatalf("expected footer links unwrapped, got %+v", resp.FooterLinks)
+	}
+}

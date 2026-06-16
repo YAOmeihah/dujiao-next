@@ -421,6 +421,18 @@ func (r *resellerPricingRepoForPublicTest) UpsertSiteConfig(config models.Resell
 	return nil, fmt.Errorf("not implemented")
 }
 
+func (r *resellerPricingRepoForPublicTest) GetSiteConfigByResellerID(resellerID uint) (*models.ResellerSiteConfig, error) {
+	return nil, nil
+}
+
+func (r *resellerPricingRepoForPublicTest) DeleteSiteConfigByResellerID(resellerID uint) error {
+	return nil
+}
+
+func (r *resellerPricingRepoForPublicTest) ListSiteConfigs(filter repository.ResellerSiteConfigListFilter) ([]models.ResellerSiteConfig, int64, error) {
+	return nil, 0, nil
+}
+
 func (r *resellerPricingRepoForPublicTest) ListProductSettingsForPricing(resellerID uint, productIDs []uint, skuIDs []uint) ([]models.ResellerProductSetting, error) {
 	return append([]models.ResellerProductSetting(nil), r.settings...), nil
 }

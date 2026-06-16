@@ -98,6 +98,7 @@ type Container struct {
 	ResellerDomainResolver    *service.ResellerDomainResolver
 	ResellerPricingResolver   *service.ResellerPricingResolver
 	ResellerManagementService *service.ResellerManagementService
+	ResellerSiteConfigService *service.ResellerSiteConfigService
 	ResellerAccountingService *service.ResellerAccountingService
 	ApiCredentialService      *service.ApiCredentialService
 	SiteConnectionService     *service.SiteConnectionService
@@ -231,6 +232,7 @@ func (c *Container) initServices() {
 	c.ResellerDomainResolver = service.NewResellerDomainResolver(c.ResellerRepo, c.Config.Reseller)
 	c.ResellerPricingResolver = service.NewResellerPricingResolver(c.ResellerRepo)
 	c.ResellerManagementService = service.NewResellerManagementService(c.ResellerRepo, c.Config.Reseller)
+	c.ResellerSiteConfigService = service.NewResellerSiteConfigService(c.ResellerRepo)
 	c.ResellerAccountingService = service.NewResellerAccountingService(c.ResellerRepo, service.ResellerAccountingOptions{
 		ConfirmDays: 7,
 	})

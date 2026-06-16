@@ -188,6 +188,93 @@ func TestResellerRepositoryListDomainsFiltersAndPreloadsProfileUser(t *testing.T
 	}
 }
 
+func TestResellerRepositorySiteConfigLifecycle(t *testing.T) {
+	db := openResellerRepoTestDB(t)
+	repo := NewResellerRepository(db)
+	profile := seedResellerProfile(t, db, "site-config@example.test")
+
+	initial, err := repo.GetSiteConfigByResellerID(profile.ID)
+	if err != nil {
+		t.Fatalf("get empty site config failed: %v", err)
+	}
+	if initial != nil {
+		t.Fatalf("expected nil config, got %+v", initial)
+	}
+
+	saved, err := repo.UpsertSiteConfig(models.ResellerSiteConfig{
+		ResellerID: profile.ID,
+		SiteName:   "Alice Store",
+		Logo:       "/uploads/reseller/logo.png",
+		SupportJSON: models.JSON{
+			"telegram": "https://t.me/alice",
+		},
+	})
+	if err != nil {
+		t.Fatalf("upsert site config failed: %v", err)
+	}
+	if saved.ID == 0 || saved.SiteName != "Alice Store" {
+		t.Fatalf("unexpected saved config: %+v", saved)
+	}
+
+	loaded, err := repo.GetSiteConfigByResellerID(profile.ID)
+	if err != nil {
+		t.Fatalf("get site config failed: %v", err)
+	}
+	if loaded == nil || loaded.ID != saved.ID || loaded.SupportJSON["telegram"] != "https://t.me/alice" {
+		t.Fatalf("unexpected loaded config: %+v", loaded)
+	}
+
+	if err := repo.DeleteSiteConfigByResellerID(profile.ID); err != nil {
+		t.Fatalf("delete site config failed: %v", err)
+	}
+	afterDelete, err := repo.GetSiteConfigByResellerID(profile.ID)
+	if err != nil {
+		t.Fatalf("get deleted site config failed: %v", err)
+	}
+	if afterDelete != nil {
+		t.Fatalf("expected deleted config to be hidden, got %+v", afterDelete)
+	}
+
+	restored, err := repo.UpsertSiteConfig(models.ResellerSiteConfig{
+		ResellerID: profile.ID,
+		SiteName:   "Alice Restored",
+	})
+	if err != nil {
+		t.Fatalf("restore site config failed: %v", err)
+	}
+	if restored.ID != saved.ID || restored.SiteName != "Alice Restored" {
+		t.Fatalf("expected soft-deleted row restored, got saved=%d restored=%+v", saved.ID, restored)
+	}
+}
+
+func TestResellerRepositoryListSiteConfigsFiltersAndPreloadsProfileUser(t *testing.T) {
+	db := openResellerRepoTestDB(t)
+	repo := NewResellerRepository(db)
+	alice := seedResellerProfile(t, db, "alice-site@example.test")
+	bob := seedResellerProfile(t, db, "bob-site@example.test")
+	if _, err := repo.UpsertSiteConfig(models.ResellerSiteConfig{ResellerID: alice.ID, SiteName: "Alice Store"}); err != nil {
+		t.Fatalf("create alice config failed: %v", err)
+	}
+	if _, err := repo.UpsertSiteConfig(models.ResellerSiteConfig{ResellerID: bob.ID, SiteName: "Bob Store"}); err != nil {
+		t.Fatalf("create bob config failed: %v", err)
+	}
+
+	rows, total, err := repo.ListSiteConfigs(ResellerSiteConfigListFilter{
+		Keyword:  "alice",
+		Page:     1,
+		PageSize: 20,
+	})
+	if err != nil {
+		t.Fatalf("list site configs failed: %v", err)
+	}
+	if total != 1 || len(rows) != 1 {
+		t.Fatalf("expected one row, got total=%d rows=%d", total, len(rows))
+	}
+	if rows[0].ResellerID != alice.ID || rows[0].Profile == nil || rows[0].Profile.User == nil {
+		t.Fatalf("expected profile and user preload, got %+v", rows[0])
+	}
+}
+
 func TestResellerRepositoryUpdateProfileAndDomain(t *testing.T) {
 	db := openResellerRepoTestDB(t)
 	repo := NewResellerRepository(db)

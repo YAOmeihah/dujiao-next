@@ -88,6 +88,57 @@ type ResellerManagementSnapshotResp struct {
 	Domains  []ResellerDomainResp           `json:"domains"`
 }
 
+type ResellerSiteConfigResp struct {
+	ID           uint          `json:"id"`
+	SiteName     string        `json:"site_name"`
+	Logo         string        `json:"logo"`
+	Favicon      string        `json:"favicon"`
+	Announcement models.JSON   `json:"announcement"`
+	Support      models.JSON   `json:"support"`
+	SEO          models.JSON   `json:"seo"`
+	FooterLinks  []interface{} `json:"footer_links"`
+	NavConfig    models.JSON   `json:"nav_config"`
+	Theme        models.JSON   `json:"theme"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+type ResellerSiteConfigSnapshotResp struct {
+	Opened  bool                    `json:"opened"`
+	CanEdit bool                    `json:"can_edit"`
+	Config  *ResellerSiteConfigResp `json:"config,omitempty"`
+}
+
+type ResellerSiteConfigOwnerUserResp struct {
+	ID          uint   `json:"id"`
+	Email       string `json:"email,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+}
+
+type ResellerSiteConfigProfileRefResp struct {
+	ID               uint                             `json:"id"`
+	UserID           uint                             `json:"user_id"`
+	Status           string                           `json:"status,omitempty"`
+	SettlementStatus string                           `json:"settlement_status,omitempty"`
+	User             *ResellerSiteConfigOwnerUserResp `json:"user,omitempty"`
+}
+
+type AdminResellerSiteConfigResp struct {
+	ID           uint                              `json:"id"`
+	ResellerID   uint                              `json:"reseller_id"`
+	SiteName     string                            `json:"site_name"`
+	Logo         string                            `json:"logo"`
+	Favicon      string                            `json:"favicon"`
+	Announcement models.JSON                       `json:"announcement"`
+	Support      models.JSON                       `json:"support"`
+	SEO          models.JSON                       `json:"seo"`
+	FooterLinks  []interface{}                     `json:"footer_links"`
+	NavConfig    models.JSON                       `json:"nav_config"`
+	Theme        models.JSON                       `json:"theme"`
+	Profile      *ResellerSiteConfigProfileRefResp `json:"profile,omitempty"`
+	CreatedAt    time.Time                         `json:"created_at"`
+	UpdatedAt    time.Time                         `json:"updated_at"`
+}
+
 func NewResellerProfileSummaryResp(profile *models.ResellerProfile) *ResellerProfileSummaryResp {
 	if profile == nil {
 		return nil
@@ -154,6 +205,96 @@ func NewResellerManagementSnapshotResp(profile *models.ResellerProfile, domains 
 		Profile:  NewResellerManagementProfileResp(profile),
 		Domains:  NewResellerDomainRespList(domains),
 	}
+}
+
+func NewResellerSiteConfigResp(row *models.ResellerSiteConfig) *ResellerSiteConfigResp {
+	if row == nil {
+		return nil
+	}
+	return &ResellerSiteConfigResp{
+		ID:           row.ID,
+		SiteName:     row.SiteName,
+		Logo:         row.Logo,
+		Favicon:      row.Favicon,
+		Announcement: row.AnnouncementJSON,
+		Support:      row.SupportJSON,
+		SEO:          row.SEOJSON,
+		FooterLinks:  resellerFooterLinksFromEnvelope(row.FooterLinksJSON),
+		NavConfig:    row.NavConfigJSON,
+		Theme:        row.ThemeJSON,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}
+
+func resellerFooterLinksFromEnvelope(raw models.JSON) []interface{} {
+	if raw == nil {
+		return make([]interface{}, 0)
+	}
+	if items, ok := raw["items"].([]interface{}); ok {
+		return items
+	}
+	if typed, ok := raw["items"].([]models.JSON); ok {
+		out := make([]interface{}, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, item)
+		}
+		return out
+	}
+	return make([]interface{}, 0)
+}
+
+func NewResellerSiteConfigSnapshotResp(profile *models.ResellerProfile, row *models.ResellerSiteConfig, canEdit bool) ResellerSiteConfigSnapshotResp {
+	return ResellerSiteConfigSnapshotResp{
+		Opened:  profile != nil,
+		CanEdit: canEdit,
+		Config:  NewResellerSiteConfigResp(row),
+	}
+}
+
+func NewAdminResellerSiteConfigResp(row *models.ResellerSiteConfig) AdminResellerSiteConfigResp {
+	if row == nil {
+		return AdminResellerSiteConfigResp{FooterLinks: make([]interface{}, 0)}
+	}
+	var profile *ResellerSiteConfigProfileRefResp
+	if row.Profile != nil {
+		profile = &ResellerSiteConfigProfileRefResp{
+			ID:               row.Profile.ID,
+			UserID:           row.Profile.UserID,
+			Status:           row.Profile.Status,
+			SettlementStatus: row.Profile.SettlementStatus,
+		}
+		if row.Profile.User != nil {
+			profile.User = &ResellerSiteConfigOwnerUserResp{
+				ID:          row.Profile.User.ID,
+				Email:       row.Profile.User.Email,
+				DisplayName: row.Profile.User.DisplayName,
+			}
+		}
+	}
+	return AdminResellerSiteConfigResp{
+		ID:           row.ID,
+		ResellerID:   row.ResellerID,
+		SiteName:     row.SiteName,
+		Logo:         row.Logo,
+		Favicon:      row.Favicon,
+		Announcement: row.AnnouncementJSON,
+		Support:      row.SupportJSON,
+		SEO:          row.SEOJSON,
+		FooterLinks:  resellerFooterLinksFromEnvelope(row.FooterLinksJSON),
+		NavConfig:    row.NavConfigJSON,
+		Theme:        row.ThemeJSON,
+		Profile:      profile,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}
+
+func NewAdminResellerSiteConfigRespList(rows []models.ResellerSiteConfig) []AdminResellerSiteConfigResp {
+	result := make([]AdminResellerSiteConfigResp, 0, len(rows))
+	for i := range rows {
+		result = append(result, NewAdminResellerSiteConfigResp(&rows[i]))
+	}
+	return result
 }
 
 func NewResellerBalanceResp(row *models.ResellerBalanceAccount) ResellerBalanceResp {

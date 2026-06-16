@@ -176,6 +176,8 @@ var (
 	ErrResellerDomainStatusInvalid         = errors.New("reseller domain status invalid")
 	ErrResellerSubdomainBaseMissing        = errors.New("reseller subdomain base missing")
 	ErrResellerDomainMainHostNotAllowed    = errors.New("reseller domain main host not allowed")
+	ErrResellerSiteConfigInvalid           = errors.New("reseller site config invalid")
+	ErrResellerSiteConfigNotFound          = errors.New("reseller site config not found")
 	ErrResellerSettlementUnavailable       = errors.New("reseller settlement unavailable")
 	ErrResellerWithdrawAmountInvalid       = errors.New("reseller withdraw amount invalid")
 	ErrResellerWithdrawInsufficient        = errors.New("reseller withdraw insufficient")

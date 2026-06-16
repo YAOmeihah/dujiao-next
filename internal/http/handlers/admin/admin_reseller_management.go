@@ -262,6 +262,7 @@ func respondAdminResellerManagementError(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrResellerProfileStatusInvalid),
 		errors.Is(err, service.ErrResellerDomainStatusInvalid),
 		errors.Is(err, service.ErrResellerDomainInvalid),
+		errors.Is(err, service.ErrResellerSiteConfigInvalid),
 		errors.Is(err, service.ErrResellerDomainMainHostNotAllowed),
 		errors.Is(err, service.ErrResellerDomainConflict),
 		errors.Is(err, service.ErrResellerSubdomainBaseMissing):

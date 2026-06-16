@@ -379,6 +379,17 @@ func (h *Handler) GetConfig(c *gin.Context) {
 		data["announcement"] = announcement
 	}
 
+	if h.ResellerSiteConfigService != nil {
+		overlaid, overlayErr := h.ResellerSiteConfigService.ApplyPublicConfigOverlay(c.Request.Context(), tenant, data)
+		if overlayErr != nil {
+			shared.RespondError(c, response.CodeInternal, "error.config_fetch_failed", overlayErr)
+			return
+		}
+		data = overlaid
+	} else if tenant.ResellerID == nil {
+		data["tenant"] = map[string]interface{}{"mode": "main", "host": tenant.Host}
+	}
+
 	_ = cache.SetJSON(c.Request.Context(), cacheKey, data, publicConfigCacheTTL)
 	data["server_time"] = time.Now().UnixMilli()
 	data["app_version"] = version.Version

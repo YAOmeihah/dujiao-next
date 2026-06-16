@@ -113,6 +113,8 @@ type ResellerSiteConfig struct {
 	CreatedAt        time.Time      `gorm:"index" json:"created_at"`
 	UpdatedAt        time.Time      `gorm:"index" json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
+
+	Profile *ResellerProfile `gorm:"foreignKey:ResellerID;references:ID" json:"profile,omitempty"`
 }
 
 func (ResellerSiteConfig) TableName() string { return "reseller_site_configs" }

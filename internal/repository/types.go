@@ -170,6 +170,16 @@ type ResellerDomainListFilter struct {
 	CreatedTo          *time.Time
 }
 
+// ResellerSiteConfigListFilter 分销站点配置列表过滤条件。
+type ResellerSiteConfigListFilter struct {
+	Page        int
+	PageSize    int
+	ResellerID  uint
+	Keyword     string
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+}
+
 // PaymentListFilter 查询支付列表的过滤条件
 type PaymentListFilter struct {
 	Page         int
