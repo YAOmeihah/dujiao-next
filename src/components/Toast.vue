@@ -16,15 +16,9 @@
           class="pointer-events-auto mb-2 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-xl"
           :class="typeClass(item.type)"
         >
-          <svg v-if="item.type === 'success'" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <svg v-else-if="item.type === 'error'" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          <svg v-else class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <Check v-if="item.type === 'success'" class="h-4 w-4 shrink-0" />
+          <X v-else-if="item.type === 'error'" class="h-4 w-4 shrink-0" />
+          <Info v-else class="h-4 w-4 shrink-0" />
           <span class="flex-1">{{ item.message }}</span>
           <button
             v-if="item.action"
@@ -40,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { Check, X, Info } from 'lucide-vue-next'
 import { useToast, type ToastItem } from '../composables/useToast'
 
 const { toasts, removeToast } = useToast()
@@ -49,11 +44,11 @@ const positionClass = 'bottom-6 left-1/2 -translate-x-1/2 md:bottom-auto md:top-
 const typeClass = (type: string) => {
   switch (type) {
     case 'success':
-      return 'theme-alert-success'
+      return 'border-success/40 bg-success/10 text-success'
     case 'error':
-      return 'theme-alert-danger'
+      return 'border-destructive/40 bg-destructive/10 text-destructive'
     default:
-      return 'theme-alert-info'
+      return 'border-border bg-card text-card-foreground'
   }
 }
 

@@ -1,10 +1,10 @@
 <template>
-  <div class="products-page min-h-screen theme-page pt-20 pb-16">
+  <div class="products-page min-h-screen bg-background text-foreground pt-20 pb-16">
     <div class="container mx-auto px-4">
       <!-- Page Header -->
       <div class="mb-12 mt-12 text-center">
-        <h1 class="text-4xl md:text-5xl font-black mb-4 tracking-tight theme-text-primary">{{ t('nav.products') }}</h1>
-        <p class="theme-text-secondary max-w-2xl mx-auto text-lg border-b theme-border pb-8">
+        <h1 class="text-4xl md:text-5xl font-black mb-4 tracking-tight text-foreground">{{ t('nav.products') }}</h1>
+        <p class="text-muted-foreground max-w-2xl mx-auto text-lg border-b pb-8">
           {{ t('products.subtitle') }}
         </p>
       </div>
@@ -29,7 +29,7 @@
           <!-- Loading Skeleton -->
           <div v-if="loading" class="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-3 lg:grid-cols-4">
             <div v-for="i in 6" :key="i"
-              class="theme-panel rounded-2xl border overflow-hidden flex flex-col">
+              class="rounded-2xl border bg-card overflow-hidden flex flex-col">
               <div class="h-36 md:h-56 theme-skeleton"></div>
               <div class="p-3 md:p-5 space-y-3">
                 <div class="h-3 w-16 rounded theme-skeleton"></div>
@@ -40,7 +40,7 @@
                 </div>
                 <div class="h-3 w-full rounded theme-skeleton"></div>
                 <div class="h-3 w-2/3 rounded theme-skeleton"></div>
-                <div class="border-t theme-border pt-3 flex justify-between items-center">
+                <div class="border-t pt-3 flex justify-between items-center">
                   <div class="h-6 w-20 rounded theme-skeleton"></div>
                   <div class="h-4 w-16 rounded theme-skeleton"></div>
                 </div>
@@ -80,12 +80,9 @@
             :title="(searchQuery || selectedCategory) ? t('products.emptyFiltered') : t('products.empty')"
           >
             <template v-if="searchQuery || selectedCategory" #action>
-              <button
-                class="theme-btn-inline-md border theme-btn-secondary font-semibold"
-                @click="clearSearch(); selectCategory(null)"
-              >
+              <Button variant="secondary" @click="clearSearch(); selectCategory(null)">
                 {{ t('products.clearFilters') }}
-              </button>
+              </Button>
             </template>
           </EmptyState>
         </main>
@@ -113,6 +110,7 @@ import ProductQuickBuy from '../components/ProductQuickBuy.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
 import EmptyState from '../components/EmptyState.vue'
+import { Button } from '@/components/ui/button'
 
 const router = useRouter()
 const { t } = useI18n()

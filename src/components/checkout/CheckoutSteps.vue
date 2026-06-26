@@ -1,6 +1,6 @@
 <template>
   <ol
-    class="rounded-2xl border theme-border theme-panel-soft p-4 backdrop-blur flex items-center list-none"
+    class="rounded-2xl border bg-card/80 p-4 backdrop-blur flex items-center list-none"
     :aria-label="t('checkoutSteps.label')"
   >
     <template v-for="(step, idx) in steps" :key="step.key">
@@ -13,30 +13,21 @@
           v-if="idx > 0"
           aria-hidden="true"
           class="flex-1 h-0.5 rounded-full transition-colors"
-          :class="step.status !== 'upcoming' ? 'bg-current theme-text-accent' : 'theme-surface-muted'"
+          :class="step.status !== 'upcoming' ? 'bg-primary' : 'bg-muted'"
         ></div>
         <div class="flex items-center gap-2 shrink-0">
           <span
             class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors"
             :class="step.status !== 'upcoming'
-              ? 'theme-btn-primary border-transparent'
-              : 'border-gray-300 dark:border-gray-600 theme-text-muted'"
+              ? 'bg-primary text-primary-foreground border-transparent'
+              : 'border-border text-muted-foreground'"
           >
-            <svg
-              v-if="step.status === 'done'"
-              class="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-            </svg>
+            <Check v-if="step.status === 'done'" class="w-3.5 h-3.5" :stroke-width="3" />
             <span v-else>{{ idx + 1 }}</span>
           </span>
           <span
             class="text-sm font-medium hidden sm:inline"
-            :class="step.status !== 'upcoming' ? 'theme-text-primary' : 'theme-text-muted'"
+            :class="step.status !== 'upcoming' ? 'text-foreground' : 'text-muted-foreground'"
           >
             {{ step.label }}
           </span>
@@ -49,6 +40,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Check } from 'lucide-vue-next'
 
 type StepKey = 'cart' | 'checkout' | 'payment'
 type StepStatus = 'done' | 'current' | 'upcoming'

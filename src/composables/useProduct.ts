@@ -20,10 +20,12 @@ export function useLocalized() {
   const formatPrice = (amount: any, currency?: any): string => {
     const cur = currency ?? siteCurrency.value
     if (amount === null || amount === undefined || amount === '') return '-'
+    const cents = amountToCents(amount)
+    const displayAmount = cents === null ? String(amount) : centsToAmount(cents)
     if (cur === null || cur === undefined || cur === '') {
-      return String(amount)
+      return displayAmount
     }
-    return `${amount} ${cur}`
+    return `${displayAmount} ${cur}`
   }
 
   return { getLocalizedText, siteCurrency, formatPrice }
@@ -38,6 +40,19 @@ export function useProductLabels() {
 
   const getFulfillmentTypeLabel = (fulfillmentType: string) => {
     return fulfillmentType === 'auto' ? t('products.fulfillmentType.auto') : t('products.fulfillmentType.manual')
+  }
+
+  const getStockBadgeVariant = (status: string): 'info' | 'warning' | 'destructive' | 'success' => {
+    switch (status) {
+      case 'unlimited':
+        return 'info'
+      case 'low_stock':
+        return 'warning'
+      case 'out_of_stock':
+        return 'destructive'
+      default:
+        return 'success'
+    }
   }
 
   const getStockBadgeClass = (status: string) => {
@@ -58,6 +73,10 @@ export function useProductLabels() {
     if (status === 'unlimited') return t('products.stockStatus.unlimited')
     if (status === 'out_of_stock') return t('products.stockStatus.outOfStock')
     if (status === 'low_stock') {
+      const quantityHidden = product?.stock_quantity_hidden === true || String(product?.stock_display_mode || '').trim() !== 'exact'
+      if (quantityHidden) {
+        return t('products.stockStatus.lowStock')
+      }
       const count = Number(product?.fulfillment_type === 'manual' ? product?.manual_stock_available : product?.auto_stock_available)
       if (Number.isFinite(count) && count > 0) {
         return t('products.stockStatus.lowStockCount', { count })
@@ -160,6 +179,7 @@ export function useProductLabels() {
     getPurchaseTypeLabel,
     getFulfillmentTypeLabel,
     getStockBadgeClass,
+    getStockBadgeVariant,
     getStockStatusLabel,
     isSoldOut,
     hasPromotionPrice,

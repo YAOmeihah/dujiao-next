@@ -1,25 +1,22 @@
 <template>
-  <div class="theme-personal-card">
+  <div class="rounded-2xl border bg-card p-7 shadow-sm">
     <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
-        <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.security.twofa.title') }}</h3>
-        <p class="mt-1 text-sm theme-text-muted">{{ t('personalCenter.security.twofa.subtitle') }}</p>
+        <h3 class="text-lg font-bold text-foreground">{{ t('personalCenter.security.twofa.title') }}</h3>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.subtitle') }}</p>
       </div>
-      <span
-        class="theme-badge px-3 py-1 text-xs font-semibold"
-        :class="status?.enabled ? 'theme-badge-success' : 'theme-badge-neutral'"
-      >
+      <Badge :variant="status?.enabled ? 'success' : 'neutral'" size="sm">
         {{ status?.enabled ? t('personalCenter.security.twofa.statusEnabled') : t('personalCenter.security.twofa.statusDisabled') }}
-      </span>
+      </Badge>
     </div>
 
-    <div v-if="alert" class="mb-4 rounded-xl border px-4 py-3 text-sm shadow-sm" :class="pageAlertClass(alert.level)">
-      {{ alert.message }}
-    </div>
+    <Alert v-if="alert" class="mb-4" :variant="pageAlertVariant(alert.level)" :class="pageAlertToneClass(alert.level)">
+      <AlertDescription>{{ alert.message }}</AlertDescription>
+    </Alert>
 
     <!-- 已启用：显示状态、关闭、重新生成恢复码 -->
     <div v-if="status?.enabled" class="space-y-4">
-      <div class="rounded-xl border theme-pill-neutral px-4 py-3 text-sm theme-text-muted">
+      <div class="rounded-xl border px-4 py-3 text-sm text-muted-foreground">
         <div>{{ t('personalCenter.security.twofa.enabledAt', { date: formatDate(status.enabled_at) }) }}</div>
         <div class="mt-1">
           {{ t('personalCenter.security.twofa.recoveryRemaining', {
@@ -30,161 +27,121 @@
       </div>
 
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
-          @click="openRegenerate"
-        >
+        <Button type="button" variant="outline" class="h-11 font-semibold" @click="openRegenerate">
           {{ t('personalCenter.security.twofa.regenerateAction') }}
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl border theme-btn-danger px-4 py-3 text-sm font-semibold"
-          @click="openDisable"
-        >
+        </Button>
+        <Button type="button" variant="destructive" class="h-11 font-semibold" @click="openDisable">
           {{ t('personalCenter.security.twofa.disableAction') }}
-        </button>
+        </Button>
       </div>
 
       <!-- Disable 表单 -->
-      <div v-if="mode === 'disable'" class="space-y-3 rounded-xl border theme-pill-neutral px-4 py-4">
-        <p class="text-sm theme-text-muted">{{ t('personalCenter.security.twofa.disableHint') }}</p>
+      <div v-if="mode === 'disable'" class="space-y-3 rounded-xl border px-4 py-4">
+        <p class="text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.disableHint') }}</p>
         <div class="flex gap-2">
           <button
             type="button"
             class="text-xs"
-            :class="disableMode === 'code' ? 'theme-text-accent font-bold' : 'theme-link-muted'"
+            :class="disableMode === 'code' ? 'text-primary font-bold' : 'text-muted-foreground transition-colors hover:text-foreground'"
             @click="disableMode = 'code'"
           >
             {{ t('personalCenter.security.twofa.useCode') }}
           </button>
-          <span class="theme-text-muted text-xs">/</span>
+          <span class="text-muted-foreground text-xs">/</span>
           <button
             type="button"
             class="text-xs"
-            :class="disableMode === 'recovery' ? 'theme-text-accent font-bold' : 'theme-link-muted'"
+            :class="disableMode === 'recovery' ? 'text-primary font-bold' : 'text-muted-foreground transition-colors hover:text-foreground'"
             @click="disableMode = 'recovery'"
           >
             {{ t('personalCenter.security.twofa.useRecovery') }}
           </button>
         </div>
-        <input
+        <Input
           v-if="disableMode === 'code'"
           v-model="disableCode"
           inputmode="numeric"
           maxlength="6"
-          class="w-full form-input-lg tracking-[0.4em] text-center"
+          class="h-11 text-center tracking-[0.4em]"
           :placeholder="t('personalCenter.security.twofa.codePlaceholder')"
         />
-        <input
+        <Input
           v-else
           v-model="disableRecovery"
           autocomplete="off"
-          class="w-full form-input-lg"
+          class="h-11"
           :placeholder="t('personalCenter.security.twofa.recoveryPlaceholder')"
         />
         <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            :disabled="loading"
-            class="inline-flex items-center justify-center rounded-xl border theme-btn-danger px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-            @click="submitDisable"
-          >
+          <Button type="button" variant="destructive" :disabled="loading" class="h-11 font-semibold" @click="submitDisable">
             {{ loading ? t('personalCenter.security.twofa.disableSubmitting') : t('personalCenter.security.twofa.disableSubmit') }}
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
-            @click="resetMode"
-          >
+          </Button>
+          <Button type="button" variant="outline" class="h-11 font-semibold" @click="resetMode">
             {{ t('personalCenter.security.twofa.cancel') }}
-          </button>
+          </Button>
         </div>
       </div>
 
       <!-- Regenerate 表单 -->
-      <div v-if="mode === 'regenerate'" class="space-y-3 rounded-xl border theme-pill-neutral px-4 py-4">
-        <p class="text-sm theme-text-muted">{{ t('personalCenter.security.twofa.regenerateHint') }}</p>
-        <input
+      <div v-if="mode === 'regenerate'" class="space-y-3 rounded-xl border px-4 py-4">
+        <p class="text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.regenerateHint') }}</p>
+        <Input
           v-model="regenerateCode"
           inputmode="numeric"
           maxlength="6"
-          class="w-full form-input-lg tracking-[0.4em] text-center"
+          class="h-11 text-center tracking-[0.4em]"
           :placeholder="t('personalCenter.security.twofa.codePlaceholder')"
         />
         <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            :disabled="loading"
-            class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
-            @click="submitRegenerate"
-          >
+          <Button type="button" :disabled="loading" class="h-11 font-bold" @click="submitRegenerate">
             {{ loading ? t('personalCenter.security.twofa.regenerateSubmitting') : t('personalCenter.security.twofa.regenerateSubmit') }}
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
-            @click="resetMode"
-          >
+          </Button>
+          <Button type="button" variant="outline" class="h-11 font-semibold" @click="resetMode">
             {{ t('personalCenter.security.twofa.cancel') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
     <!-- 未启用：显示绑定流程 -->
     <div v-else class="space-y-4">
-      <p class="text-sm theme-text-muted">{{ t('personalCenter.security.twofa.notEnabledHint') }}</p>
+      <p class="text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.notEnabledHint') }}</p>
 
       <div v-if="!setupResult">
-        <button
-          type="button"
-          :disabled="loading"
-          class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
-          @click="startSetup"
-        >
+        <Button type="button" :disabled="loading" class="h-11 font-bold" @click="startSetup">
           {{ loading ? t('personalCenter.security.twofa.startingSetup') : t('personalCenter.security.twofa.startSetup') }}
-        </button>
+        </Button>
       </div>
 
-      <div v-else class="space-y-3 rounded-xl border theme-pill-neutral px-4 py-4">
-        <p class="text-sm theme-text-muted">{{ t('personalCenter.security.twofa.setupStep1') }}</p>
+      <div v-else class="space-y-3 rounded-xl border px-4 py-4">
+        <p class="text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.setupStep1') }}</p>
         <img
           v-if="qrcodeDataUrl"
           :src="qrcodeDataUrl"
           alt="2FA QR"
-          class="mx-auto w-48 h-48 rounded-lg border border-gray-200/80 bg-white p-2 dark:border-white/10"
+          class="mx-auto w-48 h-48 rounded-lg border bg-white p-2"
         />
-        <div class="rounded-lg border theme-pill-neutral px-3 py-2 text-center">
-          <div class="text-xs theme-text-muted">{{ t('personalCenter.security.twofa.secret') }}</div>
-          <div class="mt-1 font-mono text-sm break-all theme-text-primary">{{ setupResult.secret }}</div>
+        <div class="rounded-lg border bg-card px-3 py-2 text-center">
+          <div class="text-xs text-muted-foreground">{{ t('personalCenter.security.twofa.secret') }}</div>
+          <div class="mt-1 font-mono text-sm break-all text-foreground">{{ setupResult.secret }}</div>
         </div>
 
-        <p class="text-sm theme-text-muted">{{ t('personalCenter.security.twofa.setupStep2') }}</p>
-        <input
+        <p class="text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.setupStep2') }}</p>
+        <Input
           v-model="enableCode"
           inputmode="numeric"
           maxlength="6"
-          class="w-full form-input-lg tracking-[0.4em] text-center"
+          class="h-11 text-center tracking-[0.4em]"
           :placeholder="t('personalCenter.security.twofa.codePlaceholder')"
         />
 
         <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            :disabled="loading"
-            class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
-            @click="submitEnable"
-          >
+          <Button type="button" :disabled="loading" class="h-11 font-bold" @click="submitEnable">
             {{ loading ? t('personalCenter.security.twofa.enableSubmitting') : t('personalCenter.security.twofa.enableSubmit') }}
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl border theme-btn-secondary px-4 py-3 text-sm font-semibold"
-            @click="cancelSetup"
-          >
+          </Button>
+          <Button type="button" variant="outline" class="h-11 font-semibold" @click="cancelSetup">
             {{ t('personalCenter.security.twofa.cancel') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -195,31 +152,23 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
       @click.self="recoveryCodes = []"
     >
-      <div class="w-full max-w-md rounded-2xl theme-personal-card p-6">
-        <h4 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.security.twofa.recoveryTitle') }}</h4>
-        <p class="mt-2 text-sm theme-text-muted">{{ t('personalCenter.security.twofa.recoveryWarning') }}</p>
+      <div class="w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm">
+        <h4 class="text-lg font-bold text-foreground">{{ t('personalCenter.security.twofa.recoveryTitle') }}</h4>
+        <p class="mt-2 text-sm text-muted-foreground">{{ t('personalCenter.security.twofa.recoveryWarning') }}</p>
         <div class="mt-4 grid grid-cols-2 gap-2">
           <code
             v-for="(c, idx) in recoveryCodes"
             :key="idx"
-            class="rounded-lg border theme-pill-neutral px-3 py-2 text-center font-mono text-sm theme-text-primary"
+            class="rounded-lg border px-3 py-2 text-center font-mono text-sm text-foreground"
           >{{ c }}</code>
         </div>
         <div class="mt-5 flex gap-2">
-          <button
-            type="button"
-            class="inline-flex flex-1 items-center justify-center rounded-xl border theme-btn-secondary px-4 py-2 text-sm"
-            @click="copyRecoveryCodes"
-          >
+          <Button type="button" variant="outline" class="flex-1" @click="copyRecoveryCodes">
             {{ copied ? t('personalCenter.security.twofa.copied') : t('personalCenter.security.twofa.copy') }}
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-4 py-2 text-sm font-bold"
-            @click="acknowledgeRecoveryCodes"
-          >
+          </Button>
+          <Button type="button" class="font-bold" @click="acknowledgeRecoveryCodes">
             {{ t('personalCenter.security.twofa.acknowledge') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -232,7 +181,11 @@ import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { userTotpAPI } from '../../api/auth'
 import { useUserAuthStore } from '../../stores/userAuth'
-import { pageAlertClass, type PageAlert } from '../../utils/alerts'
+import { pageAlertVariant, pageAlertToneClass, type PageAlert } from '../../utils/alerts'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 const userAuthStore = useUserAuthStore()

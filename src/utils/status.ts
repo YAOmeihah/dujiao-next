@@ -17,6 +17,30 @@ export const orderStatusLabel = (t: TranslateFn, status?: string) => {
   return map[status] || status
 }
 
+export type BadgeTone = 'success' | 'warning' | 'info' | 'danger' | 'accent' | 'neutral'
+
+export const orderStatusVariant = (status?: string): BadgeTone => {
+  switch (status) {
+    case 'pending_payment':
+    case 'partially_refunded':
+      return 'warning'
+    case 'paid':
+    case 'delivered':
+    case 'completed':
+      return 'success'
+    case 'partially_delivered':
+    case 'refunded':
+      return 'info'
+    case 'fulfilling':
+      return 'accent'
+    case 'expired':
+      return 'danger'
+    case 'canceled':
+    default:
+      return 'neutral'
+  }
+}
+
 export const orderStatusClass = (status?: string) => {
   switch (status) {
     case 'pending_payment':

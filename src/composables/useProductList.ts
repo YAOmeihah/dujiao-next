@@ -55,8 +55,8 @@ export function useProductList(options: UseProductListOptions = {}) {
 
   const getParentToggleButtonClass = (categoryId: number) => {
     return isParentExpanded(categoryId)
-      ? 'theme-btn-primary border-transparent'
-      : 'theme-panel-soft theme-text-muted hover:text-gray-900 dark:hover:text-white'
+      ? 'bg-primary text-primary-foreground border-transparent'
+      : 'bg-card/70 text-muted-foreground hover:text-foreground'
   }
 
   const syncExpandedCategoryState = () => {

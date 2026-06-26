@@ -1,88 +1,87 @@
 <template>
   <form class="space-y-6" @submit.prevent="$emit('submit')">
     <div>
-      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('personalCenter.security.currentEmailLabel') }}</label>
-      <input
-        :value="currentEmailDisplay"
-        disabled
-        class="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-gray-500 dark:border-white/10 dark:bg-white/5"
-      />
-      <p v-if="!requiresOldEmailCode" class="mt-2 text-xs theme-text-muted">
+      <Label class="mb-2 block">{{ t('personalCenter.security.currentEmailLabel') }}</Label>
+      <Input :model-value="currentEmailDisplay" disabled class="h-11" />
+      <p v-if="!requiresOldEmailCode" class="mt-2 text-xs text-muted-foreground">
         {{ t('personalCenter.security.bindOnlyTip') }}
       </p>
     </div>
 
     <div>
-      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('personalCenter.security.newEmailLabel') }}</label>
-      <input
-        :value="newEmail"
-        @input="$emit('update:newEmail', ($event.target as HTMLInputElement).value)"
+      <Label class="mb-2 block">{{ t('personalCenter.security.newEmailLabel') }}</Label>
+      <Input
+        :model-value="newEmail"
+        @update:model-value="(v) => $emit('update:newEmail', String(v))"
         type="email"
         :placeholder="t('personalCenter.security.newEmailPlaceholder')"
-        class="w-full form-input-lg"
+        class="h-11"
       />
     </div>
 
     <div class="grid grid-cols-1 gap-4" :class="requiresOldEmailCode ? 'lg:grid-cols-2' : ''">
       <div v-if="requiresOldEmailCode">
-        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('personalCenter.security.oldCodeLabel') }}</label>
+        <Label class="mb-2 block">{{ t('personalCenter.security.oldCodeLabel') }}</Label>
         <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            :value="oldCode"
-            @input="$emit('update:oldCode', ($event.target as HTMLInputElement).value)"
+          <Input
+            :model-value="oldCode"
+            @update:model-value="(v) => $emit('update:oldCode', String(v))"
             :placeholder="t('personalCenter.security.codePlaceholder')"
-            class="min-w-0 flex-1 form-input-lg"
+            class="h-11 flex-1"
           />
-          <button
+          <Button
             type="button"
-            @click="$emit('sendOldCode')"
+            variant="outline"
+            size="sm"
+            class="h-11 whitespace-nowrap"
             :disabled="sendingCode || oldCodeCooldown > 0"
-            class="whitespace-nowrap rounded-xl border theme-btn-secondary px-4 py-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            @click="$emit('sendOldCode')"
           >
             {{ oldCodeCooldown > 0 ? t('personalCenter.security.countdown', { seconds: oldCodeCooldown }) : t('personalCenter.security.sendOldCode') }}
-          </button>
+          </Button>
         </div>
       </div>
 
       <div>
-        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('personalCenter.security.newCodeLabel') }}</label>
+        <Label class="mb-2 block">{{ t('personalCenter.security.newCodeLabel') }}</Label>
         <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            :value="newCode"
-            @input="$emit('update:newCode', ($event.target as HTMLInputElement).value)"
+          <Input
+            :model-value="newCode"
+            @update:model-value="(v) => $emit('update:newCode', String(v))"
             :placeholder="t('personalCenter.security.codePlaceholder')"
-            class="min-w-0 flex-1 form-input-lg"
+            class="h-11 flex-1"
           />
-          <button
+          <Button
             type="button"
-            @click="$emit('sendNewCode')"
+            variant="outline"
+            size="sm"
+            class="h-11 whitespace-nowrap"
             :disabled="sendingCode || newCodeCooldown > 0"
-            class="whitespace-nowrap rounded-xl border theme-btn-secondary px-4 py-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            @click="$emit('sendNewCode')"
           >
             {{ newCodeCooldown > 0 ? t('personalCenter.security.countdown', { seconds: newCodeCooldown }) : t('personalCenter.security.sendNewCode') }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
-    <div class="border-t border-gray-200/70 pt-5 dark:border-white/10">
-      <button
-        type="submit"
-        :disabled="changingEmail"
-        class="inline-flex items-center justify-center rounded-xl theme-btn-primary px-6 py-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-      >
+    <div class="border-t pt-5">
+      <Button type="submit" :disabled="changingEmail" class="h-11 font-bold">
         {{
           changingEmail
             ? t('personalCenter.security.submitting')
             : (requiresOldEmailCode ? t('personalCenter.security.submit') : t('personalCenter.security.bindSubmit'))
         }}
-      </button>
+      </Button>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const { t } = useI18n()
 

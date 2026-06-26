@@ -7,7 +7,7 @@
     leave-from-class="translate-y-0 opacity-100"
     leave-to-class="translate-y-full opacity-0">
     <div v-if="visible"
-      class="lg:hidden fixed bottom-0 left-0 right-0 z-40 theme-panel-strong backdrop-blur-xl border-t theme-border shadow-2xl theme-safe-bottom">
+      class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t shadow-2xl theme-safe-bottom">
       <div class="flex items-center gap-3 px-4 py-3">
         <!-- Price -->
         <div class="flex-1 min-w-0">
@@ -17,30 +17,27 @@
           <span v-else-if="showSkuPromotionPrice" class="theme-price-sm text-rose-600 dark:text-rose-300 truncate block">
             {{ skuPromotionPriceDisplay }}
           </span>
-          <span v-else-if="showSkuPrice" class="theme-price-sm theme-text-accent truncate block">
+          <span v-else-if="showSkuPrice" class="theme-price-sm text-primary truncate block">
             {{ skuPriceDisplay }}
           </span>
           <span v-else-if="showProductPromotionPrice" class="theme-price-sm text-rose-600 dark:text-rose-300 truncate block">
             {{ productPromotionPriceDisplay }}
           </span>
-          <span v-else class="theme-price-sm theme-text-accent truncate block">
+          <span v-else class="theme-price-sm text-primary truncate block">
             {{ productPriceDisplay }}
           </span>
         </div>
         <!-- Actions -->
-        <button v-if="requiresLogin" @click="$emit('goLogin')"
-          class="px-5 py-3 theme-btn-primary font-bold rounded-xl text-sm min-h-[44px]">
+        <Button v-if="requiresLogin" size="lg" class="rounded-xl font-bold" @click="$emit('goLogin')">
           {{ t('productDetail.loginToBuy') }}
-        </button>
+        </Button>
         <template v-else>
-          <button @click="$emit('addToCart')" :disabled="!canPurchase"
-            class="px-4 py-3 border theme-btn-secondary font-bold rounded-xl text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]">
+          <Button variant="secondary" size="lg" class="rounded-xl font-bold" :disabled="!canPurchase" @click="$emit('addToCart')">
             {{ t('productDetail.addToCart') }}
-          </button>
-          <button @click="$emit('buyNow')" :disabled="!canPurchase"
-            class="px-5 py-3 theme-btn-primary font-bold rounded-xl text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]">
+          </Button>
+          <Button size="lg" class="rounded-xl font-bold" :disabled="!canPurchase" @click="$emit('buyNow')">
             {{ t('productDetail.buyNow') }}
-          </button>
+          </Button>
         </template>
       </div>
     </div>
@@ -49,6 +46,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 

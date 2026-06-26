@@ -1,21 +1,19 @@
 <template>
   <div class="space-y-6">
-    <div class="theme-personal-card">
-      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 class="text-xl font-bold theme-text-primary">{{ t('personalCenter.security.title') }}</h2>
-          <p class="mt-1 text-sm theme-text-muted">
-            {{ requiresOldEmailCode ? t('personalCenter.security.subtitle') : t('personalCenter.security.subtitleBindOnly') }}
-          </p>
-        </div>
-        <span class="theme-badge theme-badge-accent px-3 py-1 text-xs font-semibold">
-          {{ t('personalCenter.tabs.security') }}
-        </span>
-      </div>
+    <div class="rounded-2xl border bg-card p-7 shadow-sm">
+      <PanelHeading
+        :title="t('personalCenter.security.title')"
+        :description="requiresOldEmailCode ? t('personalCenter.security.subtitle') : t('personalCenter.security.subtitleBindOnly')"
+        :icon="ShieldCheck"
+      >
+        <template #actions>
+          <Badge variant="accent" size="sm">{{ t('personalCenter.tabs.security') }}</Badge>
+        </template>
+      </PanelHeading>
 
-      <div v-if="securityAlert" class="mb-5 rounded-xl border px-4 py-3 text-sm shadow-sm" :class="pageAlertClass(securityAlert.level)">
-        {{ securityAlert.message }}
-      </div>
+      <Alert v-if="securityAlert" class="mb-5" :variant="pageAlertVariant(securityAlert.level)" :class="pageAlertToneClass(securityAlert.level)">
+        <AlertDescription>{{ securityAlert.message }}</AlertDescription>
+      </Alert>
 
       <TelegramBindingSection
         :telegram-enabled="telegramEnabled"
@@ -79,7 +77,11 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { pageAlertClass, type PageAlert } from '../../utils/alerts'
+import { ShieldCheck } from 'lucide-vue-next'
+import { pageAlertVariant, pageAlertToneClass, type PageAlert } from '../../utils/alerts'
+import PanelHeading from '../../components/shared/PanelHeading.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { userProfileAPI } from '../../api/user'
 import type { TelegramAuthPayload } from '../../api'
 import { useAppStore } from '../../stores/app'

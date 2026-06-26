@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="text-sm theme-text-muted font-medium"
+    class="text-sm text-muted-foreground font-medium"
     :aria-label="t('breadcrumb.label')"
   >
     <!-- Desktop: full breadcrumb trail -->
@@ -9,14 +9,14 @@
         <router-link
           v-if="item.to && idx < items.length - 1"
           :to="item.to"
-          class="theme-link-muted transition-colors"
+          class="text-muted-foreground transition-colors hover:text-foreground"
         >{{ item.label }}</router-link>
         <span
           v-else
-          class="theme-text-primary truncate max-w-[240px]"
+          class="text-foreground truncate max-w-[240px]"
           :aria-current="idx === items.length - 1 ? 'page' : undefined"
         >{{ item.label }}</span>
-        <span v-if="idx < items.length - 1" aria-hidden="true" class="theme-text-muted/60">/</span>
+        <span v-if="idx < items.length - 1" aria-hidden="true" class="text-muted-foreground/60">/</span>
       </li>
     </ol>
 
@@ -25,27 +25,17 @@
       <button
         v-if="parent"
         type="button"
-        class="inline-flex items-center gap-1.5 theme-link-muted transition-colors active:opacity-70"
+        class="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
         :aria-label="t('breadcrumb.back', { name: parent.label })"
         @click="handleBack"
       >
-        <svg
-          class="w-4 h-4 shrink-0"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
+        <ChevronLeft class="w-4 h-4 shrink-0" :stroke-width="2" aria-hidden="true" />
         <span class="truncate max-w-[40vw]">{{ parent.label }}</span>
       </button>
-      <span v-if="parent && current" aria-hidden="true" class="theme-text-muted/60">/</span>
+      <span v-if="parent && current" aria-hidden="true" class="text-muted-foreground/60">/</span>
       <span
         v-if="current"
-        class="theme-text-primary truncate flex-1"
+        class="text-foreground truncate flex-1"
         aria-current="page"
       >{{ current.label }}</span>
     </div>
@@ -56,6 +46,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
+import { ChevronLeft } from 'lucide-vue-next'
 
 interface BreadcrumbItem {
   label: string

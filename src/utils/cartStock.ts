@@ -68,6 +68,7 @@ const resolveMatchedSku = (item: CartItem, activeSkus: any[]) => {
 
 const shouldEnforceSkuStock = (product: any, sku: any) => {
   if (!product || !sku) return false
+  if (sku?.stock_quantity_hidden === true || product?.stock_quantity_hidden === true) return false
   const type = String(product?.fulfillment_type || '').trim()
   if (type === 'auto') return true
   if (type === 'upstream') return true
@@ -121,6 +122,8 @@ export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
     const autoStockAvailable = normalizeStockNumber(matchedSku?.auto_stock_available)
     const upstreamStock = normalizeManualStockTotal(matchedSku?.upstream_stock)
     const skuStockEnforced = shouldEnforceSkuStock(product, matchedSku)
+    const stockRangeMin = normalizeStockNumber(matchedSku?.stock_range_min)
+    const stockRangeMax = normalizeStockNumber(matchedSku?.stock_range_max)
 
     cartStore.patchItem(item.productId, item.skuId, {
       skuCode: String(matchedSku?.sku_code || item.skuCode || ''),
@@ -132,6 +135,12 @@ export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
       skuManualStockSold: manualStockSold,
       skuAutoStockAvailable: autoStockAvailable,
       skuUpstreamStock: upstreamStock,
+      skuStockStatus: String(matchedSku?.stock_status || ''),
+      skuStockDisplayMode: String(matchedSku?.stock_display_mode || product?.stock_display_mode || ''),
+      skuStockDisplay: String(matchedSku?.stock_display || ''),
+      skuStockRangeMin: stockRangeMin > 0 ? stockRangeMin : undefined,
+      skuStockRangeMax: stockRangeMax > 0 ? stockRangeMax : undefined,
+      skuStockQuantityHidden: Boolean(matchedSku?.stock_quantity_hidden || product?.stock_quantity_hidden),
       skuStockEnforced,
       skuStockSnapshotAt: new Date().toISOString(),
       minPurchaseQuantity: normalizeOptionalLimitNumber(product?.min_purchase_quantity),

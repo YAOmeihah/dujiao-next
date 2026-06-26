@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -36,6 +37,30 @@
 
   --color-hairline: var(--ui-border);
   --color-hairline-strong: var(--ui-border-strong);
+
+  /*
+   * shadcn-vue 兼容 token —— 映射到本站 --ui-* 调色板(Apple 蓝 + 灰),
+   * 暗色随 .dark 自动翻转。仅供分销控制台的 components/ui/* 使用,
+   * 不改任何既有 storefront 变量。--color-primary 已在上方定义,此处不重复。
+   */
+  --color-background: var(--ui-bg-page);
+  --color-foreground: var(--ui-text-primary);
+  --color-card: var(--ui-bg-elevated);
+  --color-card-foreground: var(--ui-text-primary);
+  --color-popover: var(--ui-bg-elevated);
+  --color-popover-foreground: var(--ui-text-primary);
+  --color-primary-foreground: var(--ui-text-on-accent);
+  --color-secondary: var(--ui-bg-soft);
+  --color-secondary-foreground: var(--ui-text-primary);
+  --color-muted: var(--ui-bg-muted);
+  --color-muted-foreground: var(--ui-text-muted);
+  --color-accent: var(--ui-bg-soft);
+  --color-accent-foreground: var(--ui-text-primary);
+  --color-destructive: var(--ui-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-border);
+  --color-ring: var(--ui-accent);
 
   --radius-sm: var(--ui-radius-sm);
   --radius-md: var(--ui-radius-md);
@@ -179,6 +204,11 @@
   --ui-price-original: #8e8e93;
 }
 
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background-color: var(--ui-bg-page);
@@ -191,6 +221,15 @@ html[data-telegram-mini-app="true"] body {
 }
 
 @layer base {
+  /*
+   * shadcn 标准全局边框复位:Tailwind v4 裸 `border` 默认色为 currentColor
+   * (亮色下≈纯黑),会让 shadcn 组件(Card/Input/Table 等)出现纯黑框。
+   * 复位为本站 hairline --ui-border(亮/暗自动翻转);显式 border-* 色仍覆盖它。
+   */
+  * {
+    border-color: var(--ui-border);
+  }
+
   h1 {
     line-height: var(--ui-leading-display);
     letter-spacing: -0.024em;
@@ -235,159 +274,8 @@ html[data-telegram-mini-app="true"] body {
 }
 
 @layer components {
-  .theme-page {
-    background-color: var(--ui-bg-page);
-    color: var(--ui-text-primary);
-  }
-
-  .theme-panel {
-    background-color: var(--ui-bg-elevated);
-    border-color: var(--ui-border);
-    box-shadow: var(--ui-shadow-1);
-  }
-
-  .theme-panel-soft {
-    background-color: var(--ui-bg-overlay);
-    border-color: var(--ui-border);
-  }
-
-  .theme-panel-strong {
-    background-color: var(--ui-bg-overlay-strong);
-    border-color: var(--ui-border-strong);
-    box-shadow: var(--ui-shadow-2);
-  }
-
   .theme-overlay {
     background-color: var(--ui-bg-overlay-strong);
-  }
-
-  .theme-text-primary {
-    color: var(--ui-text-primary);
-  }
-
-  .theme-text-secondary {
-    color: var(--ui-text-secondary);
-  }
-
-  .theme-text-muted {
-    color: var(--ui-text-muted);
-  }
-
-  .theme-border {
-    border-color: var(--ui-border);
-  }
-
-  .theme-border-strong {
-    border-color: var(--ui-border-strong);
-  }
-
-  .theme-link {
-    color: var(--ui-accent);
-    text-decoration-line: underline;
-    text-decoration-color: transparent;
-    text-underline-offset: 0.2em;
-    transition: color 0.2s ease, text-decoration-color 0.2s ease;
-  }
-
-  .theme-link:hover {
-    color: var(--ui-accent-hover);
-    text-decoration-color: color-mix(in oklab, var(--ui-accent-hover) 56%, transparent);
-  }
-
-  .theme-link:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--ui-focus-ring);
-    border-radius: 0.35rem;
-  }
-
-  .theme-btn-primary {
-    background-color: var(--ui-accent);
-    color: var(--ui-text-on-accent);
-    border-color: var(--ui-accent);
-    box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--ui-accent) 55%, transparent);
-    font-weight: 600;
-  }
-
-  .theme-btn-primary:hover {
-    background-color: var(--ui-accent-hover);
-    border-color: var(--ui-accent-hover);
-    box-shadow: 0 14px 28px -20px color-mix(in oklab, var(--ui-accent-hover) 58%, transparent);
-  }
-
-  .theme-btn-neutral {
-    background-color: var(--ui-bg-soft);
-    color: var(--ui-text-secondary);
-    border-color: var(--ui-border);
-  }
-
-  .theme-btn-neutral:hover {
-    background-color: var(--ui-bg-elevated);
-    color: var(--ui-text-primary);
-    border-color: var(--ui-border-strong);
-  }
-
-  .theme-btn-secondary {
-    background-color: var(--ui-bg-soft);
-    color: var(--ui-text-secondary);
-    border-color: var(--ui-border);
-    font-weight: 500;
-  }
-
-  .theme-btn-secondary:hover {
-    color: var(--ui-accent-hover);
-    border-color: color-mix(in oklab, var(--ui-accent) 45%, transparent);
-  }
-
-  .theme-btn-ghost {
-    background-color: transparent;
-    color: var(--ui-text-secondary);
-    border-color: var(--ui-border);
-    font-weight: 500;
-  }
-
-  .theme-btn-ghost:hover {
-    background-color: color-mix(in oklab, var(--ui-accent-soft) 55%, transparent);
-    color: var(--ui-accent-hover);
-    border-color: color-mix(in oklab, var(--ui-accent) 45%, transparent);
-  }
-
-  .theme-pill-neutral {
-    background-color: var(--ui-bg-soft);
-    color: var(--ui-text-secondary);
-    border-color: var(--ui-border);
-  }
-
-  .theme-surface-soft {
-    background-color: var(--ui-bg-soft);
-    border-color: var(--ui-border);
-  }
-
-  .theme-surface-muted {
-    background-color: var(--ui-bg-muted);
-    border-color: var(--ui-border);
-  }
-
-  .theme-link-muted {
-    color: var(--ui-text-muted);
-    text-decoration-line: underline;
-    text-decoration-color: transparent;
-    text-underline-offset: 0.2em;
-    transition: color 0.2s ease, text-decoration-color 0.2s ease;
-  }
-
-  .theme-link-muted:hover {
-    color: var(--ui-text-primary);
-    text-decoration-color: color-mix(in oklab, var(--ui-text-muted) 52%, transparent);
-  }
-
-  .theme-link-muted:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--ui-focus-ring);
-    border-radius: 0.35rem;
-  }
-
-  .theme-text-accent {
-    color: var(--ui-accent);
   }
 
   .theme-wordmark {
@@ -423,247 +311,10 @@ html[data-telegram-mini-app="true"] body {
     text-overflow: ellipsis;
   }
 
-  .theme-nav-link {
-    @apply inline-flex items-center rounded-lg border border-transparent px-3 py-2 text-xs font-medium;
-    color: var(--ui-text-muted);
-    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-  }
-
-  .theme-nav-link:hover {
-    color: var(--ui-text-primary);
-    border-color: var(--ui-border);
-    background-color: var(--ui-bg-soft);
-  }
-
-  .theme-nav-link:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--ui-focus-ring);
-  }
-
-  .theme-nav-link-active {
-    color: var(--ui-accent) !important;
-    border-color: color-mix(in oklab, var(--ui-accent) 36%, transparent) !important;
-    background-color: var(--ui-accent-soft) !important;
-  }
-
-  .theme-nav-badge {
-    @apply inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold;
-    min-width: 1.1rem;
-    line-height: 1;
-    color: var(--ui-text-on-accent);
-    background-color: var(--ui-accent);
-  }
-
   .theme-section-heading {
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: var(--ui-leading-display);
-  }
-
-  .theme-btn-danger {
-    background-color: var(--ui-danger-soft);
-    color: var(--ui-danger);
-    border-color: color-mix(in oklab, var(--ui-danger) 35%, transparent);
-    font-weight: 600;
-  }
-
-  .theme-btn-danger:hover {
-    background-color: color-mix(in oklab, var(--ui-danger) 22%, transparent);
-    color: var(--ui-danger);
-  }
-
-  .theme-btn-inline-md {
-    @apply inline-flex items-center justify-center rounded-xl px-4 text-sm;
-    min-height: 2.75rem;
-  }
-
-  .theme-btn-block-md {
-    @apply inline-flex w-full items-center justify-center rounded-xl px-4 text-sm;
-    min-height: 2.75rem;
-  }
-
-  .theme-auth-card {
-    @apply rounded-3xl border p-7 backdrop-blur-sm sm:p-9;
-    background-color: var(--ui-bg-overlay-strong);
-    border-color: var(--ui-border-strong);
-    box-shadow: var(--ui-shadow-2);
-  }
-
-  .theme-auth-form {
-    @apply space-y-6;
-  }
-
-  .theme-personal-card {
-    @apply rounded-2xl border p-7 shadow-sm;
-    background-color: var(--ui-bg-overlay-strong);
-    border-color: var(--ui-border);
-  }
-
-  .theme-btn-primary,
-  .theme-btn-neutral,
-  .theme-btn-secondary,
-  .theme-btn-ghost,
-  .theme-btn-danger {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-
-  .theme-btn-primary:active,
-  .theme-btn-neutral:active,
-  .theme-btn-secondary:active,
-  .theme-btn-ghost:active,
-  .theme-btn-danger:active {
-    transform: translateY(1px);
-  }
-
-  .theme-btn-primary:focus-visible,
-  .theme-btn-neutral:focus-visible,
-  .theme-btn-secondary:focus-visible,
-  .theme-btn-ghost:focus-visible,
-  .theme-btn-danger:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--ui-focus-ring);
-  }
-
-  .theme-btn-primary:disabled,
-  .theme-btn-neutral:disabled,
-  .theme-btn-secondary:disabled,
-  .theme-btn-ghost:disabled,
-  .theme-btn-danger:disabled {
-    opacity: 0.52;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .theme-card-interactive:hover {
-    border-color: color-mix(in oklab, var(--ui-accent) 34%, transparent);
-    transform: translateY(-0.25rem);
-    box-shadow: 0 20px 36px -28px color-mix(in oklab, var(--ui-accent) 28%, rgba(0, 0, 0, 0.24));
-  }
-
-  .theme-selected-surface {
-    border-color: color-mix(in oklab, var(--ui-accent) 44%, transparent);
-    background-color: var(--ui-accent-soft);
-  }
-
-  .theme-selected-surface:hover {
-    border-color: color-mix(in oklab, var(--ui-accent) 54%, transparent);
-  }
-
-  .theme-interactive-surface {
-    border-color: var(--ui-border);
-    background-color: var(--ui-bg-elevated);
-  }
-
-  .theme-interactive-surface:hover {
-    border-color: var(--ui-border-strong);
-  }
-
-  .theme-thumb-selected {
-    border-color: var(--ui-accent);
-    box-shadow: 0 0 0 1px color-mix(in oklab, var(--ui-accent) 42%, transparent);
-  }
-
-  .theme-loading-spinner {
-    border-color: color-mix(in oklab, var(--ui-accent) 62%, transparent);
-    border-top-color: transparent;
-  }
-
-  .theme-accent-checkbox {
-    accent-color: var(--ui-accent);
-  }
-
-  .theme-alert-success {
-    color: var(--ui-success);
-    border-color: color-mix(in oklab, var(--ui-success) 34%, transparent);
-    background-color: var(--ui-success-soft);
-  }
-
-  .theme-alert-warning {
-    color: var(--ui-warning);
-    border-color: color-mix(in oklab, var(--ui-warning) 34%, transparent);
-    background-color: var(--ui-warning-soft);
-  }
-
-  .theme-alert-danger {
-    color: var(--ui-danger);
-    border-color: color-mix(in oklab, var(--ui-danger) 34%, transparent);
-    background-color: var(--ui-danger-soft);
-  }
-
-  .theme-alert-info {
-    color: var(--ui-info);
-    border-color: color-mix(in oklab, var(--ui-info) 34%, transparent);
-    background-color: var(--ui-info-soft);
-  }
-
-  .theme-badge {
-    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold;
-    line-height: 1;
-    letter-spacing: 0.01em;
-  }
-
-  .theme-badge-meta {
-    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider;
-    line-height: 1;
-  }
-
-  .theme-badge-xs {
-    @apply px-1.5 py-0.5 text-[10px] font-semibold;
-    line-height: 1;
-  }
-
-  .theme-badge-neutral {
-    color: var(--ui-text-secondary);
-    border-color: var(--ui-border);
-    background-color: var(--ui-bg-soft);
-  }
-
-  .theme-badge-accent {
-    color: var(--ui-accent-hover);
-    border-color: color-mix(in oklab, var(--ui-accent) 42%, transparent);
-    background-color: var(--ui-accent-soft);
-  }
-
-  .theme-badge-success {
-    color: var(--ui-success);
-    border-color: color-mix(in oklab, var(--ui-success) 38%, transparent);
-    background-color: var(--ui-success-soft);
-  }
-
-  .theme-badge-warning {
-    color: var(--ui-warning);
-    border-color: color-mix(in oklab, var(--ui-warning) 38%, transparent);
-    background-color: var(--ui-warning-soft);
-  }
-
-  .theme-badge-danger {
-    color: var(--ui-danger);
-    border-color: color-mix(in oklab, var(--ui-danger) 38%, transparent);
-    background-color: var(--ui-danger-soft);
-  }
-
-  .theme-badge-info {
-    color: var(--ui-info);
-    border-color: color-mix(in oklab, var(--ui-info) 38%, transparent);
-    background-color: var(--ui-info-soft);
-  }
-
-  .theme-badge-solid-danger {
-    color: var(--ui-text-on-accent);
-    border-color: color-mix(in oklab, var(--ui-danger) 58%, transparent);
-    background-color: var(--ui-danger);
-  }
-
-  .theme-badge-inverse {
-    color: rgba(255, 255, 255, 0.96);
-    border-color: rgba(255, 255, 255, 0.24);
-    background-color: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(8px);
-  }
-
-  .theme-accent-stick {
-    background-color: var(--ui-accent);
   }
 
   .theme-prose :where(h1, h2, h3, h4, h5, h6, strong) {
@@ -693,34 +344,6 @@ html[data-telegram-mini-app="true"] body {
     border-top-right-radius: 0.75rem;
     border-bottom-right-radius: 0.75rem;
     padding: 0.9rem 1rem;
-  }
-
-  /* Shared form input tokens — sizes only differ in padding / text-size */
-  .form-input,
-  .form-input-lg,
-  .form-input-compact {
-    @apply rounded-xl border transition-colors;
-    background-color: var(--ui-bg-elevated);
-    border-color: var(--ui-border);
-    color: var(--ui-text-primary);
-  }
-
-  .form-input { @apply w-full px-4 py-2.5; }
-  .form-input-lg { @apply px-4 py-3 text-sm; }
-  .form-input-compact { @apply px-3 py-2 text-sm; }
-
-  .form-input::placeholder,
-  .form-input-lg::placeholder,
-  .form-input-compact::placeholder {
-    color: var(--ui-text-muted);
-  }
-
-  .form-input:focus,
-  .form-input-lg:focus,
-  .form-input-compact:focus {
-    outline: none;
-    border-color: var(--ui-accent);
-    box-shadow: 0 0 0 3px var(--ui-focus-ring);
   }
 
   /* Price typography */

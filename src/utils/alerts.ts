@@ -5,6 +5,16 @@ export interface PageAlert {
   message: string
 }
 
+// shadcn <Alert> 适配:variant 只有 default/destructive,success/warning 用 tone class 补色
+export const pageAlertVariant = (level: PageAlertLevel): 'default' | 'destructive' =>
+  level === 'error' ? 'destructive' : 'default'
+
+export const pageAlertToneClass = (level: PageAlertLevel): string => {
+  if (level === 'success') return 'border-success/40 text-success'
+  if (level === 'warning') return 'border-warning/40 text-warning'
+  return ''
+}
+
 export const pageAlertClass = (level: PageAlertLevel) => {
   const classMap: Record<PageAlertLevel, string> = {
     success: 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',

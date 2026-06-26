@@ -1,250 +1,203 @@
 <template>
   <div class="space-y-6">
-    <div class="theme-personal-card">
-      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 class="text-xl font-bold theme-text-primary">{{ t('personalCenter.affiliate.title') }}</h2>
-          <p class="mt-1 text-sm theme-text-muted">{{ t('personalCenter.affiliate.subtitle') }}</p>
-        </div>
-        <span class="theme-badge theme-badge-accent px-3 py-1 text-xs font-semibold">
-          {{ t('personalCenter.tabs.affiliate') }}
-        </span>
-      </div>
+    <div class="rounded-2xl border bg-card p-7 shadow-sm">
+      <PanelHeading :title="t('personalCenter.affiliate.title')" :description="t('personalCenter.affiliate.subtitle')" :icon="Megaphone">
+        <template #actions>
+          <Badge variant="accent" size="sm">{{ t('personalCenter.tabs.affiliate') }}</Badge>
+        </template>
+      </PanelHeading>
 
-      <div v-if="panelAlert" class="mb-5 rounded-xl border px-4 py-3 text-sm shadow-sm" :class="pageAlertClass(panelAlert.level)">
-        {{ panelAlert.message }}
-      </div>
+      <Alert v-if="panelAlert" class="mb-5" :variant="pageAlertVariant(panelAlert.level)" :class="pageAlertToneClass(panelAlert.level)">
+        <AlertDescription>{{ panelAlert.message }}</AlertDescription>
+      </Alert>
 
       <div v-if="loading" class="space-y-3">
-        <div v-for="idx in 3" :key="idx" class="h-16 animate-pulse rounded-xl border theme-surface-muted"></div>
+        <div v-for="idx in 3" :key="idx" class="h-16 animate-pulse rounded-xl border bg-muted"></div>
       </div>
 
       <template v-else-if="dashboard?.opened">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div class="rounded-xl border theme-surface-soft p-4 md:col-span-2">
-            <div class="text-xs theme-text-muted">{{ t('personalCenter.affiliate.affiliateCode') }}</div>
+          <div class="rounded-xl border p-4 md:col-span-2">
+            <div class="text-xs text-muted-foreground">{{ t('personalCenter.affiliate.affiliateCode') }}</div>
             <div class="mt-2 flex flex-wrap items-center gap-2">
-              <span class="rounded-lg border border-border bg-muted/30 px-2 py-1 font-mono text-sm theme-text-primary">{{ dashboard?.affiliate_code || '-' }}</span>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-lg border theme-btn-secondary px-2.5 py-1 text-xs font-semibold"
-                @click="copyPromotionUrl"
-              >
+              <span class="rounded-lg border border-border bg-muted/30 px-2 py-1 font-mono text-sm text-foreground">{{ dashboard?.affiliate_code || '-' }}</span>
+              <Button type="button" variant="outline" size="sm" @click="copyPromotionUrl">
                 {{ t('personalCenter.affiliate.copyPromotionUrl') }}
-              </button>
+              </Button>
             </div>
-            <div class="mt-3 text-xs theme-text-muted break-all">{{ promotionUrl }}</div>
+            <div class="mt-3 text-xs text-muted-foreground break-all">{{ promotionUrl }}</div>
           </div>
-          <div class="rounded-xl border theme-surface-soft p-4">
-            <div class="text-xs theme-text-muted">{{ t('personalCenter.affiliate.conversionRate') }}</div>
-            <div class="mt-2 text-lg font-bold theme-text-primary">{{ conversionRateText }}</div>
-            <div class="mt-2 text-xs theme-text-muted">
+          <div class="rounded-xl border p-4">
+            <div class="text-xs text-muted-foreground">{{ t('personalCenter.affiliate.conversionRate') }}</div>
+            <div class="mt-2 text-lg font-bold text-foreground">{{ conversionRateText }}</div>
+            <div class="mt-2 text-xs text-muted-foreground">
               {{ t('personalCenter.affiliate.conversionDetail', { clicks: dashboard?.click_count || 0, orders: dashboard?.valid_order_count || 0 }) }}
             </div>
           </div>
-          <div class="rounded-xl border theme-surface-soft p-4">
-            <div class="text-xs theme-text-muted">{{ t('personalCenter.affiliate.pendingCommission') }}</div>
-            <div class="mt-2 text-lg font-bold theme-text-primary">{{ dashboard?.pending_commission || '0.00' }}</div>
+          <div class="rounded-xl border p-4">
+            <div class="text-xs text-muted-foreground">{{ t('personalCenter.affiliate.pendingCommission') }}</div>
+            <div class="mt-2 text-lg font-bold text-foreground">{{ dashboard?.pending_commission || '0.00' }}</div>
           </div>
-          <div class="rounded-xl border theme-surface-soft p-4">
-            <div class="text-xs theme-text-muted">{{ t('personalCenter.affiliate.availableCommission') }}</div>
-            <div class="mt-2 text-lg font-bold theme-text-primary">{{ dashboard?.available_commission || '0.00' }}</div>
+          <div class="rounded-xl border p-4">
+            <div class="text-xs text-muted-foreground">{{ t('personalCenter.affiliate.availableCommission') }}</div>
+            <div class="mt-2 text-lg font-bold text-foreground">{{ dashboard?.available_commission || '0.00' }}</div>
           </div>
-          <div class="rounded-xl border theme-surface-soft p-4">
-            <div class="text-xs theme-text-muted">{{ t('personalCenter.affiliate.withdrawnCommission') }}</div>
-            <div class="mt-2 text-lg font-bold theme-text-primary">{{ dashboard?.withdrawn_commission || '0.00' }}</div>
+          <div class="rounded-xl border p-4">
+            <div class="text-xs text-muted-foreground">{{ t('personalCenter.affiliate.withdrawnCommission') }}</div>
+            <div class="mt-2 text-lg font-bold text-foreground">{{ dashboard?.withdrawn_commission || '0.00' }}</div>
           </div>
         </div>
       </template>
 
-      <div v-else class="rounded-xl border border-dashed theme-surface-soft p-5">
-        <p class="text-sm theme-text-muted">{{ t('personalCenter.affiliate.notOpened') }}</p>
-        <button
-          type="button"
-          :disabled="opening"
-          class="mt-4 inline-flex items-center rounded-xl theme-btn-primary px-4 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          @click="openAffiliate"
-        >
+      <div v-else class="rounded-xl border border-dashed p-5">
+        <p class="text-sm text-muted-foreground">{{ t('personalCenter.affiliate.notOpened') }}</p>
+        <Button type="button" :disabled="opening" class="mt-4 font-bold" @click="openAffiliate">
           {{ opening ? t('personalCenter.affiliate.opening') : t('personalCenter.affiliate.openButton') }}
-        </button>
+        </Button>
       </div>
     </div>
 
-    <div v-if="dashboard?.opened" class="theme-personal-card">
-      <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.affiliate.withdrawTitle') }}</h3>
-      <p class="mt-1 text-sm theme-text-muted">{{ t('personalCenter.affiliate.withdrawSubtitle') }}</p>
+    <div v-if="dashboard?.opened" class="rounded-2xl border bg-card p-7 shadow-sm">
+      <h3 class="text-lg font-bold text-foreground">{{ t('personalCenter.affiliate.withdrawTitle') }}</h3>
+      <p class="mt-1 text-sm text-muted-foreground">{{ t('personalCenter.affiliate.withdrawSubtitle') }}</p>
       <form class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-4" @submit.prevent="handleApplyWithdraw">
         <div>
-          <label class="mb-2 block text-sm font-medium theme-text-secondary">{{ t('personalCenter.affiliate.withdrawAmountLabel') }}</label>
-          <input
-            v-model.trim="withdrawForm.amount"
+          <Label class="mb-2 block">{{ t('personalCenter.affiliate.withdrawAmountLabel') }}</Label>
+          <Input
+            v-model="withdrawForm.amount"
             type="text"
             inputmode="decimal"
-            class="w-full form-input-lg"
+            class="h-11"
             :placeholder="t('personalCenter.affiliate.withdrawAmountPlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-2 block text-sm font-medium theme-text-secondary">{{ t('personalCenter.affiliate.withdrawChannelLabel') }}</label>
-          <select v-if="channelOptions.length > 0" v-model="withdrawForm.channel" class="w-full form-input-lg">
-            <option value="">{{ t('personalCenter.affiliate.withdrawChannelPlaceholder') }}</option>
-            <option v-for="channel in channelOptions" :key="channel" :value="channel">{{ channel }}</option>
-          </select>
-          <input
+          <Label class="mb-2 block">{{ t('personalCenter.affiliate.withdrawChannelLabel') }}</Label>
+          <Select v-if="channelOptions.length > 0" v-model="withdrawForm.channel">
+            <SelectTrigger class="h-11 w-full"><SelectValue :placeholder="t('personalCenter.affiliate.withdrawChannelPlaceholder')" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="channel in channelOptions" :key="channel" :value="channel">{{ channel }}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
             v-else
-            v-model.trim="withdrawForm.channel"
+            v-model="withdrawForm.channel"
             type="text"
-            class="w-full form-input-lg"
+            class="h-11"
             :placeholder="t('personalCenter.affiliate.withdrawChannelPlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-2 block text-sm font-medium theme-text-secondary">{{ t('personalCenter.affiliate.withdrawAccountLabel') }}</label>
-          <input
-            v-model.trim="withdrawForm.account"
+          <Label class="mb-2 block">{{ t('personalCenter.affiliate.withdrawAccountLabel') }}</Label>
+          <Input
+            v-model="withdrawForm.account"
             type="text"
-            class="w-full form-input-lg"
+            class="h-11"
             :placeholder="t('personalCenter.affiliate.withdrawAccountPlaceholder')"
           />
         </div>
         <div class="flex items-end">
-          <button
-            type="submit"
-            :disabled="submittingWithdraw"
-            class="inline-flex h-11 w-full items-center justify-center rounded-xl theme-btn-primary px-5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <Button type="submit" :disabled="submittingWithdraw" class="h-11 w-full px-5 font-bold">
             {{ submittingWithdraw ? t('personalCenter.affiliate.withdrawing') : t('personalCenter.affiliate.withdrawSubmit') }}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
 
-    <div v-if="dashboard?.opened" class="theme-personal-card">
+    <div v-if="dashboard?.opened" class="rounded-2xl border bg-card p-7 shadow-sm">
       <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.affiliate.commissionTitle') }}</h3>
-        <button
-          type="button"
-          class="inline-flex items-center rounded-lg border theme-btn-secondary px-3 py-1.5 text-xs font-semibold"
-          @click="loadCommissions(commissionsPagination.page)"
-        >
+        <h3 class="text-lg font-bold text-foreground">{{ t('personalCenter.affiliate.commissionTitle') }}</h3>
+        <Button type="button" variant="outline" size="sm" @click="loadCommissions(commissionsPagination.page)">
           {{ t('orders.filters.refresh') }}
-        </button>
+        </Button>
       </div>
 
       <div v-if="commissionsLoading" class="space-y-3">
-        <div v-for="idx in 3" :key="idx" class="h-14 animate-pulse rounded-xl border theme-surface-muted"></div>
+        <div v-for="idx in 3" :key="idx" class="h-14 animate-pulse rounded-xl border bg-muted"></div>
       </div>
-      <div v-else-if="commissions.length === 0" class="rounded-xl border border-dashed theme-surface-soft px-4 py-6 text-sm theme-text-muted">
+      <div v-else-if="commissions.length === 0" class="rounded-xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
         {{ t('personalCenter.affiliate.commissionEmpty') }}
       </div>
-      <div v-else class="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-        <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-white/10">
-          <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            <tr>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.table.orderNo') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.table.amount') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.table.status') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.table.createdAt') }}</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-            <tr v-for="item in commissions" :key="item.id">
-              <td class="px-4 py-3 font-mono text-xs theme-text-primary">-</td>
-              <td class="px-4 py-3 font-mono text-xs theme-text-primary">{{ item.commission_amount }}</td>
-              <td class="px-4 py-3 text-xs">
-                <span class="theme-badge px-2.5 py-1 text-xs font-semibold" :class="commissionStatusClass(item.status)">
+      <div v-else class="overflow-x-auto rounded-xl border">
+        <Table>
+          <TableHeader>
+            <TableRow class="bg-muted/50">
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.table.orderNo') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.table.amount') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.table.status') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.table.createdAt') }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="item in commissions" :key="item.id">
+              <TableCell class="px-4 font-mono text-xs text-foreground">-</TableCell>
+              <TableCell class="px-4 font-mono text-xs text-foreground">{{ item.commission_amount }}</TableCell>
+              <TableCell class="px-4">
+                <Badge :variant="commissionStatusVariant(item.status)" size="sm">
                   {{ commissionStatusLabel(item.status) }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-xs theme-text-muted">{{ formatDate(item.created_at) }}</td>
-            </tr>
-          </tbody>
-        </table>
+                </Badge>
+              </TableCell>
+              <TableCell class="px-4 text-xs text-muted-foreground">{{ formatDate(item.created_at) }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
-      <div v-if="commissionsPagination.total_page > 1" class="mt-5 flex flex-wrap items-center justify-center gap-3">
-        <button
-          :disabled="commissionsPagination.page <= 1"
-          class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-          @click="loadCommissions(commissionsPagination.page - 1)"
-        >
-          {{ t('orders.prevPage') }}
-        </button>
-        <span class="rounded-full border theme-pill-neutral px-4 py-2 text-sm">
-          {{ t('orders.pageInfo', { page: commissionsPagination.page, total: commissionsPagination.total_page }) }}
-        </span>
-        <button
-          :disabled="commissionsPagination.page >= commissionsPagination.total_page"
-          class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-          @click="loadCommissions(commissionsPagination.page + 1)"
-        >
-          {{ t('orders.nextPage') }}
-        </button>
-      </div>
+      <PaginationNav
+        :current-page="commissionsPagination.page"
+        :total-pages="commissionsPagination.total_page"
+        :loading="commissionsLoading"
+        :scroll-top="false"
+        @change-page="loadCommissions"
+      />
     </div>
 
-    <div v-if="dashboard?.opened" class="theme-personal-card">
+    <div v-if="dashboard?.opened" class="rounded-2xl border bg-card p-7 shadow-sm">
       <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.affiliate.withdrawRecordTitle') }}</h3>
-        <button
-          type="button"
-          class="inline-flex items-center rounded-lg border theme-btn-secondary px-3 py-1.5 text-xs font-semibold"
-          @click="loadWithdraws(withdrawsPagination.page)"
-        >
+        <h3 class="text-lg font-bold text-foreground">{{ t('personalCenter.affiliate.withdrawRecordTitle') }}</h3>
+        <Button type="button" variant="outline" size="sm" @click="loadWithdraws(withdrawsPagination.page)">
           {{ t('orders.filters.refresh') }}
-        </button>
+        </Button>
       </div>
 
       <div v-if="withdrawsLoading" class="space-y-3">
-        <div v-for="idx in 3" :key="idx" class="h-14 animate-pulse rounded-xl border theme-surface-muted"></div>
+        <div v-for="idx in 3" :key="idx" class="h-14 animate-pulse rounded-xl border bg-muted"></div>
       </div>
-      <div v-else-if="withdraws.length === 0" class="rounded-xl border border-dashed theme-surface-soft px-4 py-6 text-sm theme-text-muted">
+      <div v-else-if="withdraws.length === 0" class="rounded-xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
         {{ t('personalCenter.affiliate.withdrawEmpty') }}
       </div>
-      <div v-else class="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-        <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-white/10">
-          <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            <tr>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.withdrawTable.amount') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.withdrawTable.channel') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.withdrawTable.status') }}</th>
-              <th class="px-4 py-3 font-semibold">{{ t('personalCenter.affiliate.withdrawTable.createdAt') }}</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-            <tr v-for="item in withdraws" :key="item.id">
-              <td class="px-4 py-3 font-mono text-xs theme-text-primary">{{ item.amount }}</td>
-              <td class="px-4 py-3 text-xs theme-text-secondary">{{ item.channel }}</td>
-              <td class="px-4 py-3 text-xs">
-                <span class="theme-badge px-2.5 py-1 text-xs font-semibold" :class="withdrawStatusClass(item.status)">
+      <div v-else class="overflow-x-auto rounded-xl border">
+        <Table>
+          <TableHeader>
+            <TableRow class="bg-muted/50">
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.withdrawTable.amount') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.withdrawTable.channel') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.withdrawTable.status') }}</TableHead>
+              <TableHead class="px-4">{{ t('personalCenter.affiliate.withdrawTable.createdAt') }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="item in withdraws" :key="item.id">
+              <TableCell class="px-4 font-mono text-xs text-foreground">{{ item.amount }}</TableCell>
+              <TableCell class="px-4 text-xs text-muted-foreground">{{ item.channel }}</TableCell>
+              <TableCell class="px-4">
+                <Badge :variant="withdrawStatusVariant(item.status)" size="sm">
                   {{ withdrawStatusLabel(item.status) }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-xs theme-text-muted">{{ formatDate(item.created_at) }}</td>
-            </tr>
-          </tbody>
-        </table>
+                </Badge>
+              </TableCell>
+              <TableCell class="px-4 text-xs text-muted-foreground">{{ formatDate(item.created_at) }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
-      <div v-if="withdrawsPagination.total_page > 1" class="mt-5 flex flex-wrap items-center justify-center gap-3">
-        <button
-          :disabled="withdrawsPagination.page <= 1"
-          class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-          @click="loadWithdraws(withdrawsPagination.page - 1)"
-        >
-          {{ t('orders.prevPage') }}
-        </button>
-        <span class="rounded-full border theme-pill-neutral px-4 py-2 text-sm">
-          {{ t('orders.pageInfo', { page: withdrawsPagination.page, total: withdrawsPagination.total_page }) }}
-        </span>
-        <button
-          :disabled="withdrawsPagination.page >= withdrawsPagination.total_page"
-          class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-          @click="loadWithdraws(withdrawsPagination.page + 1)"
-        >
-          {{ t('orders.nextPage') }}
-        </button>
-      </div>
+      <PaginationNav
+        :current-page="withdrawsPagination.page"
+        :total-pages="withdrawsPagination.total_page"
+        :loading="withdrawsLoading"
+        :scroll-top="false"
+        @change-page="loadWithdraws"
+      />
     </div>
   </div>
 </template>
@@ -252,6 +205,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Megaphone } from 'lucide-vue-next'
+import PanelHeading from '../../components/shared/PanelHeading.vue'
 import { affiliateAPI, type AffiliateCommissionData, type AffiliateDashboardData, type AffiliateWithdrawData } from '../../api'
 import {
   AFFILIATE_COMMISSION_STATUS_AVAILABLE,
@@ -263,7 +218,16 @@ import {
   AFFILIATE_WITHDRAW_STATUS_REJECTED,
 } from '../../constants/affiliate'
 import { useAppStore } from '../../stores/app'
-import { pageAlertClass, type PageAlert } from '../../utils/alerts'
+import { pageAlertVariant, pageAlertToneClass, type PageAlert } from '../../utils/alerts'
+import type { BadgeTone } from '../../utils/status'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import PaginationNav from '../../components/PaginationNav.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -476,12 +440,11 @@ const commissionStatusLabel = (status?: string) => {
   return status || '-'
 }
 
-const commissionStatusClass = (status?: string) => {
-  if (status === AFFILIATE_COMMISSION_STATUS_PENDING_CONFIRM) return 'theme-badge-warning'
-  if (status === AFFILIATE_COMMISSION_STATUS_AVAILABLE) return 'theme-badge-success'
-  if (status === AFFILIATE_COMMISSION_STATUS_REJECTED) return 'theme-badge-neutral'
-  if (status === AFFILIATE_COMMISSION_STATUS_WITHDRAWN) return 'theme-badge-info'
-  return 'theme-badge-neutral'
+const commissionStatusVariant = (status?: string): BadgeTone => {
+  if (status === AFFILIATE_COMMISSION_STATUS_PENDING_CONFIRM) return 'warning'
+  if (status === AFFILIATE_COMMISSION_STATUS_AVAILABLE) return 'success'
+  if (status === AFFILIATE_COMMISSION_STATUS_WITHDRAWN) return 'info'
+  return 'neutral'
 }
 
 const withdrawStatusLabel = (status?: string) => {
@@ -491,11 +454,10 @@ const withdrawStatusLabel = (status?: string) => {
   return status || '-'
 }
 
-const withdrawStatusClass = (status?: string) => {
-  if (status === AFFILIATE_WITHDRAW_STATUS_PENDING_REVIEW) return 'theme-badge-warning'
-  if (status === AFFILIATE_WITHDRAW_STATUS_REJECTED) return 'theme-badge-neutral'
-  if (status === AFFILIATE_WITHDRAW_STATUS_PAID) return 'theme-badge-success'
-  return 'theme-badge-neutral'
+const withdrawStatusVariant = (status?: string): BadgeTone => {
+  if (status === AFFILIATE_WITHDRAW_STATUS_PENDING_REVIEW) return 'warning'
+  if (status === AFFILIATE_WITHDRAW_STATUS_PAID) return 'success'
+  return 'neutral'
 }
 
 onMounted(() => {

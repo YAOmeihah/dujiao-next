@@ -5,30 +5,29 @@
       :title="isDisabled(channel) ? channelHint(channel) : ''"
       @click="handleSelect(channel)"
       class="text-left border rounded-xl p-4 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-      :class="props.modelValue === channel.id && !isDisabled(channel) ? 'theme-selected-surface' : 'theme-interactive-surface'">
+      :class="props.modelValue === channel.id && !isDisabled(channel) ? 'border-primary/45 bg-primary/10' : 'bg-card hover:border-foreground/25'">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <img v-if="channel.icon" :src="getImageUrl(channel.icon)" loading="lazy" class="h-5 w-5 rounded object-contain shrink-0" />
-          <div class="theme-text-primary font-medium">{{ channel.name }}</div>
+          <div class="text-foreground font-medium">{{ channel.name }}</div>
         </div>
-        <span v-if="props.modelValue === channel.id && !isDisabled(channel)"
-          class="theme-badge theme-badge-accent theme-badge-xs px-2 py-0.5">
+        <Badge v-if="props.modelValue === channel.id && !isDisabled(channel)" variant="accent" size="xs">
           {{ t('payment.selected') }}
-        </span>
+        </Badge>
       </div>
-      <div class="mt-2 space-y-1 text-xs theme-text-muted">
+      <div class="mt-2 space-y-1 text-xs text-muted-foreground">
         <div>{{ t('payment.feeLabel') }}：{{ props.formatChannelFeeRate(channel) }}</div>
         <div>{{ t('payment.fixedFeeLabel') }}：{{ props.formatChannelFixedFee(channel) }}</div>
       </div>
-      <div v-if="isDisabled(channel)" class="mt-2 text-xs text-amber-600">
+      <div v-if="isDisabled(channel)" class="mt-2 text-xs text-warning">
         {{ channelHint(channel) }}
       </div>
     </button>
   </div>
-  <div v-else-if="props.showBalanceOption" class="text-sm theme-text-muted">
+  <div v-else-if="props.showBalanceOption" class="text-sm text-muted-foreground">
     {{ t('payment.channelEmptyUseBalance') }}
   </div>
-  <div v-else class="text-sm theme-text-muted">
+  <div v-else class="text-sm text-muted-foreground">
     {{ t('payment.channelEmpty') }}
   </div>
 </template>
@@ -36,6 +35,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { getImageUrl } from '../../utils/image'
+import { Badge } from '@/components/ui/badge'
 
 const emit = defineEmits<{
   'update:modelValue': [value: number]

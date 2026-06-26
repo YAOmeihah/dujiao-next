@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { captchaAPI, type CaptchaPayload } from '../../api'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue?: CaptchaPayload
@@ -75,22 +78,22 @@ defineExpose({
         v-if="imageBase64"
         :src="imageBase64"
         alt="captcha"
-        class="h-10 rounded-md border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5"
+        class="h-10 rounded-md border bg-muted dark:border-white/10 dark:bg-white/5"
       />
       <button
         type="button"
-        class="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        class="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
         :disabled="disabled || loading"
         @click="refresh()"
       >
-        {{ loading ? '刷新中...' : '换一张' }}
+        {{ loading ? t('auth.common.captchaRefreshing') : t('auth.common.captchaRefresh') }}
       </button>
     </div>
     <input
       v-model="captchaCode"
       type="text"
-      class="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 dark:border-white/10 dark:bg-black/20 dark:text-gray-100"
-      placeholder="请输入图片验证码"
+      class="h-10 w-full rounded-xl border bg-background px-3 text-sm text-foreground dark:border-white/10 dark:bg-black/20"
+      :placeholder="t('auth.common.captchaCodePlaceholder')"
       :disabled="disabled"
       autocomplete="off"
     />

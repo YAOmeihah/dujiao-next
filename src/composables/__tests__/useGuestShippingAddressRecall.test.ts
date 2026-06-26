@@ -25,20 +25,22 @@ const record: GuestShippingAddressRecallRecord = {
   saved_at: new Date('2026-04-23T12:00:00.000Z').toISOString(),
 }
 
+const TEST_NOW_MS = new Date('2026-04-24T00:00:00.000Z').getTime()
+
 describe('guest shipping address recall storage', () => {
   it('loads a valid record from localStorage', () => {
     localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify(record))
 
-    expect(loadGuestShippingAddressRecall()).toEqual(record)
+    expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toEqual(record)
   })
 
   it('returns null when the saved record is older than 30 days', () => {
     localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify({
       ...record,
-      saved_at: new Date(Date.now() - GUEST_SHIPPING_ADDRESS_MAX_AGE_MS - 1000).toISOString(),
+      saved_at: new Date(TEST_NOW_MS - GUEST_SHIPPING_ADDRESS_MAX_AGE_MS - 1000).toISOString(),
     }))
 
-    expect(loadGuestShippingAddressRecall()).toBeNull()
+    expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toBeNull()
   })
 
   it('returns null when required address fields are missing', () => {
@@ -47,7 +49,7 @@ describe('guest shipping address recall storage', () => {
       township_code: '',
     }))
 
-    expect(loadGuestShippingAddressRecall()).toBeNull()
+    expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toBeNull()
   })
 
   it('writes a normalized record back to localStorage', () => {
@@ -57,7 +59,7 @@ describe('guest shipping address recall storage', () => {
       detail_address: ' 世纪大道 100 号 ',
     })
 
-    expect(loadGuestShippingAddressRecall()).toEqual({
+    expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toEqual({
       ...record,
       receiver_name: '张三',
       detail_address: '世纪大道 100 号',
@@ -98,7 +100,7 @@ describe('guest shipping address recall storage', () => {
       detail_address: '文三路 90 号',
       saved_at: '2026-04-23T13:00:00.000Z',
     })
-    expect(loadGuestShippingAddressRecall()).toEqual(recentRecord)
+    expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toEqual(recentRecord)
   })
 
   it('clears the saved record', () => {

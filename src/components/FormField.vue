@@ -3,11 +3,11 @@
     <label
       v-if="label || $slots.icon"
       :for="fieldId"
-      class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] theme-text-muted"
+      class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
     >
       <span v-if="$slots.icon" class="opacity-60 shrink-0"><slot name="icon" /></span>
       <span>{{ label }}</span>
-      <span v-if="required" class="text-red-500/80" aria-hidden="true">*</span>
+      <span v-if="required" class="text-destructive/80" aria-hidden="true">*</span>
     </label>
 
     <div class="form-field-control">
@@ -21,13 +21,13 @@
     <p
       v-if="error"
       :id="errorId"
-      class="mt-1.5 text-xs text-red-500"
+      class="mt-1.5 text-xs text-destructive"
       role="alert"
     >{{ error }}</p>
     <p
       v-else-if="hint"
       :id="hintId"
-      class="mt-1.5 text-xs theme-text-muted"
+      class="mt-1.5 text-xs text-muted-foreground"
     >{{ hint }}</p>
   </div>
 </template>

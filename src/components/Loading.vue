@@ -4,14 +4,14 @@
       class="fixed inset-0 z-50 flex items-center justify-center theme-overlay backdrop-blur-xl transition-all duration-500">
       <div class="relative flex flex-col items-center gap-8">
         <div class="relative w-20 h-20">
-          <div class="absolute inset-0 rounded-full border theme-border"></div>
+          <div class="absolute inset-0 rounded-full border"></div>
           <div
-            class="absolute inset-0 rounded-full border-2 border-transparent border-t-current animate-spin theme-text-primary">
+            class="absolute inset-0 rounded-full border-2 border-transparent border-t-current animate-spin text-foreground">
           </div>
           <div
-            class="absolute inset-[10px] rounded-full theme-surface-soft border flex items-center justify-center">
+            class="absolute inset-[10px] rounded-full bg-secondary border flex items-center justify-center">
             <div
-              class="w-2 h-2 rounded-full bg-current theme-text-muted">
+              class="w-2 h-2 rounded-full bg-current text-muted-foreground">
             </div>
           </div>
           <div
@@ -21,13 +21,13 @@
 
         <!-- Text -->
         <div class="flex flex-col items-center gap-2">
-          <div class="text-xl font-bold tracking-[0.2em] theme-text-primary animate-pulse">
+          <div class="text-xl font-bold tracking-[0.2em] text-foreground animate-pulse">
             LOADING
           </div>
           <div class="flex gap-1 h-1">
-            <div class="w-1 h-1 bg-current theme-text-muted rounded-full animate-bounce delay-100"></div>
-            <div class="w-1 h-1 bg-current theme-text-muted rounded-full animate-bounce delay-200"></div>
-            <div class="w-1 h-1 bg-current theme-text-muted rounded-full animate-bounce delay-300"></div>
+            <div class="w-1 h-1 bg-current text-muted-foreground rounded-full animate-bounce delay-100"></div>
+            <div class="w-1 h-1 bg-current text-muted-foreground rounded-full animate-bounce delay-200"></div>
+            <div class="w-1 h-1 bg-current text-muted-foreground rounded-full animate-bounce delay-300"></div>
           </div>
         </div>
       </div>

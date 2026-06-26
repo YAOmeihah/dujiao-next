@@ -50,30 +50,78 @@ const resolveLocalizedText = (value: unknown, locale?: string) => {
   return ''
 }
 
-const normalizeSpecValue = (value: unknown, locale?: string): string => {
+const parseJSONLike = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value
+  const trimmed = value.trim()
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return value
+  }
+}
+
+const firstNonEmptyValue = (row: Record<string, unknown>, keys: string[]) => {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && normalizeText(row[key])) {
+      return row[key]
+    }
+  }
+  return undefined
+}
+
+const formatSpecArray = (values: unknown[], locale?: string) => {
+  return values
+    .map((entry) => {
+      const normalizedEntry = parseJSONLike(entry)
+      if (normalizedEntry && typeof normalizedEntry === 'object' && !Array.isArray(normalizedEntry) && !isLocalizedObject(normalizedEntry)) {
+        const row = normalizedEntry as Record<string, unknown>
+        const label = normalizeText(firstNonEmptyValue(row, ['label', 'name', 'key', 'title', 'spec_name', 'option_name']))
+        const value = firstNonEmptyValue(row, ['value', 'val', 'text', 'spec_value', 'option_value'])
+        const valueText = normalizeSpecValue(value, locale)
+        if (label && valueText) return `${label}:${valueText}`
+        if (valueText) return valueText
+      }
+      return normalizeSpecValue(normalizedEntry, locale)
+    })
+    .filter(Boolean)
+    .join(' / ')
+}
+
+const normalizeSpecValue = (raw: unknown, locale?: string): string => {
+  const value = parseJSONLike(raw)
   if (Array.isArray(value)) {
-    return value.map((entry) => normalizeSpecValue(entry, locale)).filter(Boolean).join(', ')
+    return formatSpecArray(value, locale)
   }
   if (value === null || value === undefined) return ''
   if (isLocalizedObject(value)) {
     return resolveLocalizedText(value, locale)
   }
   if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value)
-    } catch {
-      return ''
-    }
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, entryValue]) => {
+        const valueText = normalizeSpecValue(entryValue, locale)
+        if (!valueText) return ''
+        const keyText = normalizeText(key)
+        return keyText ? `${keyText}:${valueText}` : valueText
+      })
+      .filter(Boolean)
+    return entries.join(', ')
   }
   return normalizeText(value)
 }
 
 export const formatSkuSpecValues = (specValues: unknown, locale?: string) => {
-  if (!specValues || typeof specValues !== 'object' || Array.isArray(specValues)) return ''
-  if (isLocalizedObject(specValues)) {
-    return resolveLocalizedText(specValues, locale)
+  const normalizedSpecValues = parseJSONLike(specValues)
+  if (!normalizedSpecValues) return ''
+  if (Array.isArray(normalizedSpecValues)) {
+    return formatSpecArray(normalizedSpecValues, locale)
   }
-  const entries = Object.entries(specValues as Record<string, unknown>)
+  if (typeof normalizedSpecValues !== 'object') return normalizeSpecValue(normalizedSpecValues, locale)
+  if (isLocalizedObject(normalizedSpecValues)) {
+    return resolveLocalizedText(normalizedSpecValues, locale)
+  }
+  const entries = Object.entries(normalizedSpecValues as Record<string, unknown>)
     .map(([key, value]) => {
       const normalizedValue = normalizeSpecValue(value, locale)
       if (!normalizedValue) return ''
@@ -97,11 +145,17 @@ export const buildSkuDisplayText = (payload: {
 }
 
 export const buildSkuDisplayTextFromSnapshot = (snapshot: unknown, options?: { fallback?: string; locale?: string }) => {
-  if (!snapshot || typeof snapshot !== 'object') return ''
-  const row = snapshot as Record<string, unknown>
+  const normalizedSnapshot = parseJSONLike(snapshot)
+  if (!normalizedSnapshot || typeof normalizedSnapshot !== 'object' || Array.isArray(normalizedSnapshot)) {
+    return options?.fallback || ''
+  }
+  const row = normalizedSnapshot as Record<string, unknown>
+  const hasSpecValues = Object.prototype.hasOwnProperty.call(row, 'spec_values')
+  const hasSkuMeta = ['sku_code', 'sku_id', 'image'].some((key) => Object.prototype.hasOwnProperty.call(row, key))
+  const specValues = hasSpecValues ? row.spec_values : (hasSkuMeta ? undefined : row)
   return buildSkuDisplayText({
     skuCode: row.sku_code,
-    specValues: row.spec_values,
+    specValues,
     fallback: options?.fallback || '',
     locale: options?.locale,
   })

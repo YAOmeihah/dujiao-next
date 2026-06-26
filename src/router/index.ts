@@ -3,6 +3,7 @@ import { useUserAuthStore } from '../stores/userAuth'
 import { useAppStore } from '../stores/app'
 import { useTelegramMiniAppStore } from '../stores/telegramMiniApp'
 import { captureAffiliateFromRoute } from '../utils/affiliate'
+import { templateView } from '../templates/registry'
 
 type RouteComponentLoader = () => Promise<unknown>
 
@@ -15,6 +16,7 @@ const paymentViewLoader: RouteComponentLoader = () => import('../views/Payment.v
 const blogViewLoader: RouteComponentLoader = () => import('../views/Blog.vue')
 const noticeViewLoader: RouteComponentLoader = () => import('../views/Notice.vue')
 const loginViewLoader: RouteComponentLoader = () => import('../views/auth/Login.vue')
+const resellerLayoutLoader: RouteComponentLoader = () => import('../views/reseller/ResellerConsoleLayout.vue')
 
 const routeWarmupLoaders: RouteComponentLoader[] = [
     productsViewLoader,
@@ -112,7 +114,7 @@ const router = createRouter({
         {
             path: '/',
             name: 'home',
-            component: homeViewLoader,
+            component: templateView('Home', homeViewLoader),
         },
         {
             path: '/products',
@@ -120,8 +122,8 @@ const router = createRouter({
             component: () => {
                 const appStore = useAppStore()
                 return appStore.config?.template_mode === 'list'
-                    ? homeViewLoader()
-                    : productsViewLoader()
+                    ? templateView('Home', homeViewLoader)()
+                    : templateView('Products', productsViewLoader)()
             },
         },
         {
@@ -130,138 +132,161 @@ const router = createRouter({
             component: () => {
                 const appStore = useAppStore()
                 return appStore.config?.template_mode === 'list'
-                    ? homeViewLoader()
-                    : productsViewLoader()
+                    ? templateView('Home', homeViewLoader)()
+                    : templateView('Products', productsViewLoader)()
             },
         },
         {
             path: '/products/:slug',
             name: 'product-detail',
-            component: productDetailViewLoader,
+            component: templateView('ProductDetail', productDetailViewLoader),
         },
         {
             path: '/cart',
             name: 'cart',
-            component: cartViewLoader,
+            component: templateView('Cart', cartViewLoader),
         },
         {
             path: '/checkout',
             name: 'checkout',
-            component: checkoutViewLoader,
+            component: templateView('Checkout', checkoutViewLoader),
         },
         {
             path: '/pay',
             name: 'payment',
-            component: paymentViewLoader,
+            component: templateView('Payment', paymentViewLoader),
         },
         {
             path: '/me',
             name: 'personal-center',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'overview' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/profile',
             name: 'personal-center-profile',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'profile' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/security',
             name: 'personal-center-security',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'security' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/orders',
             name: 'personal-center-orders',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'orders' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/wallet',
             name: 'personal-center-wallet',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'wallet' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/gift-cards',
             name: 'personal-center-gift-cards',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'giftCard' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/api',
             name: 'personal-center-api',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'api' },
             meta: { requiresUserAuth: true }
         },
         {
             path: '/me/affiliate',
             name: 'personal-center-affiliate',
-            component: () => import('../views/PersonalCenter.vue'),
+            component: templateView('PersonalCenter', () => import('../views/PersonalCenter.vue')),
             props: { section: 'affiliate' },
             meta: { requiresUserAuth: true }
         },
         {
+            path: '/me/reseller',
+            name: 'personal-center-reseller',
+            redirect: '/reseller',
+            meta: { requiresUserAuth: true, resellerConsole: true }
+        },
+        {
+            path: '/reseller',
+            component: resellerLayoutLoader,
+            meta: { requiresUserAuth: true, resellerConsole: true },
+            children: [
+                { path: '', name: 'reseller-dashboard', component: () => import('../views/reseller/ResellerDashboard.vue') },
+                { path: 'apply', name: 'reseller-apply', component: () => import('../views/reseller/ResellerApply.vue') },
+                { path: 'domains', name: 'reseller-domains', component: () => import('../views/reseller/ResellerDomains.vue') },
+                { path: 'site', name: 'reseller-site', component: () => import('../views/reseller/ResellerSiteConfig.vue') },
+                { path: 'products', name: 'reseller-products', component: () => import('../views/reseller/ResellerProducts.vue') },
+                { path: 'orders', name: 'reseller-orders', component: () => import('../views/reseller/ResellerOrders.vue') },
+                { path: 'orders/:order_no', name: 'reseller-order-detail', component: () => import('../views/reseller/ResellerOrderDetail.vue') },
+                { path: 'finance', name: 'reseller-finance', component: () => import('../views/reseller/ResellerFinance.vue') },
+                { path: 'ledger', name: 'reseller-ledger', component: () => import('../views/reseller/ResellerLedger.vue') },
+                { path: 'withdraws', name: 'reseller-withdraws', component: () => import('../views/reseller/ResellerWithdraws.vue') },
+            ],
+        },
+        {
             path: '/orders/:order_no',
             name: 'order-detail',
-            component: () => import('../views/OrderDetail.vue'),
+            component: templateView('OrderDetail', () => import('../views/OrderDetail.vue')),
             meta: { requiresUserAuth: true }
         },
         {
             path: '/recharge-orders/:recharge_no',
             name: 'recharge-order-detail',
-            component: () => import('../views/RechargeOrderDetail.vue'),
+            component: templateView('RechargeOrderDetail', () => import('../views/RechargeOrderDetail.vue')),
             meta: { requiresUserAuth: true }
         },
         {
             path: '/guest/orders',
             name: 'guest-orders',
-            component: () => import('../views/GuestOrders.vue'),
+            component: templateView('GuestOrders', () => import('../views/GuestOrders.vue')),
         },
         {
             path: '/guest/orders/:order_no',
             name: 'guest-order-detail',
-            component: () => import('../views/GuestOrderDetail.vue'),
+            component: templateView('GuestOrderDetail', () => import('../views/GuestOrderDetail.vue')),
         },
         {
             path: '/blog',
             name: 'blog',
-            component: blogViewLoader,
+            component: templateView('Blog', blogViewLoader),
         },
         {
             path: '/blog/:slug',
             name: 'blog-detail',
-            component: () => import('../views/BlogDetail.vue'),
+            component: templateView('BlogDetail', () => import('../views/BlogDetail.vue')),
         },
         {
             path: '/notice',
             name: 'notice',
-            component: noticeViewLoader,
+            component: templateView('Notice', noticeViewLoader),
         },
         {
             path: '/about',
             name: 'about',
-            component: () => import('../views/About.vue'),
+            component: templateView('About', () => import('../views/About.vue')),
         },
         {
             path: '/terms',
             name: 'terms',
-            component: () => import('../views/Legal.vue'),
+            component: templateView('Legal', () => import('../views/Legal.vue')),
             props: { type: 'terms' }
         },
         {
             path: '/privacy',
             name: 'privacy',
-            component: () => import('../views/Legal.vue'),
+            component: templateView('Legal', () => import('../views/Legal.vue')),
             props: { type: 'privacy' }
         },
         {
@@ -273,30 +298,30 @@ const router = createRouter({
         {
             path: '/auth/login',
             name: 'user-login',
-            component: loginViewLoader,
+            component: templateView('auth/Login', loginViewLoader),
             meta: { userGuest: true }
         },
         {
             path: '/auth/register',
             name: 'user-register',
-            component: () => import('../views/auth/Register.vue'),
+            component: templateView('auth/Register', () => import('../views/auth/Register.vue')),
             meta: { userGuest: true }
         },
         {
             path: '/auth/forgot',
             name: 'user-forgot',
-            component: () => import('../views/auth/Forgot.vue'),
+            component: templateView('auth/Forgot', () => import('../views/auth/Forgot.vue')),
             meta: { userGuest: true }
         },
         {
             path: '/auth/telegram/callback',
             name: 'user-telegram-callback',
-            component: () => import('../views/auth/TelegramCallback.vue'),
+            component: templateView('auth/TelegramCallback', () => import('../views/auth/TelegramCallback.vue')),
         },
         {
             path: '/:pathMatch(.*)*',
             name: 'not-found',
-            component: () => import('../views/NotFound.vue'),
+            component: templateView('NotFound', () => import('../views/NotFound.vue')),
         },
     ],
 })
@@ -316,6 +341,8 @@ router.beforeEach(async (to, _from, next) => {
         if (!userAuthStore.isAuthenticated) {
             const redirect = encodeURIComponent(to.fullPath)
             next(`/auth/login?redirect=${redirect}`)
+        } else if (to.meta.resellerConsole && !appStore.canAccessResellerConsole) {
+            next('/me/orders')
         } else {
             next()
         }

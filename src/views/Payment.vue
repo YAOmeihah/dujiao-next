@@ -151,6 +151,8 @@
                 :countdown-text="countdownText"
                 :polling-active="pollingActive"
                 :format-money="formatMoney"
+                :format-discount-money="formatDiscountMoney"
+                :has-discount-amount="hasDiscountAmount"
               />
               <div v-if="paymentResult.expires_at"
                 class="theme-surface-soft border rounded-2xl p-4 text-xs theme-text-muted">

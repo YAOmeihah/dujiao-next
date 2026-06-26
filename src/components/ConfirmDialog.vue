@@ -27,24 +27,20 @@
             ref="dialogRef"
             role="alertdialog"
             aria-modal="true"
-            class="relative z-10 w-full max-w-sm rounded-2xl theme-panel border shadow-2xl p-6"
+            class="relative z-10 w-full max-w-sm rounded-2xl bg-card text-card-foreground border shadow-2xl p-6"
           >
-            <h3 class="text-lg font-bold theme-text-primary">{{ options.title }}</h3>
-            <p class="mt-2 text-sm theme-text-muted leading-relaxed">{{ options.message }}</p>
+            <h3 class="text-lg font-bold text-foreground">{{ options.title }}</h3>
+            <p class="mt-2 text-sm text-muted-foreground leading-relaxed">{{ options.message }}</p>
             <div class="mt-6 flex items-center justify-end gap-3">
-              <button
-                class="rounded-xl border theme-btn-secondary px-4 py-2.5 text-sm font-semibold transition-colors"
-                @click="handleCancel"
-              >
+              <Button variant="secondary" @click="handleCancel">
                 {{ options.cancelText || t('common.cancel') }}
-              </button>
-              <button
-                class="rounded-xl px-4 py-2.5 text-sm font-bold transition-colors"
-                :class="options.variant === 'danger' ? 'theme-btn-danger' : 'theme-btn-primary'"
+              </Button>
+              <Button
+                :variant="options.variant === 'danger' ? 'destructive' : 'default'"
                 @click="handleConfirm"
               >
                 {{ options.confirmText || t('common.confirm') }}
-              </button>
+              </Button>
             </div>
           </div>
         </Transition>
@@ -57,6 +53,7 @@
 import { ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 const { visible, options, handleConfirm, handleCancel } = useConfirmDialog()

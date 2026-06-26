@@ -1,38 +1,38 @@
 <template>
-  <div class="theme-personal-card">
+  <div class="rounded-2xl border bg-card p-7 shadow-sm">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.security.loginLogsTitle') }}</h3>
-      <span class="text-xs theme-text-muted">{{ t('personalCenter.security.loginLogsTip') }}</span>
+      <h3 class="text-lg font-bold text-foreground">{{ t('personalCenter.security.loginLogsTitle') }}</h3>
+      <span class="text-xs text-muted-foreground">{{ t('personalCenter.security.loginLogsTip') }}</span>
     </div>
-    <div v-if="loading" class="rounded-xl border border-gray-200/70 px-4 py-6 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
+    <div v-if="loading" class="rounded-xl border px-4 py-6 text-center text-sm text-muted-foreground">
       {{ t('personalCenter.security.loginLogsLoading') }}
     </div>
-    <div v-else-if="logs.length === 0" class="rounded-xl border border-dashed border-gray-200/80 px-4 py-6 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
+    <div v-else-if="logs.length === 0" class="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
       {{ t('personalCenter.security.loginLogsEmpty') }}
     </div>
-    <div v-else class="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-      <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-white/10">
-        <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
-          <tr>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.security.loginLogsTime') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.security.loginLogsStatus') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.security.loginLogsIp') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.security.loginLogsReason') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-          <tr v-for="item in logs" :key="item.id">
-            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ formatDate(item.created_at) }}</td>
-            <td class="px-4 py-3">
-              <span class="theme-badge px-2.5 py-1 text-xs font-semibold" :class="loginStatusClass(item.status)">
+    <div v-else class="overflow-x-auto rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow class="bg-muted/50">
+            <TableHead class="px-4">{{ t('personalCenter.security.loginLogsTime') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.security.loginLogsStatus') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.security.loginLogsIp') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.security.loginLogsReason') }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="item in logs" :key="item.id">
+            <TableCell class="px-4 text-muted-foreground">{{ formatDate(item.created_at) }}</TableCell>
+            <TableCell class="px-4">
+              <Badge size="sm" :variant="loginStatusVariant(item.status)">
                 {{ loginStatusLabel(item.status) }}
-              </span>
-            </td>
-            <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-300">{{ item.client_ip || '-' }}</td>
-            <td class="px-4 py-3 text-xs theme-text-muted">{{ loginReasonLabel(item.fail_reason) }}</td>
-          </tr>
-        </tbody>
-      </table>
+              </Badge>
+            </TableCell>
+            <TableCell class="px-4 font-mono text-xs text-muted-foreground">{{ item.client_ip || '-' }}</TableCell>
+            <TableCell class="px-4 text-xs text-muted-foreground">{{ loginReasonLabel(item.fail_reason) }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
   </div>
 </template>
@@ -40,6 +40,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { UserLoginLogItem } from '../../api/types'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const { t } = useI18n()
 
@@ -53,11 +55,8 @@ const loginStatusLabel = (status?: string) => {
   return t(`personalCenter.security.loginLogsStatusMap.${normalized}`)
 }
 
-const loginStatusClass = (status?: string) => {
-  if ((status || '').trim() === 'success') {
-    return 'theme-badge-success'
-  }
-  return 'theme-badge-danger'
+const loginStatusVariant = (status?: string): 'success' | 'destructive' => {
+  return (status || '').trim() === 'success' ? 'success' : 'destructive'
 }
 
 const loginReasonLabel = (reason?: string) => {

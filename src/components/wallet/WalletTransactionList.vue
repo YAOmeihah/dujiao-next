@@ -1,79 +1,73 @@
 <template>
-  <div class="theme-personal-card">
-    <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-lg font-bold theme-text-primary">{{ t('personalCenter.wallet.detailTitle') }}</h3>
-      <button
-        type="button"
-        class="inline-flex items-center rounded-lg border theme-btn-secondary px-3 py-1.5 text-xs font-semibold"
-        @click="$emit('refresh')"
-      >
-        {{ t('orders.filters.refresh') }}
-      </button>
-    </div>
+  <div class="rounded-2xl border bg-card p-7 shadow-sm">
+    <PanelHeading :title="t('personalCenter.wallet.detailTitle')" :icon="ReceiptText">
+      <template #actions>
+        <Button type="button" variant="outline" size="sm" @click="$emit('refresh')">
+          {{ t('orders.filters.refresh') }}
+        </Button>
+      </template>
+    </PanelHeading>
 
     <div v-if="loading" class="space-y-3">
-      <div v-for="idx in 3" :key="idx" class="h-16 animate-pulse rounded-xl border theme-surface-muted"></div>
+      <div v-for="idx in 3" :key="idx" class="h-16 animate-pulse rounded-xl border bg-muted"></div>
     </div>
-    <div v-else-if="transactions.length === 0" class="rounded-xl border border-dashed theme-surface-soft px-4 py-6 text-sm theme-text-muted">
+    <div v-else-if="transactions.length === 0" class="rounded-xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
       {{ t('personalCenter.wallet.empty') }}
     </div>
-    <div v-else class="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-      <table class="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-white/10">
-        <thead class="bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
-          <tr>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.createdAt') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.type') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.direction') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.amount') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.balanceAfter') }}</th>
-            <th class="px-4 py-3 font-semibold">{{ t('personalCenter.wallet.table.remark') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-          <tr v-for="item in transactions" :key="item.id">
-            <td class="px-4 py-3 text-xs theme-text-muted">{{ formatDate(item.created_at) }}</td>
-            <td class="px-4 py-3 text-xs theme-text-secondary">{{ transactionTypeLabel(item.type) }}</td>
-            <td class="px-4 py-3 text-xs">
-              <span class="theme-badge px-2.5 py-1 text-xs font-semibold" :class="directionClass(item.direction)">
+    <div v-else class="overflow-x-auto rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow class="bg-muted/50">
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.createdAt') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.type') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.direction') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.amount') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.balanceAfter') }}</TableHead>
+            <TableHead class="px-4">{{ t('personalCenter.wallet.table.remark') }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="item in transactions" :key="item.id">
+            <TableCell class="px-4 text-xs text-muted-foreground">{{ formatDate(item.created_at) }}</TableCell>
+            <TableCell class="px-4 text-xs text-muted-foreground">{{ transactionTypeLabel(item.type) }}</TableCell>
+            <TableCell class="px-4">
+              <Badge size="sm" :variant="directionVariant(item.direction)">
                 {{ directionLabel(item.direction) }}
-              </span>
-            </td>
-            <td class="px-4 py-3 font-mono text-sm" :class="item.direction === 'in' ? 'text-emerald-500' : 'text-rose-500'">
+              </Badge>
+            </TableCell>
+            <TableCell class="px-4 font-mono text-sm" :class="item.direction === 'in' ? 'text-success' : 'text-destructive'">
               {{ signedAmount(item.direction, item.amount, item.currency) }}
-            </td>
-            <td class="px-4 py-3 font-mono text-sm theme-text-primary">
+            </TableCell>
+            <TableCell class="px-4 font-mono text-sm text-foreground">
               {{ formatMoney(item.balance_after, item.currency) }}
-            </td>
-            <td class="px-4 py-3 text-xs theme-text-muted">{{ item.remark || '-' }}</td>
-          </tr>
-        </tbody>
-      </table>
+            </TableCell>
+            <TableCell class="px-4 text-xs text-muted-foreground">{{ item.remark || '-' }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
 
     <div v-if="totalPages > 1" class="mt-6 flex flex-wrap items-center justify-center gap-3">
-      <button
-        :disabled="currentPage <= 1"
-        class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        @click="$emit('changePage', currentPage - 1)"
-      >
+      <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="$emit('changePage', currentPage - 1)">
         {{ t('orders.prevPage') }}
-      </button>
-      <span class="rounded-full border theme-pill-neutral px-4 py-2 text-sm">
+      </Button>
+      <span class="rounded-full border text-muted-foreground px-4 py-2 text-sm">
         {{ t('orders.pageInfo', { page: currentPage, total: totalPages }) }}
       </span>
-      <button
-        :disabled="currentPage >= totalPages"
-        class="rounded-lg border theme-btn-secondary px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        @click="$emit('changePage', currentPage + 1)"
-      >
+      <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="$emit('changePage', currentPage + 1)">
         {{ t('orders.nextPage') }}
-      </button>
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { ReceiptText } from 'lucide-vue-next'
+import PanelHeading from '../shared/PanelHeading.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 defineProps<{
   loading: boolean
@@ -119,10 +113,10 @@ const directionLabel = (direction?: string) => {
   return direction || '-'
 }
 
-const directionClass = (direction?: string) => {
-  if (direction === 'in') return 'theme-badge-success'
-  if (direction === 'out') return 'theme-badge-danger'
-  return 'theme-badge-warning'
+const directionVariant = (direction?: string): 'success' | 'destructive' | 'warning' => {
+  if (direction === 'in') return 'success'
+  if (direction === 'out') return 'destructive'
+  return 'warning'
 }
 
 const transactionTypeLabel = (type?: string) => {

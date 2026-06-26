@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DOMPurify from 'dompurify'
+import { AlertTriangle, Info, Megaphone, X } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 import { useLocalized } from '../composables/useProduct'
 import { processHtmlForDisplay } from '../utils/content'
 import { useAnnouncement, type HomeAnnouncement } from '../composables/useAnnouncement'
@@ -37,17 +39,17 @@ const typeStyle = computed(() => {
     case 'warning':
       return {
         iconWrap: 'bg-warning-soft text-warning ring-warning/20',
-        icon: 'M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z',
+        icon: AlertTriangle,
       }
     case 'info':
       return {
         iconWrap: 'bg-info-soft text-info ring-info/20',
-        icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        icon: Info,
       }
     default:
       return {
         iconWrap: 'bg-primary-soft text-primary ring-primary/20',
-        icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',
+        icon: Megaphone,
       }
   }
 })
@@ -127,7 +129,7 @@ onBeforeUnmount(() => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="announcement-modal-title"
-            class="theme-panel relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border"
+            class="bg-card text-card-foreground relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border"
             style="box-shadow: var(--ui-shadow-card)"
           >
             <!-- Header -->
@@ -136,25 +138,21 @@ onBeforeUnmount(() => {
                 class="flex size-12 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset"
                 :class="typeStyle.iconWrap"
               >
-                <svg class="size-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="typeStyle.icon" />
-                </svg>
+                <component :is="typeStyle.icon" class="size-6" :stroke-width="2" />
               </div>
               <h3
                 id="announcement-modal-title"
-                class="line-clamp-2 min-w-0 flex-1 text-lg font-semibold leading-snug theme-text-primary"
+                class="line-clamp-2 min-w-0 flex-1 text-lg font-semibold leading-snug text-foreground"
               >
                 {{ title }}
               </h3>
               <button
                 type="button"
-                class="flex size-8 shrink-0 items-center justify-center rounded-full theme-text-muted transition-colors hover:bg-surface-soft hover:theme-text-primary"
+                class="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 :aria-label="t('announcement.close')"
                 @click="handleClose"
               >
-                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X class="size-4" :stroke-width="2" />
               </button>
             </div>
 
@@ -164,31 +162,27 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Footer -->
-            <div class="flex flex-col gap-3 border-t theme-border px-6 pb-5 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-3 border-t px-6 pb-5 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <div class="flex items-center justify-center gap-2 text-xs sm:justify-start">
-                <button
-                  type="button"
-                  class="rounded-md px-1 py-0.5 theme-text-muted transition-colors hover:theme-text-primary"
+                <Button
+                  variant="link"
+                  class="h-auto p-0 text-xs font-normal text-muted-foreground hover:text-foreground"
                   @click="handleDismissToday"
                 >
                   {{ t('announcement.dismissToday') }}
-                </button>
-                <span class="select-none opacity-30 theme-text-muted">·</span>
-                <button
-                  type="button"
-                  class="rounded-md px-1 py-0.5 theme-text-muted transition-colors hover:theme-text-primary"
+                </Button>
+                <span class="select-none opacity-30 text-muted-foreground">·</span>
+                <Button
+                  variant="link"
+                  class="h-auto p-0 text-xs font-normal text-muted-foreground hover:text-foreground"
                   @click="handleDismissForever"
                 >
                   {{ t('announcement.dismissForever') }}
-                </button>
+                </Button>
               </div>
-              <button
-                type="button"
-                class="theme-btn-primary inline-flex w-full items-center justify-center rounded-xl border px-6 py-2.5 text-sm sm:w-auto"
-                @click="handleClose"
-              >
+              <Button class="w-full rounded-xl sm:w-auto" @click="handleClose">
                 {{ t('announcement.close') }}
-              </button>
+              </Button>
             </div>
           </div>
         </Transition>

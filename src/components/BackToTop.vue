@@ -7,17 +7,17 @@
     leave-from-class="opacity-100 scale-100"
     leave-to-class="opacity-0 scale-90"
   >
-    <button
+    <Button
       v-if="visible"
+      variant="secondary"
+      size="icon"
       @click="scrollToTop"
-      class="fixed right-4 md:right-6 z-30 lg:z-40 flex h-11 w-11 items-center justify-center rounded-full border theme-btn-neutral shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+      class="back-to-top fixed right-4 md:right-6 z-30 lg:z-40 flex h-11 w-11 items-center justify-center rounded-full border theme-btn-neutral shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 [&_svg]:size-5"
       :style="{ bottom: `${bottomOffset}px` }"
       :aria-label="t('common.backToTop')"
     >
-      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-      </svg>
-    </button>
+      <ChevronUp />
+    </Button>
   </Transition>
 </template>
 
@@ -25,6 +25,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { resolveFloatingActionBottomOffset } from '../composables/useFloatingOffset'
+import { ChevronUp } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 const visible = ref(false)

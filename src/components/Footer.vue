@@ -7,13 +7,20 @@
         <!-- Brand -->
         <div class="col-span-2 space-y-6">
           <div class="flex items-center space-x-3">
+            <img
+              v-if="brandLogo"
+              :src="brandLogo"
+              :alt="brandSiteName"
+              class="h-9 max-w-[180px] object-contain"
+            />
             <div
-              class="w-8 h-8 theme-btn-primary rounded-lg flex items-center justify-center">
-              <span class="text-white font-black text-sm">{{ brandInitial }}</span>
+              v-else
+              class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <span class="text-primary-foreground font-black text-sm">{{ brandInitial }}</span>
             </div>
-            <h3 class="theme-text-primary text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
+            <h3 class="text-foreground text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
           </div>
-          <p class="text-sm leading-relaxed max-w-sm theme-text-muted">
+          <p class="text-sm leading-relaxed max-w-sm text-muted-foreground">
             {{ brandDescription || t('footer.description') }}
           </p>
           <div class="flex space-x-4">
@@ -31,13 +38,11 @@
 
         <!-- Links -->
         <div>
-          <h4 class="theme-text-primary font-bold mb-6 tracking-wide">{{ t('footer.quickLinks') }}</h4>
+          <h4 class="text-foreground font-bold mb-6 tracking-wide">{{ t('footer.quickLinks') }}</h4>
           <ul class="space-y-3 text-sm">
             <li v-for="item in quickLinks" :key="item.path">
-              <router-link :to="item.path" class="theme-link-muted transition-colors flex items-center gap-2 group">
-                <svg class="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-80 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" :d="item.icon" />
-                </svg>
+              <router-link :to="item.path" class="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group">
+                <component :is="item.icon" class="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-80 transition-opacity" />
                 {{ t(item.label) }}
               </router-link>
             </li>
@@ -46,7 +51,7 @@
 
         <!-- Contact -->
         <div>
-          <h4 class="theme-text-primary font-bold mb-6 tracking-wide">{{ t('footer.contact') }}</h4>
+          <h4 class="text-foreground font-bold mb-6 tracking-wide">{{ t('footer.contact') }}</h4>
           <div class="space-y-4">
             <a v-if="config?.contact?.telegram" :href="config.contact.telegram" target="_blank"
               rel="noopener noreferrer"
@@ -72,7 +77,7 @@
 
       <!-- Copyright -->
       <div
-        class="border-t theme-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
+        class="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
         <div class="space-y-1 text-center md:text-left">
           <p>&copy; {{ currentYear }} {{ brandSiteName }}. {{ t('footer.rights') }}</p>
           <p class="flex items-center justify-center gap-1 md:justify-start">
@@ -115,7 +120,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { Home, LayoutGrid, Newspaper, Info } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
+import { getImageUrl } from '../utils/image'
+import { getLocalizedText } from '../utils/resellerSiteConfig'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -141,22 +149,27 @@ const brandInitial = computed(() => {
   return brandSiteName.value.charAt(0).toUpperCase()
 })
 
+const brandLogo = computed(() => {
+  const raw = String(config.value?.brand?.site_logo || '').trim()
+  return raw ? getImageUrl(raw) : ''
+})
+
 const isListMode = computed(() => config.value?.template_mode === 'list')
 const navConfig = computed(() => config.value?.nav_config as { builtin?: Record<string, boolean> } | undefined)
 
 const quickLinks = computed(() => {
   const items = [
-    { path: '/', label: 'nav.home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1' },
+    { path: '/', label: 'nav.home', icon: Home },
   ]
   if (!isListMode.value) {
-    items.push({ path: '/products', label: 'nav.products', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' })
+    items.push({ path: '/products', label: 'nav.products', icon: LayoutGrid })
   }
   const builtin = navConfig.value?.builtin
   if (!builtin || builtin.blog !== false) {
-    items.push({ path: '/blog', label: 'nav.blog', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2' })
+    items.push({ path: '/blog', label: 'nav.blog', icon: Newspaper })
   }
   if (!builtin || builtin.about !== false) {
-    items.push({ path: '/about', label: 'nav.about', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' })
+    items.push({ path: '/about', label: 'nav.about', icon: Info })
   }
   return items
 })
@@ -164,7 +177,12 @@ const quickLinks = computed(() => {
 const footerLinks = computed(() => {
   const links = config.value?.footer_links
   if (!Array.isArray(links)) return []
-  return links.filter((item: any) => item && typeof item.name === 'string' && item.name.trim())
+  return links
+    .map((item: any) => ({
+      name: typeof item?.name === 'string' ? item.name.trim() : getLocalizedText(item?.name, appStore.locale),
+      url: String(item?.url || '').trim(),
+    }))
+    .filter((item) => item.name)
 })
 
 const currentYear = new Date().getFullYear()
