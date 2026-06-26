@@ -132,6 +132,7 @@ func (h *Handler) PreviewOrder(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
+	tenant := tenantFromRequest(c)
 
 	var items []service.CreateOrderItem
 	for _, item := range req.Items {
@@ -145,6 +146,7 @@ func (h *Handler) PreviewOrder(c *gin.Context) {
 
 	preview, err := h.OrderService.PreviewOrder(service.CreateOrderInput{
 		UserID:              uid,
+		Tenant:              tenant,
 		Items:               items,
 		CouponCode:          req.CouponCode,
 		AffiliateCode:       req.AffiliateCode,
@@ -199,7 +201,7 @@ func (h *Handler) GetOrderPaymentChannels(c *gin.Context) {
 	orderNo := strings.TrimSpace(req.OrderNo)
 	switch {
 	case orderNo != "":
-		order, orderErr := h.OrderService.GetOrderByUserOrderNo(orderNo, uid)
+		order, orderErr := h.OrderService.GetOrderByUserOrderNoForTenant(tenantFromRequest(c), orderNo, uid)
 		if orderErr != nil {
 			if errors.Is(orderErr, service.ErrOrderNotFound) {
 				shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
@@ -258,6 +260,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
+	tenant := tenantFromRequest(c)
 
 	var items []service.CreateOrderItem
 	for _, item := range req.Items {
@@ -271,6 +274,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 
 	order, err := h.OrderService.CreateOrder(service.CreateOrderInput{
 		UserID:              uid,
+		Tenant:              tenant,
 		Items:               items,
 		CouponCode:          req.CouponCode,
 		AffiliateCode:       req.AffiliateCode,
@@ -313,6 +317,7 @@ func (h *Handler) CreateOrderAndPay(c *gin.Context) {
 		shared.RespondBindError(c, err)
 		return
 	}
+	tenant := tenantFromRequest(c)
 
 	var items []service.CreateOrderItem
 	for _, item := range req.Items {
@@ -326,6 +331,7 @@ func (h *Handler) CreateOrderAndPay(c *gin.Context) {
 
 	order, err := h.OrderService.CreateOrder(service.CreateOrderInput{
 		UserID:              uid,
+		Tenant:              tenant,
 		Items:               items,
 		CouponCode:          req.CouponCode,
 		AffiliateCode:       req.AffiliateCode,
@@ -382,12 +388,18 @@ func (h *Handler) CreateOrderAndPay(c *gin.Context) {
 		resp["interaction_mode"] = result.Payment.InteractionMode
 		resp["pay_url"] = result.Payment.PayURL
 		resp["qr_code"] = result.Payment.QRCode
-		if addr, chainAmount := dto.ExtractUSDTWalletInfo(result.Payment.ProviderType, result.Payment.InteractionMode, result.Payment.ProviderPayload); addr != "" || chainAmount != "" {
-			if addr != "" {
-				resp["wallet_address"] = addr
+		if info := dto.ExtractCryptoWalletInfo(result.Payment.ProviderType, result.Payment.InteractionMode, result.Payment.ProviderPayload); info.HasAny() {
+			if info.Address != "" {
+				resp["wallet_address"] = info.Address
 			}
-			if chainAmount != "" {
-				resp["chain_amount"] = chainAmount
+			if info.ChainAmount != "" {
+				resp["chain_amount"] = info.ChainAmount
+			}
+			if info.Chain != "" {
+				resp["chain"] = info.Chain
+			}
+			if info.TokenID != "" {
+				resp["token_id"] = info.TokenID
 			}
 		}
 		resp["expires_at"] = result.Payment.ExpiredAt
@@ -407,7 +419,7 @@ func (h *Handler) ListOrders(c *gin.Context) {
 	status := strings.TrimSpace(c.Query("status"))
 	orderNo := strings.TrimSpace(c.Query("order_no"))
 
-	orders, total, err := h.OrderService.ListOrdersByUser(repository.OrderListFilter{
+	orders, total, err := h.OrderService.ListOrdersByUserForTenant(tenantFromRequest(c), repository.OrderListFilter{
 		Page:     page,
 		PageSize: pageSize,
 		UserID:   uid,
@@ -432,7 +444,7 @@ func (h *Handler) OrderStats(c *gin.Context) {
 
 	orderNo := strings.TrimSpace(c.Query("order_no"))
 
-	stats, err := h.OrderService.StatsOrdersByUser(repository.OrderListFilter{
+	stats, err := h.OrderService.StatsOrdersByUserForTenant(tenantFromRequest(c), repository.OrderListFilter{
 		UserID:  uid,
 		OrderNo: orderNo,
 	})
@@ -464,7 +476,7 @@ func (h *Handler) GetOrderByOrderNo(c *gin.Context) {
 		return
 	}
 
-	order, err := h.OrderService.GetOrderByUserOrderNo(orderNo, uid)
+	order, err := h.OrderService.GetOrderByUserOrderNoForTenant(tenantFromRequest(c), orderNo, uid)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
@@ -493,7 +505,8 @@ func (h *Handler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	found, err := h.OrderService.GetOrderByUserOrderNo(orderNo, uid)
+	tenant := tenantFromRequest(c)
+	found, err := h.OrderService.GetOrderByUserOrderNoForTenant(tenant, orderNo, uid)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFound) {
 			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
@@ -531,8 +544,12 @@ func (h *Handler) DownloadFulfillment(c *gin.Context) {
 		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		return
 	}
-	order, err := h.OrderRepo.GetAnyByOrderNoAndUser(orderNo, uid)
+	order, err := h.OrderService.GetAnyOrderByUserOrderNoForTenant(tenantFromRequest(c), orderNo, uid)
 	if err != nil {
+		if errors.Is(err, service.ErrOrderNotFound) {
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
+			return
+		}
 		shared.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 		return
 	}

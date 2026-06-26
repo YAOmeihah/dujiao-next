@@ -20,96 +20,107 @@ type Container struct {
 	QueueClient *queue.Client
 
 	// Repositories
-	AdminRepo              repository.AdminRepository
-	UserRepo               repository.UserRepository
-	UserOAuthIdentityRepo  repository.UserOAuthIdentityRepository
-	EmailVerifyCodeRepo    repository.EmailVerifyCodeRepository
-	OrderRepo              repository.OrderRepository
-	PaymentRepo            repository.PaymentRepository
-	PaymentChannelRepo     repository.PaymentChannelRepository
-	CardSecretRepo         repository.CardSecretRepository
-	CardSecretBatchRepo    repository.CardSecretBatchRepository
-	GiftCardRepo           repository.GiftCardRepository
-	FulfillmentRepo        repository.FulfillmentRepository
-	ProductRepo            repository.ProductRepository
-	ProductSKURepo         repository.ProductSKURepository
-	CartRepo               repository.CartRepository
-	CouponRepo             repository.CouponRepository
-	CouponUsageRepo        repository.CouponUsageRepository
-	PromotionRepo          repository.PromotionRepository
-	WalletRepo             repository.WalletRepository
-	OrderRefundRecordRepo  repository.OrderRefundRecordRepository
-	PostRepo               repository.PostRepository
-	CategoryRepo           repository.CategoryRepository
-	BannerRepo             repository.BannerRepository
-	SettingRepo            repository.SettingRepository
-	UserLoginLogRepo       repository.UserLoginLogRepository
-	AuthzAuditLogRepo      repository.AuthzAuditLogRepository
-	NotificationLogRepo    repository.NotificationLogRepository
-	AdminLoginLogRepo      repository.AdminLoginLogRepository
-	DashboardRepo          repository.DashboardRepository
-	AffiliateRepo          repository.AffiliateRepository
-	ApiCredentialRepo      repository.ApiCredentialRepository
-	SiteConnectionRepo     repository.SiteConnectionRepository
-	ProductMappingRepo     repository.ProductMappingRepository
-	SKUMappingRepo         repository.SKUMappingRepository
-	ProcurementOrderRepo   repository.ProcurementOrderRepository
-	DownstreamOrderRefRepo repository.DownstreamOrderRefRepository
-	ReconciliationJobRepo  repository.ReconciliationJobRepository
-	ReconciliationItemRepo repository.ReconciliationItemRepository
-	ChannelClientRepo      repository.ChannelClientRepository
-	TelegramBroadcastRepo  repository.TelegramBroadcastRepository
-	MemberLevelRepo        repository.MemberLevelRepository
-	MemberLevelPriceRepo   repository.MemberLevelPriceRepository
-	MediaRepo              repository.MediaRepository
-	AddressDivisionRepo    repository.AddressDivisionRepository
+	AdminRepo                  repository.AdminRepository
+	UserRepo                   repository.UserRepository
+	UserOAuthIdentityRepo      repository.UserOAuthIdentityRepository
+	EmailVerifyCodeRepo        repository.EmailVerifyCodeRepository
+	OrderRepo                  repository.OrderRepository
+	PaymentRepo                repository.PaymentRepository
+	PaymentChannelRepo         repository.PaymentChannelRepository
+	CardSecretRepo             repository.CardSecretRepository
+	CardSecretBatchRepo        repository.CardSecretBatchRepository
+	GiftCardRepo               repository.GiftCardRepository
+	FulfillmentRepo            repository.FulfillmentRepository
+	ProductRepo                repository.ProductRepository
+	ProductSKURepo             repository.ProductSKURepository
+	CartRepo                   repository.CartRepository
+	CouponRepo                 repository.CouponRepository
+	CouponUsageRepo            repository.CouponUsageRepository
+	PromotionRepo              repository.PromotionRepository
+	WalletRepo                 repository.WalletRepository
+	OrderRefundRecordRepo      repository.OrderRefundRecordRepository
+	PostRepo                   repository.PostRepository
+	CategoryRepo               repository.CategoryRepository
+	BannerRepo                 repository.BannerRepository
+	SettingRepo                repository.SettingRepository
+	UserLoginLogRepo           repository.UserLoginLogRepository
+	AuthzAuditLogRepo          repository.AuthzAuditLogRepository
+	NotificationLogRepo        repository.NotificationLogRepository
+	AdminLoginLogRepo          repository.AdminLoginLogRepository
+	DashboardRepo              repository.DashboardRepository
+	AffiliateRepo              repository.AffiliateRepository
+	ResellerRepo               repository.ResellerRepository
+	ResellerProductSettingRepo repository.ResellerProductSettingRepository
+	ResellerOperationsRepo     repository.ResellerOperationsRepository
+	ApiCredentialRepo          repository.ApiCredentialRepository
+	SiteConnectionRepo         repository.SiteConnectionRepository
+	ProductMappingRepo         repository.ProductMappingRepository
+	SKUMappingRepo             repository.SKUMappingRepository
+	ProcurementOrderRepo       repository.ProcurementOrderRepository
+	DownstreamOrderRefRepo     repository.DownstreamOrderRefRepository
+	ReconciliationJobRepo      repository.ReconciliationJobRepository
+	ReconciliationItemRepo     repository.ReconciliationItemRepository
+	ChannelClientRepo          repository.ChannelClientRepository
+	TelegramBroadcastRepo      repository.TelegramBroadcastRepository
+	MemberLevelRepo            repository.MemberLevelRepository
+	MemberLevelPriceRepo       repository.MemberLevelPriceRepository
+	MediaRepo                  repository.MediaRepository
+	AddressDivisionRepo        repository.AddressDivisionRepository
 
 	// Services
-	AuthzService              *authz.Service
-	AuthService               *service.AuthService
-	TOTPService               *service.TOTPService
-	UserTOTPService           *service.UserTOTPService
-	UserAuthService           *service.UserAuthService
-	TelegramAuthService       *service.TelegramAuthService
-	EmailService              *service.EmailService
-	CaptchaService            *service.CaptchaService
-	UploadService             *service.UploadService
-	ProductService            *service.ProductService
-	PostService               *service.PostService
-	CategoryService           *service.CategoryService
-	SettingService            *service.SettingService
-	SitemapService            *service.SitemapService
-	CartService               *service.CartService
-	WalletService             *service.WalletService
-	OrderRefundService        *service.OrderRefundService
-	OrderService              *service.OrderService
-	FulfillmentService        *service.FulfillmentService
-	CouponAdminService        *service.CouponAdminService
-	PromotionAdminService     *service.PromotionAdminService
-	BannerService             *service.BannerService
-	PaymentService            *service.PaymentService
-	CardSecretService         *service.CardSecretService
-	GiftCardService           *service.GiftCardService
-	UserLoginLogService       *service.UserLoginLogService
-	AuthzAuditService         *service.AuthzAuditService
-	NotificationLogService    *service.NotificationLogService
-	DashboardService          *service.DashboardService
-	NotificationService       *service.NotificationService
-	AffiliateService          *service.AffiliateService
-	ApiCredentialService      *service.ApiCredentialService
-	SiteConnectionService     *service.SiteConnectionService
-	ProductMappingService     *service.ProductMappingService
-	ProcurementOrderService   *service.ProcurementOrderService
-	DownstreamCallbackService *service.DownstreamCallbackService
-	ReconciliationService     *service.ReconciliationService
-	ChannelClientService      *service.ChannelClientService
-	TelegramBroadcastService  *service.TelegramBroadcastService
-	MemberLevelService        *service.MemberLevelService
-	AdProxyService            *service.AdProxyService
-	MediaService              *service.MediaService
-	OrderRiskControlService   *service.OrderRiskControlService
-	AddressService            *service.AddressService
-	ComplianceService         *service.ComplianceService
+	AuthzService                  *authz.Service
+	AuthService                   *service.AuthService
+	TOTPService                   *service.TOTPService
+	UserTOTPService               *service.UserTOTPService
+	UserAuthService               *service.UserAuthService
+	TelegramAuthService           *service.TelegramAuthService
+	EmailService                  *service.EmailService
+	CaptchaService                *service.CaptchaService
+	UploadService                 *service.UploadService
+	ProductService                *service.ProductService
+	PostService                   *service.PostService
+	CategoryService               *service.CategoryService
+	SettingService                *service.SettingService
+	SitemapService                *service.SitemapService
+	CartService                   *service.CartService
+	WalletService                 *service.WalletService
+	OrderRefundService            *service.OrderRefundService
+	OrderService                  *service.OrderService
+	FulfillmentService            *service.FulfillmentService
+	CouponAdminService            *service.CouponAdminService
+	PromotionAdminService         *service.PromotionAdminService
+	BannerService                 *service.BannerService
+	PaymentService                *service.PaymentService
+	CardSecretService             *service.CardSecretService
+	GiftCardService               *service.GiftCardService
+	UserLoginLogService           *service.UserLoginLogService
+	AuthzAuditService             *service.AuthzAuditService
+	NotificationLogService        *service.NotificationLogService
+	DashboardService              *service.DashboardService
+	NotificationService           *service.NotificationService
+	AffiliateService              *service.AffiliateService
+	ResellerDomainResolver        *service.ResellerDomainResolver
+	ResellerPricingResolver       *service.ResellerPricingResolver
+	ResellerManagementService     *service.ResellerManagementService
+	ResellerSiteConfigService     *service.ResellerSiteConfigService
+	ResellerProductSettingService *service.ResellerProductSettingService
+	ResellerAccountingService     *service.ResellerAccountingService
+	ResellerOrderService          *service.ResellerOrderService
+	ResellerOperationsService     *service.ResellerOperationsService
+	ApiCredentialService          *service.ApiCredentialService
+	SiteConnectionService         *service.SiteConnectionService
+	ProductMappingService         *service.ProductMappingService
+	ProcurementOrderService       *service.ProcurementOrderService
+	DownstreamCallbackService     *service.DownstreamCallbackService
+	ReconciliationService         *service.ReconciliationService
+	ChannelClientService          *service.ChannelClientService
+	TelegramBroadcastService      *service.TelegramBroadcastService
+	MemberLevelService            *service.MemberLevelService
+	AdProxyService                *service.AdProxyService
+	MediaService                  *service.MediaService
+	OrderRiskControlService       *service.OrderRiskControlService
+	AddressService                *service.AddressService
+	ComplianceService             *service.ComplianceService
 
 	// 支付网关 Provider 注册表(P1.2 Phase 1 引入,pilot 阶段仅注册 stripe + paypal)
 	PaymentProviderRegistry *paymentprovider.Registry
@@ -147,6 +158,7 @@ func NewContainer(cfg *config.Config) *Container {
 	paymentRegistry.Register(constants.PaymentProviderEpay, "", paymentprovider.NewEpayAdapter())
 	paymentRegistry.Register(constants.PaymentProviderEpusdt, "", paymentprovider.NewEpusdtAdapter())
 	paymentRegistry.Register(constants.PaymentProviderBepusdt, "", paymentprovider.NewBepusdtAdapter())
+	paymentRegistry.Register(constants.PaymentProviderDujiaoPay, "", paymentprovider.NewDujiaoPayAdapter())
 	paymentRegistry.Register(constants.PaymentProviderTokenpay, "", paymentprovider.NewTokenpayAdapter())
 	paymentRegistry.Register(constants.PaymentProviderOkpay, "", paymentprovider.NewOkpayAdapter())
 	paymentRegistry.Register(constants.PaymentProviderVpay, "", paymentprovider.NewVpayAdapter())
@@ -197,6 +209,9 @@ func (c *Container) initRepositories() {
 	c.AdminLoginLogRepo = repository.NewAdminLoginLogRepository(db)
 	c.DashboardRepo = repository.NewDashboardRepository(db)
 	c.AffiliateRepo = repository.NewAffiliateRepository(db)
+	c.ResellerRepo = repository.NewResellerRepository(db)
+	c.ResellerProductSettingRepo = repository.NewResellerProductSettingRepository(db)
+	c.ResellerOperationsRepo = repository.NewResellerOperationsRepository(db)
 	c.ApiCredentialRepo = repository.NewApiCredentialRepository(db)
 	c.SiteConnectionRepo = repository.NewSiteConnectionRepository(db)
 	c.ProductMappingRepo = repository.NewProductMappingRepository(db)
@@ -232,6 +247,16 @@ func (c *Container) initServices() {
 	}
 
 	c.SettingService = service.NewSettingService(c.SettingRepo, c.Config.Order)
+	c.ResellerDomainResolver = service.NewResellerDomainResolver(c.ResellerRepo, c.Config.Reseller)
+	c.ResellerPricingResolver = service.NewResellerPricingResolver(c.ResellerRepo)
+	c.ResellerManagementService = service.NewResellerManagementService(c.ResellerRepo, c.Config.Reseller)
+	c.ResellerSiteConfigService = service.NewResellerSiteConfigService(c.ResellerRepo)
+	c.ResellerProductSettingService = service.NewResellerProductSettingService(c.ResellerProductSettingRepo, c.ResellerRepo, c.ProductRepo)
+	c.ResellerAccountingService = service.NewResellerAccountingService(c.ResellerRepo, service.ResellerAccountingOptions{
+		ConfirmDays: c.Config.Reseller.SettlementConfirmDays,
+	})
+	c.ResellerOrderService = service.NewResellerOrderService(c.ResellerRepo)
+	c.ResellerOperationsService = service.NewResellerOperationsService(c.ResellerOperationsRepo)
 	c.ComplianceService = service.NewComplianceService(c.SettingRepo)
 	smtpSetting, err := c.SettingService.GetSMTPSetting(c.Config.Email)
 	if err != nil {
@@ -274,25 +299,28 @@ func (c *Container) initServices() {
 	c.AddressService = service.NewAddressService(c.AddressDivisionRepo)
 	c.OrderRiskControlService = service.NewOrderRiskControlService(c.SettingService, c.OrderRepo)
 	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
-		OrderRepo:             c.OrderRepo,
-		OrderRefundRecordRepo: c.OrderRefundRecordRepo,
-		PaymentRepo:           c.PaymentRepo,
-		UserRepo:              c.UserRepo,
-		ProductRepo:           c.ProductRepo,
-		ProductSKURepo:        c.ProductSKURepo,
-		CardSecretRepo:        c.CardSecretRepo,
-		CouponRepo:            c.CouponRepo,
-		CouponUsageRepo:       c.CouponUsageRepo,
-		PromotionRepo:         c.PromotionRepo,
-		QueueClient:           c.QueueClient,
-		SettingService:        c.SettingService,
-		DefaultEmailConfig:    c.Config.Email,
-		WalletService:         c.WalletService,
-		AffiliateService:      c.AffiliateService,
-		MemberLevelService:    c.MemberLevelService,
-		AddressService:        c.AddressService,
-		RiskControlService:    c.OrderRiskControlService,
-		ExpireMinutes:         c.Config.Order.PaymentExpireMinutes,
+		OrderRepo:                 c.OrderRepo,
+		OrderRefundRecordRepo:     c.OrderRefundRecordRepo,
+		PaymentRepo:               c.PaymentRepo,
+		UserRepo:                  c.UserRepo,
+		ProductRepo:               c.ProductRepo,
+		ProductSKURepo:            c.ProductSKURepo,
+		CardSecretRepo:            c.CardSecretRepo,
+		ResellerRepo:              c.ResellerRepo,
+		CouponRepo:                c.CouponRepo,
+		CouponUsageRepo:           c.CouponUsageRepo,
+		PromotionRepo:             c.PromotionRepo,
+		QueueClient:               c.QueueClient,
+		SettingService:            c.SettingService,
+		DefaultEmailConfig:        c.Config.Email,
+		WalletService:             c.WalletService,
+		AffiliateService:          c.AffiliateService,
+		MemberLevelService:        c.MemberLevelService,
+		AddressService:            c.AddressService,
+		ResellerPricingResolver:   c.ResellerPricingResolver,
+		ResellerAccountingService: c.ResellerAccountingService,
+		RiskControlService:        c.OrderRiskControlService,
+		ExpireMinutes:             c.Config.Order.PaymentExpireMinutes,
 	})
 	c.FulfillmentService = service.NewFulfillmentService(
 		c.OrderRepo, c.FulfillmentRepo, c.CardSecretRepo, c.QueueClient,
@@ -314,25 +342,27 @@ func (c *Container) initServices() {
 	c.ProductMappingService = service.NewProductMappingService(c.ProductMappingRepo, c.SKUMappingRepo, c.ProductRepo, c.ProductSKURepo, c.CategoryRepo, c.SiteConnectionService)
 	c.ProductMappingService.SetCategoryService(c.CategoryService)
 	c.ProductMappingService.SetSettingService(c.SettingService)
+	c.SiteConnectionService.SetMarkupReapplier(c.ProductMappingService)
 	c.OrderService.SetProductMappingService(c.ProductMappingService)
 	c.DownstreamCallbackService = service.NewDownstreamCallbackService(c.DownstreamOrderRefRepo, c.OrderRepo, c.ApiCredentialRepo, c.QueueClient)
 	c.PaymentService = service.NewPaymentService(service.PaymentServiceOptions{
-		OrderRepo:               c.OrderRepo,
-		ProductRepo:             c.ProductRepo,
-		ProductSKURepo:          c.ProductSKURepo,
-		PaymentRepo:             c.PaymentRepo,
-		ChannelRepo:             c.PaymentChannelRepo,
-		WalletRepo:              c.WalletRepo,
-		UserRepo:                c.UserRepo,
-		UserOAuthIdentityRepo:   c.UserOAuthIdentityRepo,
-		QueueClient:             c.QueueClient,
-		WalletService:           c.WalletService,
-		SettingService:          c.SettingService,
-		DefaultEmailConfig:      c.Config.Email,
-		ExpireMinutes:           c.Config.Order.PaymentExpireMinutes,
-		AffiliateService:        c.AffiliateService,
-		NotificationService:     c.NotificationService,
-		PaymentProviderRegistry: c.PaymentProviderRegistry,
+		OrderRepo:                 c.OrderRepo,
+		ProductRepo:               c.ProductRepo,
+		ProductSKURepo:            c.ProductSKURepo,
+		PaymentRepo:               c.PaymentRepo,
+		ChannelRepo:               c.PaymentChannelRepo,
+		WalletRepo:                c.WalletRepo,
+		UserRepo:                  c.UserRepo,
+		UserOAuthIdentityRepo:     c.UserOAuthIdentityRepo,
+		QueueClient:               c.QueueClient,
+		WalletService:             c.WalletService,
+		SettingService:            c.SettingService,
+		DefaultEmailConfig:        c.Config.Email,
+		ExpireMinutes:             c.Config.Order.PaymentExpireMinutes,
+		AffiliateService:          c.AffiliateService,
+		NotificationService:       c.NotificationService,
+		PaymentProviderRegistry:   c.PaymentProviderRegistry,
+		ResellerAccountingService: c.ResellerAccountingService,
 	})
 	c.ProcurementOrderService = service.NewProcurementOrderService(
 		c.ProcurementOrderRepo, c.OrderRepo, c.FulfillmentRepo, c.ProductMappingRepo, c.SKUMappingRepo,
@@ -352,6 +382,8 @@ func (c *Container) initServices() {
 		service.NewTelegramNotifyService(c.SettingService, c.Config.TelegramAuth),
 	)
 	c.UserAuthService.SetMemberLevelService(c.MemberLevelService)
+	c.WalletService.SetResellerAccountingService(c.ResellerAccountingService)
+	c.OrderRefundService.SetResellerAccountingService(c.ResellerAccountingService)
 	c.PaymentService.SetMemberLevelService(c.MemberLevelService)
 	c.PaymentService.SetProcurementService(c.ProcurementOrderService)
 	c.PaymentService.SetDownstreamCallbackService(c.DownstreamCallbackService)
