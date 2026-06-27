@@ -4,6 +4,15 @@ import { useI18n } from 'vue-i18n'
 import { guestOrderAPI } from '../api'
 import { debounceAsync } from '../utils/debounce'
 import { useOrderDisplayHelpers } from './useOrderDisplayHelpers'
+import {
+  buildGuestOrderAuthParams,
+  clearGuestOrderAuth,
+  createEmptyGuestOrderAuth,
+  hasGuestOrderAuth,
+  loadGuestOrderAuth,
+  saveGuestOrderAuth,
+  type GuestOrderAuth,
+} from '../utils/guestOrderAuth'
 
 /**
  * 游客订单详情逻辑（classic + vault 共用）。
@@ -16,10 +25,7 @@ export function useGuestOrderDetail() {
   const loading = ref(true)
   const order = ref<any>(null)
   const authError = ref('')
-  const auth = ref({
-    email: '',
-    order_password: '',
-  })
+  const auth = ref<GuestOrderAuth>(createEmptyGuestOrderAuth())
   const fulfillmentDownloading = ref(false)
 
   const helpers = useOrderDisplayHelpers(order)
@@ -29,8 +35,7 @@ export function useGuestOrderDetail() {
     fulfillmentDownloading.value = true
     try {
       const res = await guestOrderAPI.downloadFulfillment(orderNo, {
-        email: auth.value.email,
-        order_password: auth.value.order_password,
+        ...buildGuestOrderAuthParams(auth.value),
       })
       const blob = new Blob([res.data], { type: 'text/plain; charset=utf-8' })
       const url = URL.createObjectURL(blob)
@@ -45,15 +50,10 @@ export function useGuestOrderDetail() {
   }
 
   const loadSavedAuth = () => {
-    const saved = localStorage.getItem('guest_order_auth')
-    const savedAuth = saved ? JSON.parse(saved) : {}
-    auth.value = {
-      email: savedAuth.email || '',
-      order_password: savedAuth.order_password || '',
-    }
+    auth.value = loadGuestOrderAuth()
   }
 
-  const hasAuth = computed(() => Boolean(auth.value.email && auth.value.order_password))
+  const hasAuth = computed(() => hasGuestOrderAuth(auth.value))
   const showAuthForm = computed(() => !hasAuth.value || authError.value !== '')
 
   const loadOrder = async () => {
@@ -65,8 +65,7 @@ export function useGuestOrderDetail() {
         return
       }
       const response = await guestOrderAPI.detail(String(route.params.order_no || '').trim(), {
-        email: auth.value.email,
-        order_password: auth.value.order_password,
+        ...buildGuestOrderAuthParams(auth.value),
       })
       order.value = response.data.data
       authError.value = ''
@@ -81,10 +80,7 @@ export function useGuestOrderDetail() {
   const debouncedLoadOrder = debounceAsync(loadOrder, 300)
 
   const persistAuth = () => {
-    localStorage.setItem('guest_order_auth', JSON.stringify({
-      email: auth.value.email,
-      order_password: auth.value.order_password,
-    }))
+    auth.value = saveGuestOrderAuth(auth.value)
   }
 
   const handleAuthSubmit = async () => {
@@ -98,8 +94,8 @@ export function useGuestOrderDetail() {
   }
 
   const clearAuth = () => {
-    localStorage.removeItem('guest_order_auth')
-    auth.value = { email: '', order_password: '' }
+    clearGuestOrderAuth()
+    auth.value = createEmptyGuestOrderAuth()
     order.value = null
     authError.value = t('guestOrderDetail.authRequired')
   }

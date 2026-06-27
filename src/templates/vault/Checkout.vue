@@ -67,6 +67,44 @@
           :manual-field-error="manualFieldError"
         />
 
+        <!-- 收货地址 -->
+        <section v-if="orderRequiresShippingAddress" class="rounded-xl border bg-card p-5">
+          <h2 class="mb-1.5 text-lg font-bold">{{ t('checkout.shippingTitle') }}</h2>
+          <p class="mb-3.5 text-[13px] text-muted-foreground">{{ t('checkout.shippingTip') }}</p>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <Input
+              v-model="shippingAddress.receiver_name"
+              type="text"
+              autocomplete="name"
+              class="h-11"
+              :placeholder="t('checkout.shippingReceiverName')"
+            />
+            <Input
+              v-model="shippingAddress.receiver_phone"
+              type="tel"
+              autocomplete="tel"
+              class="h-11"
+              :placeholder="t('checkout.shippingReceiverPhone')"
+            />
+            <div class="sm:col-span-2">
+              <RegionSelector
+                v-model="shippingAddress"
+                :invalid="submitAttempted && shippingRegionMissing"
+              />
+            </div>
+            <Textarea
+              v-model="shippingAddress.detail_address"
+              rows="3"
+              autocomplete="street-address"
+              class="sm:col-span-2"
+              :placeholder="t('checkout.shippingDetailAddress')"
+            />
+          </div>
+          <p v-if="submitAttempted && !shippingAddressValidation.valid" class="mt-3 text-[13px] text-destructive">
+            {{ shippingAddressValidation.message }}
+          </p>
+        </section>
+
         <!-- 优惠码 -->
         <section v-if="!isResellerTenant" class="rounded-xl border bg-card p-5">
           <h2 class="mb-3.5 text-lg font-bold">{{ t('checkout.couponTitle') }}</h2>
@@ -82,9 +120,10 @@
           </div>
 
           <template v-if="checkoutMode === 'guest'">
-            <div class="grid gap-3 sm:grid-cols-2">
-              <Input v-model="guestEmail" type="email" class="h-11" :placeholder="t('checkout.guestEmailPlaceholder')" />
+            <div class="grid gap-3 sm:grid-cols-3">
+              <Input :value="guestPhone" type="tel" class="h-11" :placeholder="t('checkout.guestPhonePlaceholder')" @input="handleGuestPhoneInput" />
               <Input v-model="guestPassword" type="password" class="h-11" :placeholder="t('checkout.guestPasswordPlaceholder')" />
+              <Input v-model="guestEmail" type="email" class="h-11" :placeholder="t('checkout.guestEmailPlaceholder')" />
             </div>
 
             <div v-if="guestCaptchaEnabled" class="mt-3.5">
@@ -102,15 +141,24 @@
                 v-model="guestTurnstileToken"
                 :site-key="guestTurnstileSiteKey"
               />
+              <CapCaptcha
+                v-else-if="captchaProvider === 'cap'"
+                ref="guestCapRef"
+                v-model="guestCapToken"
+                :endpoint="guestCapEndpoint"
+                :site-key="guestCapSiteKey"
+              />
             </div>
 
             <div class="mt-3.5 rounded-sm border border-[color:var(--teal-strong)] bg-[color:var(--teal-soft)] px-3.5 py-3 text-[13px] text-[color:var(--teal-strong)]">
               <p class="font-bold">{{ t('checkout.guestInstructions.title') }}</p>
               <ul class="mt-2 grid list-disc gap-0.5 pl-4.5">
+                <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
                 <li>{{ t('checkout.guestInstructions.email') }}</li>
                 <li>{{ t('checkout.guestInstructions.password') }}</li>
               </ul>
             </div>
+            <p v-if="guestPhone && !guestPhoneValid" class="mt-2 text-[13px] text-destructive">{{ t('error.phone_invalid') }}</p>
             <p v-if="guestEmail && !guestEmailValid" class="mt-2 text-[13px] text-destructive">{{ t('error.email_invalid') }}</p>
           </template>
         </section>
@@ -203,9 +251,12 @@ import { useI18n } from 'vue-i18n'
 import { ChevronRight, Package, ShoppingCart } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import ImageCaptcha from '../../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../../components/captcha/TurnstileCaptcha.vue'
+import CapCaptcha from '../../components/captcha/CapCaptcha.vue'
 import CheckoutManualForm from '../../components/checkout/CheckoutManualForm.vue'
+import RegionSelector from '../../components/checkout/RegionSelector.vue'
 import VaultCheckoutSteps from './components/VaultCheckoutSteps.vue'
 import { useCheckout } from '../../composables/useCheckout'
 
@@ -218,9 +269,11 @@ const {
   checkoutItemCurrency, checkoutItemPriceParts, checkoutItemOriginalPriceParts, checkoutItemHasPriceDiscount,
   manualFormProducts, manualFormData, submitAttempted, getManualFieldLabel, getManualFieldPlaceholder, manualFieldError,
   couponCode, isResellerTenant,
-  checkoutMode, guestEmail, guestPassword, guestEmailValid,
+  checkoutMode, guestPhone, guestPhoneValid, handleGuestPhoneInput, guestEmail, guestPassword, guestEmailValid,
   guestCaptchaEnabled, captchaProvider, guestCaptchaPayload, guestTurnstileToken, guestTurnstileSiteKey,
-  guestImageCaptchaRef, guestTurnstileRef, handleGuestCaptchaConfigStale,
+  guestCapToken, guestCapSiteKey, guestCapEndpoint,
+  guestImageCaptchaRef, guestTurnstileRef, guestCapRef, handleGuestCaptchaConfigStale,
+  shippingAddress, orderRequiresShippingAddress, shippingRegionMissing, shippingAddressValidation,
   previewCurrency, previewOriginal, previewCoupon, previewPromotion, previewWholesale, previewMemberDiscount, previewTotal,
   previewLoading, couponRefreshing, previewStatusText, hasPositiveAmount, formatDiscountPrice, checkoutAlert,
   showBalanceOption, walletLoading, walletBalance, useBalance, walletOnlyPayment,
@@ -233,4 +286,5 @@ const {
 // 字符串模板 ref，逻辑在 composable 内，显式标记避免 noUnusedLocals 误报。
 void guestImageCaptchaRef
 void guestTurnstileRef
+void guestCapRef
 </script>

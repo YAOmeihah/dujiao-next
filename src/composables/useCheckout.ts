@@ -15,6 +15,9 @@ import { getImageUrl } from '../utils/image'
 import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
+import CapCaptcha from '../components/captcha/CapCaptcha.vue'
+import type { ShippingAddressFormValue } from '../types/address'
+import { saveGuestOrderAuth } from '../utils/guestOrderAuth'
 import { useLocalized, useProductLabels } from './useProduct'
 
 interface ManualFormField {
@@ -270,12 +273,16 @@ export function useCheckout() {
   }
 
   const checkoutMode = ref<'guest' | 'member'>('guest')
+  const guestPhone = ref('')
+  const guestPhoneAutoManaged = ref(true)
   const guestEmail = ref('')
   const guestPassword = ref('')
   const guestCaptchaPayload = ref<CaptchaPayload>({})
   const guestTurnstileToken = ref('')
+  const guestCapToken = ref('')
   const guestImageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
   const guestTurnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+  const guestCapRef = ref<InstanceType<typeof CapCaptcha> | null>(null)
 
   const manualFieldTypes = new Set(['text', 'textarea', 'phone', 'email', 'number', 'select', 'radio', 'checkbox'])
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -539,11 +546,80 @@ export function useCheckout() {
 
   const manualFormFingerprint = computed(() => JSON.stringify(manualFormData.value))
 
+  const emptyShippingAddress = (): ShippingAddressFormValue => ({
+    receiver_name: '',
+    receiver_phone: '',
+    province: '',
+    province_code: '',
+    city: '',
+    city_code: '',
+    district: '',
+    district_code: '',
+    township: '',
+    township_code: '',
+    detail_address: '',
+  })
+
+  const shippingAddress = ref<ShippingAddressFormValue>(emptyShippingAddress())
+  const orderRequiresShippingAddress = computed(() => cartItems.value.some((item) => item.requiresShippingAddress))
+  const shippingRegionMissing = computed(() => {
+    if (!orderRequiresShippingAddress.value) return false
+    const requiredKeys = ['province_code', 'city_code', 'district_code', 'township_code'] as const
+    return requiredKeys.some((key) => !String(shippingAddress.value[key] || '').trim())
+  })
+
+  const shippingAddressValidation = computed(() => {
+    if (!orderRequiresShippingAddress.value) {
+      return { valid: true, message: '' }
+    }
+    const requiredKeys = ['receiver_name', 'receiver_phone', 'province_code', 'city_code', 'district_code', 'township_code', 'detail_address'] as const
+    const missingKey = requiredKeys.find((key) => !String(shippingAddress.value[key] || '').trim())
+    if (missingKey) {
+      return { valid: false, message: t('checkout.errors.shippingAddressRequired') }
+    }
+    if (!phonePattern.test(shippingAddress.value.receiver_phone.trim())) {
+      return { valid: false, message: t('error.phone_invalid') }
+    }
+    return { valid: true, message: '' }
+  })
+
+  const buildShippingAddressPayload = () => {
+    if (!orderRequiresShippingAddress.value) return undefined
+    return {
+      receiver_name: shippingAddress.value.receiver_name.trim(),
+      receiver_phone: shippingAddress.value.receiver_phone.trim(),
+      province: shippingAddress.value.province.trim(),
+      province_code: shippingAddress.value.province_code.trim(),
+      city: shippingAddress.value.city.trim(),
+      city_code: shippingAddress.value.city_code.trim(),
+      district: shippingAddress.value.district.trim(),
+      district_code: shippingAddress.value.district_code.trim(),
+      township: shippingAddress.value.township.trim(),
+      township_code: shippingAddress.value.township_code.trim(),
+      detail_address: shippingAddress.value.detail_address.trim(),
+    }
+  }
+
+  const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAddressPayload() || null))
   const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
+  const shouldSyncGuestPhoneFromShipping = computed(() => isGuestCheckout.value && orderRequiresShippingAddress.value && guestPhoneAutoManaged.value)
+  const guestPhoneValid = computed(() => {
+    if (!isGuestCheckout.value) return true
+    return phonePattern.test(guestPhone.value.trim())
+  })
   const guestEmailValid = computed(() => {
     if (!isGuestCheckout.value) return true
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.value.trim())
+    const email = guestEmail.value.trim()
+    if (!email) return true
+    return emailPattern.test(email)
   })
+
+  const handleGuestPhoneInput = (event: Event) => {
+    const nextValue = String((event.target as HTMLInputElement | null)?.value || '')
+    const shippingPhone = shippingAddress.value.receiver_phone
+    guestPhone.value = nextValue
+    guestPhoneAutoManaged.value = nextValue === '' || nextValue === shippingPhone
+  }
 
   const captchaConfig = computed(() => appStore.config?.captcha || null)
   const captchaProvider = computed(() => String(captchaConfig.value?.provider || 'none'))
@@ -552,6 +628,8 @@ export function useCheckout() {
     return !!captchaConfig.value?.scenes?.guest_create_order && captchaProvider.value !== 'none'
   })
   const guestTurnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+  const guestCapSiteKey = computed(() => String(captchaConfig.value?.cap?.site_key || ''))
+  const guestCapEndpoint = computed(() => String(captchaConfig.value?.cap?.endpoint || '/api/captcha/cap/'))
 
   const getGuestCaptchaPayload = (): CaptchaPayload | undefined => {
     if (!guestCaptchaEnabled.value) return undefined
@@ -566,6 +644,11 @@ export function useCheckout() {
         turnstile_token: guestTurnstileToken.value,
       }
     }
+    if (captchaProvider.value === 'cap') {
+      return {
+        cap_token: guestCapToken.value,
+      }
+    }
     return undefined
   }
 
@@ -573,6 +656,7 @@ export function useCheckout() {
     await appStore.loadConfig(true)
     guestCaptchaPayload.value = {}
     guestTurnstileToken.value = ''
+    guestCapToken.value = ''
   }
 
   const canSubmit = computed(() => {
@@ -580,6 +664,7 @@ export function useCheckout() {
     if (submitting.value) return false
     if (cartItems.value.length === 0) return false
     if (!manualFormValidation.value.valid) return false
+    if (!shippingAddressValidation.value.valid) return false
     if (cartItems.value.some((item) => itemStockExceeded(item))) return false
     if (cartItems.value.some((item) => itemMinNotMet(item))) return false
     if (walletOnlyPayment.value && expectedOnlinePayCents.value > 0) return false
@@ -587,13 +672,16 @@ export function useCheckout() {
     if (requiresOnlineChannel.value && selectedChannelAmountHint.value) return false
     if (userAuthStore.isAuthenticated) return true
     if (checkoutMode.value !== 'guest') return false
-    if (!guestEmail.value.trim() || !guestPassword.value.trim() || !guestEmailValid.value) return false
+    if (!guestPhone.value.trim() || !guestPassword.value.trim() || !guestPhoneValid.value || !guestEmailValid.value) return false
     if (!guestCaptchaEnabled.value) return true
     if (captchaProvider.value === 'image') {
       return Boolean(guestCaptchaPayload.value.captcha_id && guestCaptchaPayload.value.captcha_code)
     }
     if (captchaProvider.value === 'turnstile') {
       return Boolean(guestTurnstileToken.value)
+    }
+    if (captchaProvider.value === 'cap') {
+      return Boolean(guestCapToken.value)
     }
     return false
   })
@@ -603,6 +691,9 @@ export function useCheckout() {
     if (cartItems.value.length === 0) return t('checkout.errors.emptyCart')
     if (!manualFormValidation.value.valid) {
       return manualFormValidation.value.firstError || t('checkout.errors.manualFormInvalid')
+    }
+    if (!shippingAddressValidation.value.valid) {
+      return shippingAddressValidation.value.message
     }
     const stockBlockedItem = cartItems.value.find((item) => itemStockExceeded(item))
     if (stockBlockedItem) {
@@ -617,13 +708,17 @@ export function useCheckout() {
     if (requiresOnlineChannel.value && selectedChannelAmountHint.value) return selectedChannelAmountHint.value
     if (userAuthStore.isAuthenticated) return ''
     if (checkoutMode.value !== 'guest') return t('checkout.errors.loginOrGuest')
-    if (!guestEmail.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
+    if (!guestPhone.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
+    if (!guestPhoneValid.value) return t('error.phone_invalid')
     if (!guestEmailValid.value) return t('error.email_invalid')
     if (guestCaptchaEnabled.value) {
       if (captchaProvider.value === 'image' && (!guestCaptchaPayload.value.captcha_id || !guestCaptchaPayload.value.captcha_code)) {
         return t('auth.common.captchaRequired')
       }
       if (captchaProvider.value === 'turnstile' && !guestTurnstileToken.value) {
+        return t('auth.common.captchaRequired')
+      }
+      if (captchaProvider.value === 'cap' && !guestCapToken.value) {
         return t('auth.common.captchaRequired')
       }
     }
@@ -660,6 +755,7 @@ export function useCheckout() {
     affiliate_visitor_key: getAffiliateVisitorKey() || undefined,
     items: buildItemsPayload(),
     manual_form_data: buildManualFormDataPayload(),
+    shipping_address: buildShippingAddressPayload(),
   })
 
   const loadOrderPaymentChannels = async () => {
@@ -719,7 +815,21 @@ export function useCheckout() {
       couponRefreshing.value = false
       return
     }
-    if (isGuestCheckout.value && (!guestEmail.value.trim() || !guestPassword.value.trim() || !guestEmailValid.value)) {
+    if (isGuestCheckout.value && (!guestPhone.value.trim() || !guestPassword.value.trim() || !guestPhoneValid.value || !guestEmailValid.value)) {
+      preview.value = null
+      orderPaymentChannels.value = []
+      previewError.value = ''
+      couponRefreshing.value = false
+      return
+    }
+    if (!manualFormValidation.value.valid) {
+      preview.value = null
+      orderPaymentChannels.value = []
+      previewError.value = ''
+      couponRefreshing.value = false
+      return
+    }
+    if (!shippingAddressValidation.value.valid) {
       preview.value = null
       orderPaymentChannels.value = []
       previewError.value = ''
@@ -755,7 +865,8 @@ export function useCheckout() {
       } else {
         response = await guestOrderAPI.preview({
           ...payload,
-          email: guestEmail.value.trim(),
+          phone: guestPhone.value.trim(),
+          email: guestEmail.value.trim() || undefined,
           order_password: guestPassword.value,
         })
       }
@@ -827,14 +938,16 @@ export function useCheckout() {
       } else {
         const response = await guestOrderAPI.createAndPay({
           ...payload,
-          email: guestEmail.value.trim(),
+          phone: guestPhone.value.trim(),
+          email: guestEmail.value.trim() || undefined,
           order_password: guestPassword.value,
           captcha_payload: getGuestCaptchaPayload(),
         })
-        localStorage.setItem('guest_order_auth', JSON.stringify({
+        saveGuestOrderAuth({
+          phone: guestPhone.value.trim(),
           email: guestEmail.value.trim(),
           order_password: guestPassword.value,
-        }))
+        })
         responseData = response.data.data
       }
 
@@ -858,17 +971,41 @@ export function useCheckout() {
         guestTurnstileRef.value?.reset()
         guestTurnstileToken.value = ''
       }
+      if (guestCaptchaEnabled.value && captchaProvider.value === 'cap') {
+        guestCapRef.value?.reset()
+        guestCapToken.value = ''
+      }
     } finally {
       submitting.value = false
     }
   }
 
   watch(
-    () => [cartItems.value, manualFormFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
+    () => [cartItems.value, manualFormFingerprint.value, shippingAddressFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestPhone.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
     () => {
       debouncedLoadPreview()
     },
     { deep: true }
+  )
+
+  watch(
+    () => [shippingAddress.value.receiver_phone, shouldSyncGuestPhoneFromShipping.value],
+    ([receiverPhone, shouldSync]) => {
+      if (!shouldSync) return
+      guestPhone.value = String(receiverPhone || '')
+    },
+    { immediate: true }
+  )
+
+  watch(
+    () => isGuestCheckout.value,
+    (isGuest) => {
+      if (!isGuest) return
+      if (!guestPhone.value.trim()) {
+        guestPhoneAutoManaged.value = true
+      }
+    },
+    { immediate: true }
   )
 
   watch(walletOnlyPayment, (v) => {
@@ -1124,6 +1261,9 @@ export function useCheckout() {
     isResellerTenant,
     // mode select / guest
     checkoutMode,
+    guestPhone,
+    guestPhoneValid,
+    handleGuestPhoneInput,
     guestEmail,
     guestPassword,
     guestEmailValid,
@@ -1132,9 +1272,18 @@ export function useCheckout() {
     guestCaptchaPayload,
     guestTurnstileToken,
     guestTurnstileSiteKey,
+    guestCapToken,
+    guestCapSiteKey,
+    guestCapEndpoint,
     guestImageCaptchaRef,
     guestTurnstileRef,
+    guestCapRef,
     handleGuestCaptchaConfigStale,
+    // shipping
+    shippingAddress,
+    orderRequiresShippingAddress,
+    shippingRegionMissing,
+    shippingAddressValidation,
     // preview amounts
     previewCurrency,
     previewOriginal,

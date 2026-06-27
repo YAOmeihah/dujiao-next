@@ -9,10 +9,11 @@
     <!-- 查询表单 -->
     <div class="mb-5 rounded-xl border bg-card p-[22px]">
       <div v-if="hasSavedAuth" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
-        <span>{{ t('guestOrders.savedHint', { email: savedAuth.email || '-' }) }}</span>
+        <span>{{ t('guestOrders.savedHint', { email: savedAuth.phone || savedAuth.email || '-' }) }}</span>
         <button type="button" class="text-[12.5px] text-muted-foreground transition-colors hover:text-primary" @click="clearSaved">{{ t('guestOrders.clearSaved') }}</button>
       </div>
-      <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
+      <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <Input v-model="phone" type="tel" class="h-11" :placeholder="t('checkout.guestPhonePlaceholder')" />
         <Input v-model="email" type="email" class="h-11" :placeholder="t('guestOrders.emailPlaceholder')" />
         <Input v-model="orderPassword" type="password" class="h-11" :placeholder="t('guestOrders.passwordPlaceholder')" />
         <Input v-model="orderNo" type="text" class="h-11" :placeholder="t('guestOrders.orderNoPlaceholder')" />
@@ -73,7 +74,7 @@ import { useGuestOrders } from '../../composables/useGuestOrders'
 const { t } = useI18n()
 
 const {
-  savedAuth, email, orderPassword, orderNo, loading, error, orders, pagination,
+  savedAuth, phone, email, orderPassword, orderNo, loading, error, orders, pagination,
   hasSavedAuth, clearSaved, handleSearch, emptyMessage, changePage,
   statusLabel, statusVariant, formatMoney, formatDiscountMoney, hasDiscountAmount, hasDiscount, formatDate,
 } = useGuestOrders()
