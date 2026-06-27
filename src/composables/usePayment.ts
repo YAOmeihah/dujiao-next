@@ -16,6 +16,13 @@ import {
   shouldAutoOpenPaymentLink,
   type PaymentResetReason,
 } from '../utils/paymentResumePolicy'
+import {
+  buildGuestOrderAuthParams,
+  hasGuestOrderAuth,
+  loadGuestOrderAuth,
+  saveGuestOrderAuth,
+  type GuestOrderAuth,
+} from '../utils/guestOrderAuth'
 import QRCode from 'qrcode'
 import { type PageAlert } from '../utils/alerts'
 
@@ -44,7 +51,8 @@ export function usePayment() {
   const openedPayWindow = ref(false)
   const latestLoaded = ref(false)
   const cachedPayment = ref<any>(null)
-  const guestAuth = ref({
+  const guestAuth = ref<GuestOrderAuth>({
+    phone: '',
     email: '',
     order_password: '',
   })
@@ -118,7 +126,7 @@ export function usePayment() {
     return order.value?.order_no || orderNoQuery.value || ''
   })
   const backLink = computed(() => (isGuest.value ? '/guest/orders' : '/me/orders'))
-  const hasGuestAuth = computed(() => Boolean(guestAuth.value.email && guestAuth.value.order_password))
+  const hasGuestAuth = computed(() => hasGuestOrderAuth(guestAuth.value))
   const showGuestAuthForm = computed(() => isGuest.value && (!hasGuestAuth.value || guestAuthError.value))
   const walletOnlyPayment = computed(() => !!appStore.config?.wallet_only_payment)
   const showBalanceOption = computed(() => !isGuest.value)
@@ -618,10 +626,11 @@ export function usePayment() {
           orderPaymentChannelsLoaded.value = false
           return
         }
-        const response = await guestOrderAPI.detail(orderNoQuery.value, {
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
-        }, { silentBusinessError: true })
+        const response = await guestOrderAPI.detail(
+          orderNoQuery.value,
+          buildGuestOrderAuthParams(guestAuth.value),
+          { silentBusinessError: true },
+        )
         order.value = response.data.data
         guestAuthError.value = ''
       } else {
@@ -712,10 +721,7 @@ export function usePayment() {
           }
           return
         }
-        await guestOrderAPI.capturePayment(paymentID, {
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
-        })
+        await guestOrderAPI.capturePayment(paymentID, buildGuestOrderAuthParams(guestAuth.value))
       } else {
         await paymentAPI.capture(paymentID)
       }
@@ -801,8 +807,7 @@ export function usePayment() {
       if (isGuest.value) {
         response = await guestOrderAPI.latestPayment({
           order_no: orderNoResolved.value,
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
+          ...buildGuestOrderAuthParams(guestAuth.value),
         })
       } else {
         response = await paymentAPI.latest({ order_no: orderNoResolved.value })
@@ -886,10 +891,7 @@ export function usePayment() {
           guestAuthError.value = t('payment.guestAuthRequired')
           return
         }
-        await guestOrderAPI.capturePayment(paymentID, {
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
-        })
+        await guestOrderAPI.capturePayment(paymentID, buildGuestOrderAuthParams(guestAuth.value))
       } else {
         await paymentAPI.capture(paymentID)
       }
@@ -923,10 +925,7 @@ export function usePayment() {
           guestAuthError.value = t('payment.guestAuthRequired')
           return
         }
-        await guestOrderAPI.capturePayment(paymentID, {
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
-        })
+        await guestOrderAPI.capturePayment(paymentID, buildGuestOrderAuthParams(guestAuth.value))
       } else {
         await paymentAPI.capture(paymentID)
       }
@@ -999,8 +998,7 @@ export function usePayment() {
           return
         }
         const response = await guestOrderAPI.createPayment({
-          email: guestAuth.value.email,
-          order_password: guestAuth.value.order_password,
+          ...buildGuestOrderAuthParams(guestAuth.value),
           order_no: orderNoResolved.value,
           channel_id: selectedChannelId.value,
         })
@@ -1248,12 +1246,7 @@ export function usePayment() {
       return
     }
     if (!orderNoQuery.value) return
-    const saved = localStorage.getItem('guest_order_auth')
-    const savedAuth = saved ? JSON.parse(saved) : {}
-    guestAuth.value = {
-      email: savedAuth.email || '',
-      order_password: savedAuth.order_password || '',
-    }
+    guestAuth.value = loadGuestOrderAuth()
     loadOrder()
     void loadWallet()
     if (!appStore.config || !Array.isArray(appStore.config?.payment_channels)) {
@@ -1364,10 +1357,7 @@ export function usePayment() {
       guestAuthError.value = t('payment.guestAuthRequired')
       return
     }
-    localStorage.setItem('guest_order_auth', JSON.stringify({
-      email: guestAuth.value.email,
-      order_password: guestAuth.value.order_password,
-    }))
+    guestAuth.value = saveGuestOrderAuth(guestAuth.value)
     await debouncedLoadOrder()
   }
 

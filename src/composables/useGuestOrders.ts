@@ -4,6 +4,15 @@ import { guestOrderAPI } from '../api'
 import { orderStatusVariant, orderStatusLabel } from '../utils/status'
 import { debounceAsync } from '../utils/debounce'
 import { amountToCents } from '../utils/money'
+import {
+  buildGuestOrderAuthParams,
+  clearGuestOrderAuth,
+  createEmptyGuestOrderAuth,
+  hasGuestOrderAuth,
+  loadGuestOrderAuth,
+  saveGuestOrderAuth,
+  type GuestOrderAuth,
+} from '../utils/guestOrderAuth'
 
 /**
  * 游客订单查询/列表逻辑（classic + vault 共用）。
@@ -11,7 +20,8 @@ import { amountToCents } from '../utils/money'
 export function useGuestOrders() {
   const { t } = useI18n()
 
-  const savedAuth = ref<{ email: string; order_password: string }>({ email: '', order_password: '' })
+  const savedAuth = ref<GuestOrderAuth>(createEmptyGuestOrderAuth())
+  const phone = ref('')
   const email = ref('')
   const orderPassword = ref('')
   const orderNo = ref('')
@@ -26,30 +36,27 @@ export function useGuestOrders() {
   })
 
   const loadSavedAuth = () => {
-    const saved = localStorage.getItem('guest_order_auth')
-    const parsed = saved ? JSON.parse(saved) : {}
-    savedAuth.value = {
-      email: parsed.email || '',
-      order_password: parsed.order_password || '',
-    }
+    savedAuth.value = loadGuestOrderAuth()
+    phone.value = savedAuth.value.phone
     email.value = savedAuth.value.email
     orderPassword.value = savedAuth.value.order_password
   }
 
-  const hasSavedAuth = computed(() => Boolean(savedAuth.value.email || savedAuth.value.order_password))
+  const hasSavedAuth = computed(() => hasGuestOrderAuth(savedAuth.value))
 
   const persistAuth = () => {
-    const payload = {
+    const payload = saveGuestOrderAuth({
+      phone: phone.value,
       email: email.value,
       order_password: orderPassword.value,
-    }
-    localStorage.setItem('guest_order_auth', JSON.stringify(payload))
+    })
     savedAuth.value = payload
   }
 
   const clearSaved = () => {
-    localStorage.removeItem('guest_order_auth')
-    savedAuth.value = { email: '', order_password: '' }
+    clearGuestOrderAuth()
+    savedAuth.value = createEmptyGuestOrderAuth()
+    phone.value = ''
     email.value = ''
     orderPassword.value = ''
     orderNo.value = ''
@@ -65,7 +72,7 @@ export function useGuestOrders() {
 
   const handleSearch = async () => {
     error.value = ''
-    if (!email.value || !orderPassword.value) {
+    if (!phone.value || !orderPassword.value) {
       error.value = t('guestOrders.errors.missing')
       return
     }
@@ -77,8 +84,11 @@ export function useGuestOrders() {
     loading.value = true
     try {
       const response = await guestOrderAPI.list({
-        email: email.value,
-        order_password: orderPassword.value,
+        ...buildGuestOrderAuthParams({
+          phone: phone.value,
+          email: email.value,
+          order_password: orderPassword.value,
+        }),
         order_no: orderNo.value || undefined,
         page,
         page_size: pagination.value.page_size,
@@ -169,6 +179,7 @@ export function useGuestOrders() {
 
   return {
     savedAuth,
+    phone,
     email,
     orderPassword,
     orderNo,

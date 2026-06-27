@@ -12,9 +12,10 @@
     <div v-if="showAuthForm" class="mb-[18px] rounded-xl border bg-card p-[22px]">
       <h2 class="mb-1.5 text-lg font-bold">{{ t('guestOrderDetail.authTitle') }}</h2>
       <p class="mb-3.5 text-[13px] text-muted-foreground">{{ t('guestOrderDetail.authHint') }}</p>
-      <div class="grid gap-3 sm:grid-cols-2">
-        <Input v-model="auth.email" type="email" class="h-11" :placeholder="t('guestOrders.emailPlaceholder')" />
+      <div class="grid gap-3 sm:grid-cols-3">
+        <Input v-model="auth.phone" type="tel" class="h-11" :placeholder="t('checkout.guestPhonePlaceholder')" />
         <Input v-model="auth.order_password" type="password" class="h-11" :placeholder="t('guestOrders.passwordPlaceholder')" />
+        <Input v-model="auth.email" type="email" class="h-11" :placeholder="t('checkout.guestEmailPlaceholder')" />
       </div>
       <div v-if="authError" class="mt-3.5 rounded-sm bg-destructive/10 px-3 py-2.5 text-[13px] font-semibold text-destructive">{{ authError }}</div>
       <div class="mt-3.5 flex flex-wrap gap-3">
