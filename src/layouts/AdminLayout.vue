@@ -32,6 +32,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Home,
   Sun,
   Moon,
   Link,
@@ -108,6 +109,7 @@ const route = useRoute()
 const authStore = useAdminAuthStore()
 const isDark = ref(false)
 const appVersion = ref('')
+const siteUrl = ref('')
 
 interface UpdateCheckResult {
   current_version: string
@@ -304,6 +306,25 @@ const navGroups = computed<NavGroup[]>(() => {
       ],
     },
     {
+      id: 'articles',
+      label: t('admin.navGroups.articleManagement'),
+      icon: Newspaper,
+      items: [
+        {
+          label: t('admin.navItems.articleList'),
+          to: '/posts/blog',
+          icon: FileText,
+          permission: 'GET:/admin/posts',
+        },
+        {
+          label: t('admin.navItems.postCategories'),
+          to: '/posts/categories',
+          icon: FolderTree,
+          permission: 'GET:/admin/post-categories',
+        },
+      ],
+    },
+    {
       id: 'content',
       label: t('admin.navGroups.contentManagement'),
       icon: FileText,
@@ -315,16 +336,16 @@ const navGroups = computed<NavGroup[]>(() => {
           permission: 'GET:/admin/banners',
         },
         {
-          label: t('admin.navItems.posts'),
-          to: '/posts',
-          icon: Newspaper,
-          permission: 'GET:/admin/posts',
-        },
-        {
           label: t('admin.navItems.media'),
           to: '/media',
           icon: ImageIcon,
           permission: 'GET:/admin/media',
+        },
+        {
+          label: t('admin.navItems.announcementList'),
+          to: '/posts/notice',
+          icon: Bell,
+          permission: 'GET:/admin/posts',
         },
       ],
     },
@@ -753,13 +774,17 @@ onMounted(() => {
   }
   window.addEventListener('resize', handleResize)
 
-  // Fetch app version
+  // Fetch app version and site URL
   adminAPI.getPublicConfig().then((res) => {
     const payload = res.data?.data
     applySiteIcon(payload?.brand?.site_icon)
     const ver = payload?.app_version
     if (typeof ver === 'string') {
       appVersion.value = ver
+    }
+    const url = payload?.brand?.site_url
+    if (typeof url === 'string' && url) {
+      siteUrl.value = url
     }
   }).catch(() => {})
 })
@@ -1006,6 +1031,11 @@ onBeforeUnmount(() => {
               <Sun v-if="isDark" class="h-4 w-4" />
               <Moon v-else class="h-4 w-4" />
             </Button>
+            <a v-if="siteUrl" :href="siteUrl" target="_blank" rel="noopener noreferrer">
+              <Button size="icon-sm" variant="outline" :title="t('admin.layout.homePage')">
+                <Home class="h-4 w-4" />
+              </Button>
+            </a>
             <Button variant="outline" size="sm" class="gap-2" @click="handleLogout">
               <LogOut class="h-4 w-4" />
               <span class="hidden sm:inline">{{ t('admin.common.logout') }}</span>

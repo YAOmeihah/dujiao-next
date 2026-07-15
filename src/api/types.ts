@@ -45,6 +45,8 @@ export interface AdminProductSKU {
 }
 
 export interface AdminWholesalePrice {
+  sku_id?: number
+  sku_code?: string
   min_quantity: number
   unit_price: number | string
 }
@@ -241,6 +243,8 @@ export interface AdminCoupon {
   usage_limit: number
   used_count: number
   per_user_limit: number
+  disabled_wholesale_price?: boolean
+  per_item_discount?: boolean
   payment_roles?: string[]
   member_levels?: number[]
   scope_type: string
@@ -410,6 +414,8 @@ export interface AdminPost {
   is_home_popup: boolean
   published_at?: string
   created_at: string
+  category_id?: number | null
+  category?: { id: number; name: LocalizedText } | null
 }
 
 // --- PaymentChannel ---

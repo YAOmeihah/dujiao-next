@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { adminAPI } from '@/api/admin'
 import type { AdminPost, AdminProduct, LocalizedText } from '@/api/types'
 import MediaPicker from '@/components/admin/MediaPicker.vue'
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import TableSkeleton from '@/components/TableSkeleton.vue'
 import ListPagination from '@/components/ListPagination.vue'
@@ -30,19 +30,30 @@ interface RelatedProductRef {
   image?: string
 }
 
+interface CategoryItem {
+  id: number
+  name: LocalizedText
+  depth: number
+  selectable: boolean
+}
+
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
-const currentTab = ref('blog')
+const currentTab = ref(route.params.type === 'notice' ? 'notice' : 'blog')
 const currentLang = ref('zh-CN')
 const submitting = ref(false)
 
-watch(currentTab, () => {
+watch(currentTab, (tab) => {
   pagination.page = 1
   fetchPosts()
+  if (route.params.type !== tab) {
+    router.replace(`/posts/${tab}`)
+  }
 })
-const route = useRoute()
 
 const languages = computed(() => [
   { code: 'zh-CN', name: t('admin.common.lang.zhCN') },
@@ -51,6 +62,7 @@ const languages = computed(() => [
 ])
 
 const posts = ref<AdminPost[]>([])
+const categories = ref<CategoryItem[]>([])
 const pagination = reactive({
   page: 1,
   page_size: 10,
@@ -67,6 +79,7 @@ const form = reactive({
   thumbnail: '',
   is_published: true,
   is_home_popup: false,
+  category_id: null as number | null,
   product_ids: [] as number[],
 })
 
@@ -163,6 +176,62 @@ const fetchPosts = async () => {
   }
 }
 
+const buildCategoryOptions = (flat: any[]): CategoryItem[] => {
+  const ids = new Set<number>(flat.map((c: any) => c.id))
+  const idMap = new Map(flat.map((c: any, i: number) => [c.id, i]))
+  const childrenMap = new Map<number | null, any[]>()
+  for (const c of flat) {
+    const pid = c.parent_id && ids.has(c.parent_id) ? c.parent_id : null
+    const list = childrenMap.get(pid) || []
+    list.push(c)
+    childrenMap.set(pid, list)
+  }
+  for (const list of childrenMap.values()) {
+    list.sort((a: any, b: any) => (idMap.get(a.id) ?? 0) - (idMap.get(b.id) ?? 0))
+  }
+  const result: CategoryItem[] = []
+  const visited = new Set<number>()
+  const walk = (cat: any, depth: number) => {
+    if (visited.has(cat.id)) return
+    visited.add(cat.id)
+    const childCount = (childrenMap.get(cat.id) || []).length
+    result.push({
+      id: cat.id,
+      name: cat.name,
+      depth: Math.min(depth, 1),
+      selectable: childCount === 0 && cat.is_active,
+    })
+    for (const child of childrenMap.get(cat.id) || []) {
+      walk(child, depth + 1)
+    }
+  }
+  const roots = (childrenMap.get(null) || []).sort((a: any, b: any) => (idMap.get(a.id) ?? 0) - (idMap.get(b.id) ?? 0))
+  for (const root of roots) walk(root, 0)
+  for (const c of flat) {
+    if (!visited.has(c.id)) walk(c, 0)
+  }
+  return result
+}
+
+const fetchCategories = async () => {
+  try {
+    const res = await adminAPI.getPostCategories()
+    const flat: any[] = (res.data?.data || [])
+    categories.value = buildCategoryOptions(flat)
+  } catch { categories.value = [] }
+}
+
+const getCategoryName = (categoryId?: number | null) => {
+  if (!categoryId) return '-'
+  const cat = categories.value.find(c => c.id === categoryId)
+  return cat ? getLocalizedText(cat.name) : '-'
+}
+
+const getCategoryPath = (categoryId: number) => {
+  const cat = categories.value.find(c => c.id === categoryId)
+  return cat ? getLocalizedText(cat.name) : ''
+}
+
 const changePage = (page: number) => {
   pagination.page = page
   fetchPosts()
@@ -192,6 +261,7 @@ const openCreateModal = () => {
     thumbnail: '',
     is_published: true,
     is_home_popup: false,
+    category_id: null,
     product_ids: [],
   })
   showModal.value = true
@@ -211,6 +281,7 @@ const openEditModal = (post: AdminPost) => {
     thumbnail: post.thumbnail,
     is_published: post.is_published,
     is_home_popup: post.is_home_popup || false,
+    category_id: post.category_id ?? null,
     product_ids: [],
   })
   showModal.value = true
@@ -233,6 +304,7 @@ const handleSubmit = async () => {
       ...rest,
       is_home_popup: form.type === 'notice' && form.is_home_popup,
     }
+    payload.category_id = form.type === 'blog' ? form.category_id : null
     // type=blog 提交当前选择的商品；其他类型显式置空，避免历史关联残留出现在商品页
     payload.product_ids = form.type === 'blog' ? [...product_ids] : []
     if (isEditing.value) {
@@ -272,11 +344,21 @@ const openEditById = async (rawId: unknown) => {
 }
 
 onMounted(() => {
+  fetchCategories()
   fetchPosts()
   if (route.query.post_id) {
     openEditById(route.query.post_id)
   }
 })
+
+watch(
+  () => route.params.type,
+  (type) => {
+    if (type === 'notice' || type === 'blog') {
+      currentTab.value = type
+    }
+  },
+)
 
 watch(
   () => route.query.post_id,
@@ -321,6 +403,7 @@ watch(
         <TableHeader class="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
           <TableRow>
             <TableHead class="px-6 py-3">{{ t('admin.posts.table.id') }}</TableHead>
+            <TableHead v-if="currentTab === 'blog'" class="w-32 px-6 py-3">{{ t('admin.posts.table.category') }}</TableHead>
             <TableHead class="min-w-[280px] px-6 py-3">{{ t('admin.posts.table.title') }}</TableHead>
             <TableHead class="min-w-[220px] px-6 py-3">{{ t('admin.posts.table.slug') }}</TableHead>
             <TableHead class="min-w-[120px] px-6 py-3">{{ t('admin.posts.table.status') }}</TableHead>
@@ -330,16 +413,19 @@ watch(
         </TableHeader>
         <TableBody class="divide-y divide-border">
           <TableRow v-if="loading">
-            <TableCell :colspan="6" class="p-0">
-              <TableSkeleton :columns="6" :rows="5" />
+            <TableCell :colspan="currentTab === 'blog' ? 7 : 6" class="p-0">
+              <TableSkeleton :columns="currentTab === 'blog' ? 7 : 6" :rows="5" />
             </TableCell>
           </TableRow>
           <TableRow v-else-if="posts.length === 0">
-            <TableCell colspan="6" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.posts.empty') }}</TableCell>
+            <TableCell :colspan="currentTab === 'blog' ? 7 : 6" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.posts.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="post in posts" :key="post.id" class="hover:bg-muted/30">
             <TableCell class="px-6 py-4">
               <IdCell :value="post.id" />
+            </TableCell>
+            <TableCell v-if="currentTab === 'blog'" class="px-6 py-4">
+              <span class="text-sm text-muted-foreground">{{ getCategoryName(post.category_id) }}</span>
             </TableCell>
             <TableCell class="min-w-[280px] px-6 py-4">
               <div class="flex items-center gap-4">
@@ -403,6 +489,7 @@ watch(
       <DialogScrollContent class="w-[calc(100vw-1rem)] max-w-5xl p-4 sm:p-6" @interact-outside="(e) => e.preventDefault()">
         <DialogHeader>
           <DialogTitle>{{ isEditing ? t('admin.posts.modal.editTitle') : t('admin.posts.modal.createTitle') }}</DialogTitle>
+          <DialogDescription>{{ isEditing ? t('admin.posts.modal.editDescription') : t('admin.posts.modal.createDescription') }}</DialogDescription>
         </DialogHeader>
         <form class="space-y-6" @submit.prevent="handleSubmit">
           <div class="border-b border-border">
@@ -447,6 +534,19 @@ watch(
                 </SelectContent>
               </Select>
               <p v-if="errors.type" class="text-xs text-destructive mt-1">{{ errors.type }}</p>
+            </div>
+
+            <div v-if="form.type === 'blog'">
+              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('admin.posts.form.category') }}</label>
+              <Select :model-value="form.category_id != null ? String(form.category_id) : '__none__'" @update:model-value="(v) => { form.category_id = v === '__none__' ? null : Number(v) || null }">
+                <SelectTrigger class="h-9 w-full">
+                  <SelectValue :placeholder="t('admin.posts.form.categoryPlaceholder')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{{ t('admin.posts.form.noCategory') }}</SelectItem>
+                  <SelectItem v-for="cat in categories" :key="cat.id" :value="String(cat.id)" :disabled="!cat.selectable" :class="cat.depth > 0 ? 'pl-6' : ''">{{ cat.depth > 0 ? getLocalizedText(cat.name) : getCategoryPath(cat.id) }}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div class="col-span-1 md:col-span-2">
