@@ -452,7 +452,7 @@ const siteConfigSections = computed<SiteConfigSection[]>(() => [
 ])
 
 const supportFields = [
-    { key: 'telegram' as const, label: 'personalCenter.reseller.siteConfig.fields.telegram', icon: Send, placeholder: 'https://t.me/example', hint: 'https://t.me/…' },
+    { key: 'telegram' as const, label: 'personalCenter.reseller.siteConfig.fields.telegram', icon: Send, placeholder: 'https://telegram.me/example', hint: 'https://telegram.me/…' },
     { key: 'whatsapp' as const, label: 'personalCenter.reseller.siteConfig.fields.whatsapp', icon: MessageCircle, placeholder: 'https://wa.me/1234567890', hint: 'https://wa.me/…' },
     { key: 'email' as const, label: 'personalCenter.reseller.siteConfig.fields.email', icon: Mail, placeholder: 'support@example.com', hint: 'name@example.com' },
     { key: 'support_url' as const, label: 'personalCenter.reseller.siteConfig.fields.supportUrl', icon: LifeBuoy, placeholder: 'https://example.com/support', hint: 'https://…' },

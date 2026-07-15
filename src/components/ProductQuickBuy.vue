@@ -171,12 +171,12 @@
             </p>
 
             <!-- Promotion rules -->
-            <div v-if="hasWholesalePrices(product)" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+            <div v-if="selectedSkuWholesaleRules.length" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 dark:border-emerald-800/50 dark:bg-emerald-950/20">
               <div class="mb-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 {{ t('products.wholesaleRulesTitle') }}
               </div>
               <div class="flex flex-wrap gap-1">
-                <Badge v-for="tier in getWholesalePrices(product)" :key="tier.min_quantity" variant="success" size="xs" class="rounded-full">
+                <Badge v-for="tier in selectedSkuWholesaleRules" :key="`${tier.sku_id || tier.sku_code || 'all'}-${tier.min_quantity}`" variant="success" size="xs" class="rounded-full">
                   {{ formatWholesaleTier(tier) }}
                 </Badge>
               </div>
@@ -373,7 +373,6 @@ const {
   getSkuPromotionPriceAmount,
   hasPromotionRules,
   getPromotionRules,
-  hasWholesalePrices,
   getWholesalePrices,
   resolveWholesalePriceAmount,
   resolveMemberPriceAmount,
@@ -452,9 +451,25 @@ const hasMemberPrice = computed(() => {
   return selectedSkuMemberPrice.value < Number(selectedSku.value.price_amount || 0)
 })
 
+const selectedSkuWholesaleRules = computed(() => {
+  if (!props.product || !selectedSku.value) return []
+  return getWholesalePrices(
+    props.product,
+    normalizeSkuId(selectedSku.value.id),
+    selectedSku.value.sku_code,
+  )
+})
+
 const selectedSkuWholesalePrice = computed(() => {
   if (!props.product || !selectedSku.value) return null
-  return resolveWholesalePriceAmount(props.product, selectedSku.value.price_amount, quantity.value)
+  return resolveWholesalePriceAmount(
+    props.product,
+    selectedSku.value.price_amount,
+    quantity.value,
+    normalizeSkuId(selectedSku.value.id),
+    selectedSku.value.sku_code,
+    quantity.value,
+  )
 })
 
 const hasSelectedSkuWholesalePrice = computed(() => {

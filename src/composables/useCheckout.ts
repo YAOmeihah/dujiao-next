@@ -1096,7 +1096,14 @@ export function useCheckout() {
     }
     const productId = Number(item.productId || 0)
     const matchQuantity = cartProductQuantities.value.get(productId) || qty
-    const matchedPriceCents = amountToCents(resolveWholesalePriceAmount(item, item.priceAmount, matchQuantity))
+    const matchedPriceCents = amountToCents(resolveWholesalePriceAmount(
+      item,
+      item.priceAmount,
+      matchQuantity,
+      item.skuId,
+      item.skuCode,
+      qty,
+    ))
     if (matchedPriceCents === null) return null
     return matchedPriceCents * qty
   }

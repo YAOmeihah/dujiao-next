@@ -22,7 +22,7 @@ export interface CartItem {
     slug: string
     title: any
     priceAmount: string
-    wholesalePrices?: Array<{ min_quantity: number; unit_price: string | number }>
+    wholesalePrices?: Array<{ sku_id?: number; sku_code?: string; min_quantity: number; unit_price: string | number }>
     image?: string
     quantity: number
     minPurchaseQuantity?: number

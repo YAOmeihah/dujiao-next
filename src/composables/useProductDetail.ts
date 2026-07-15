@@ -113,9 +113,25 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     return selectedSkuMemberPrice.value < basePrice
   })
 
+  const selectedSkuWholesaleRules = computed(() => {
+    if (!product.value || !selectedSku.value) return []
+    return getWholesalePrices(
+      product.value,
+      normalizeSkuId(selectedSku.value.id),
+      selectedSku.value.sku_code,
+    )
+  })
+
   const selectedSkuWholesalePrice = computed(() => {
     if (!product.value || !selectedSku.value) return null
-    return resolveWholesalePriceAmount(product.value, selectedSku.value.price_amount, quantity.value)
+    return resolveWholesalePriceAmount(
+      product.value,
+      selectedSku.value.price_amount,
+      quantity.value,
+      normalizeSkuId(selectedSku.value.id),
+      selectedSku.value.sku_code,
+      quantity.value,
+    )
   })
 
   const hasSelectedSkuWholesalePrice = computed(() => {
@@ -390,6 +406,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     maxPurchaseQuantity: normalizeOptionalLimitNumber(product.value.max_purchase_quantity) ?? undefined,
     purchaseType: product.value.purchase_type,
     fulfillmentType: product.value.fulfillment_type,
+    requiresShippingAddress: Boolean(product.value.requires_shipping_address),
     manualFormSchema: product.value.manual_form_schema || {},
     paymentChannelIds: Array.isArray(product.value.payment_channel_ids) && product.value.payment_channel_ids.length > 0 ? product.value.payment_channel_ids : undefined,
     quantity: quantity.value,
@@ -664,6 +681,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     // 价格计算
     selectedSkuMemberPrice, hasMemberPrice,
     hasSelectedSkuWholesalePrice, selectedSkuWholesaleFinalIsMember, selectedSkuWholesaleFinalPrice,
+    selectedSkuWholesaleRules,
     selectedSkuPromotionPrice, selectedSkuPromotionFinalIsMember, selectedSkuPromotionFinalPrice,
     showSelectedSkuMemberBadge,
     // SKU / 库存 / 数量

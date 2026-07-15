@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DOMPurify from 'dompurify'
-import { AlertTriangle, Info, Megaphone, X } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle2, Info, Megaphone, X } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { useLocalized } from '../composables/useProduct'
 import { processHtmlForDisplay } from '../utils/content'
@@ -45,6 +45,11 @@ const typeStyle = computed(() => {
       return {
         iconWrap: 'bg-info-soft text-info ring-info/20',
         icon: Info,
+      }
+    case 'success':
+      return {
+        iconWrap: 'bg-success-soft text-success ring-success/20',
+        icon: CheckCircle2,
       }
     default:
       return {

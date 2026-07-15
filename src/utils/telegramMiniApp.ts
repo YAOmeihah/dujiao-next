@@ -210,5 +210,5 @@ export const buildTelegramMiniAppEntryLink = (botUsername: string, miniAppURL: s
   if (normalizedBotUsername === '' || normalizedMiniAppURL === '') {
     return ''
   }
-  return `https://t.me/${normalizedBotUsername}/webapp`
+  return `https://telegram.me/${normalizedBotUsername}/webapp`
 }

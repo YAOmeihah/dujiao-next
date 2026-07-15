@@ -86,7 +86,7 @@
             <img v-if="brandLogo" :src="brandLogo" :alt="brandName" class="h-8 max-w-[160px] object-contain" />
             <span v-else>{{ brandName }}</span>
           </RouterLink>
-          <p class="mt-3 max-w-[36ch] text-[14.5px] text-muted-foreground">{{ t('vault.footer.tagline') }}</p>
+          <p class="mt-3 max-w-[36ch] text-[14.5px] text-muted-foreground">{{ brandDescription || t('vault.footer.tagline') }}</p>
         </div>
         <div>
           <h4 class="mb-3 text-sm font-bold">{{ t('vault.footer.shop') }}</h4>
@@ -160,6 +160,14 @@ const brandName = computed(() => String(appStore.config?.brand?.site_name || '')
 const brandLogo = computed(() => {
   const raw = String(appStore.config?.brand?.site_logo || '').trim()
   return raw ? getImageUrl(raw) : ''
+})
+const brandDescription = computed(() => {
+  const desc = appStore.config?.brand?.site_description
+  if (desc && typeof desc === 'object') {
+    const val = (desc as Record<string, string>)[appStore.locale] || (desc as Record<string, string>)['zh-CN'] || ''
+    return typeof val === 'string' ? val.trim() : ''
+  }
+  return ''
 })
 
 const navBuiltin = computed(() => (appStore.config?.nav_config as { builtin?: Record<string, boolean> } | undefined)?.builtin)

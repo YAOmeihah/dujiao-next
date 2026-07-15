@@ -130,29 +130,61 @@ export function useProductLabels() {
 
   const hasPromotionRules = (product: any) => product?.promotion_rules?.length > 0
   const getPromotionRules = (product: any): any[] => product?.promotion_rules ?? []
-  const getWholesalePrices = (product: any): any[] => {
+
+  const normalizeText = (value: unknown) => String(value ?? '').trim()
+  const normalizeSkuId = (value: unknown) => {
+    const id = Math.trunc(Number(value || 0))
+    return Number.isFinite(id) && id > 0 ? id : 0
+  }
+  const normalizeSkuCode = (value: unknown) => normalizeText(value).toLowerCase()
+  const allWholesalePrices = (product: any): any[] => {
     if (Array.isArray(product?.wholesale_prices)) return product.wholesale_prices
     if (Array.isArray(product?.wholesalePrices)) return product.wholesalePrices
     return []
   }
+  const isUniversalWholesaleTier = (tier: any) => normalizeSkuId(tier?.sku_id) <= 0 && normalizeText(tier?.sku_code) === ''
+  const wholesaleTierMatchesSku = (tier: any, skuId?: any, skuCode?: any) => {
+    if (isUniversalWholesaleTier(tier)) return true
+    const tierSkuId = normalizeSkuId(tier?.sku_id)
+    const currentSkuId = normalizeSkuId(skuId)
+    if (tierSkuId > 0 && currentSkuId > 0 && tierSkuId === currentSkuId) return true
+    const tierSkuCode = normalizeSkuCode(tier?.sku_code)
+    return Boolean(tierSkuCode && tierSkuCode === normalizeSkuCode(skuCode))
+  }
+  const hasSkuSpecificWholesaleTier = (tiers: any[], skuId?: any, skuCode?: any) => {
+    return tiers.some((tier) => !isUniversalWholesaleTier(tier) && wholesaleTierMatchesSku(tier, skuId, skuCode))
+  }
+  const getWholesalePrices = (product: any, skuId?: any, skuCode?: any): any[] => {
+    const tiers = allWholesalePrices(product)
+    const hasSku = normalizeSkuId(skuId) > 0 || normalizeText(skuCode) !== ''
+    if (!hasSku) return tiers
+
+    const hasSpecific = hasSkuSpecificWholesaleTier(tiers, skuId, skuCode)
+    return tiers.filter((tier) => {
+      if (hasSpecific) return !isUniversalWholesaleTier(tier) && wholesaleTierMatchesSku(tier, skuId, skuCode)
+      return isUniversalWholesaleTier(tier)
+    })
+  }
   const hasWholesalePrices = (product: any) => getWholesalePrices(product).length > 0
 
-  const resolveWholesalePriceAmount = (product: any, basePrice: any, quantity: number) => {
+  const resolveWholesalePriceAmount = (product: any, basePrice: any, matchQuantity: number, skuId?: any, skuCode?: any, lineQuantity?: number) => {
     const base = parsePriceAmount(basePrice)
-    if (base === null || !Number.isFinite(quantity) || quantity <= 0) return null
-    let matched: any = null
-    for (const tier of getWholesalePrices(product)) {
+    if (base === null || !Number.isFinite(matchQuantity) || matchQuantity <= 0) return null
+    const hasSku = normalizeSkuId(skuId) > 0 || normalizeText(skuCode) !== ''
+    const tiers = hasSku ? getWholesalePrices(product, skuId, skuCode) : allWholesalePrices(product).filter(isUniversalWholesaleTier)
+    let matchedCents: number | null = null
+    for (const tier of tiers) {
       const minQuantity = Number(tier?.min_quantity || 0)
       const priceCents = parsePriceAmount(tier?.unit_price)
       if (!Number.isFinite(minQuantity) || minQuantity <= 0 || priceCents === null) continue
-      if (quantity >= minQuantity && (!matched || minQuantity > Number(matched.min_quantity || 0))) {
-        matched = tier
+      const tierMatchQuantity = isUniversalWholesaleTier(tier) ? matchQuantity : Number(lineQuantity ?? matchQuantity)
+      if (!Number.isFinite(tierMatchQuantity) || tierMatchQuantity < minQuantity) continue
+      if (matchedCents === null || priceCents < matchedCents) {
+        matchedCents = priceCents
       }
     }
-    if (!matched) return null
-    const tierCents = parsePriceAmount(matched.unit_price)
-    if (tierCents === null || tierCents >= base) return null
-    return centsToAmount(tierCents)
+    if (matchedCents === null || matchedCents >= base) return null
+    return centsToAmount(matchedCents)
   }
 
   const resolveMemberPriceAmount = (product: any, skuId: any, basePrice: any, memberLevelId: any, discountRate?: any) => {

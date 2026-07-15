@@ -117,10 +117,10 @@
           </div>
 
           <!-- 批发规则 -->
-          <div v-if="hasWholesalePrices(product)" class="mb-[18px] rounded-md bg-[color:var(--teal-soft)] px-[15px] py-3">
+          <div v-if="selectedSkuWholesaleRules.length" class="mb-[18px] rounded-md bg-[color:var(--teal-soft)] px-[15px] py-3">
             <h4 class="mb-2 text-[13.5px] font-bold text-[color:var(--teal-strong)]">{{ t('products.wholesaleRulesTitle') }}</h4>
             <div class="flex flex-wrap gap-1.5">
-              <span v-for="tier in getWholesalePrices(product)" :key="tier.min_quantity" class="inline-flex items-center rounded-full bg-card px-2.5 py-1 text-[12.5px] font-semibold text-[color:var(--teal-strong)]">{{ formatWholesaleTier(tier) }}</span>
+              <span v-for="tier in selectedSkuWholesaleRules" :key="`${tier.sku_id || tier.sku_code || 'all'}-${tier.min_quantity}`" class="inline-flex items-center rounded-full bg-card px-2.5 py-1 text-[12.5px] font-semibold text-[color:var(--teal-strong)]">{{ formatWholesaleTier(tier) }}</span>
             </div>
           </div>
 
@@ -282,12 +282,13 @@ const {
   getFulfillmentTypeLabel, getPurchaseTypeLabel, getStockStatusLabel, getStockBadgeVariant,
   hasPromotionPrice, getPromotionPriceAmount, getPromotionSaveAmount,
   hasSkuPromotionPrice, getSkuPromotionSaveAmount,
-  hasPromotionRules, getPromotionRules, hasWholesalePrices, getWholesalePrices,
+  hasPromotionRules, getPromotionRules,
   formatPromotionRule, formatWholesaleTier, formatRelatedPostDate, normalizeSkuId,
   loading, product, relatedPosts, currentImage, selectedSkuId, quantity, purchaseWarning,
   activeSkus, selectedSku,
   selectedSkuMemberPrice, hasMemberPrice,
   hasSelectedSkuWholesalePrice, selectedSkuWholesaleFinalIsMember, selectedSkuWholesaleFinalPrice,
+  selectedSkuWholesaleRules,
   selectedSkuPromotionPrice, selectedSkuPromotionFinalIsMember, selectedSkuPromotionFinalPrice,
   showSelectedSkuMemberBadge,
   isSkuPurchasable, skuDisplayText, skuStockText,
