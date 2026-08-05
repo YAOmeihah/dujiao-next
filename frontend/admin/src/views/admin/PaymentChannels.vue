@@ -101,12 +101,15 @@ const channelTypeLabel = (value?: string) => {
     'usdt-trc20': t('admin.paymentChannels.channelTypes.usdtTrc20'),
     'usdc-trc20': t('admin.paymentChannels.channelTypes.usdcTrc20'),
     trx: t('admin.paymentChannels.channelTypes.trx'),
+    bepusdt: t('admin.paymentChannels.channelTypes.bepusdtCashier'),
+    epusdt: t('admin.paymentChannels.channelTypes.epusdt'),
     'tron-usdt': t('admin.paymentChannels.channelTypes.tronUsdt'),
     'tron-trx': t('admin.paymentChannels.channelTypes.tronTrx'),
     'ethereum-usdt': t('admin.paymentChannels.channelTypes.ethereumUsdt'),
     'ethereum-usdc': t('admin.paymentChannels.channelTypes.ethereumUsdc'),
     'ethereum-eth': t('admin.paymentChannels.channelTypes.ethereumEth'),
     'bsc-usdt': t('admin.paymentChannels.channelTypes.bscUsdt'),
+    'bsc-usdc': t('admin.paymentChannels.channelTypes.bscUsdc'),
     'bsc-bnb': t('admin.paymentChannels.channelTypes.bscBnb'),
     'polygon-usdc': t('admin.paymentChannels.channelTypes.polygonUsdc'),
     'polygon-usdt0': t('admin.paymentChannels.channelTypes.polygonUsdt0'),
@@ -129,18 +132,33 @@ const resolveChannelTypeDisplay = (channel: AdminPaymentChannel) => {
     return currency || 'USDT'
   }
   if (channel.provider_type === 'bepusdt') {
+    const orderMode = String(channel.config_json?.order_mode || '').trim()
+    if (orderMode === 'cashier') {
+      return channelTypeLabel('bepusdt')
+    }
     const tradeType = String(channel.config_json?.trade_type || '').trim()
     return tradeType || channelTypeLabel(channel.channel_type)
   }
   if (channel.provider_type === 'epusdt') {
-    const tradeType = String(channel.config_json?.trade_type || '').trim()
-    return tradeType || 'usdt.trc20'
+    const token = String(channel.config_json?.token || '').trim().toLowerCase()
+    const network = String(channel.config_json?.network || '').trim().toLowerCase()
+    if (!token && !network) {
+      return t('admin.paymentChannels.channelTypes.epusdtCashier')
+    }
+    if (token && network) {
+      return `${token}.${network}`
+    }
+    return channelTypeLabel(channel.channel_type)
   }
   if (channel.provider_type === 'okpay') {
     const coin = resolveOkpayConfiguredCoin(channel.config_json)
     return coin || channelTypeLabel(channel.channel_type)
   }
   if (channel.provider_type === 'dujiaopay') {
+    const orderMode = String(channel.config_json?.order_mode || '').trim()
+    if (orderMode === 'cashier' || channel.channel_type === 'dujiaopay') {
+      return t('admin.paymentChannels.channelTypes.dujiaopayCashier')
+    }
     const tokenID = String(channel.config_json?.token_id || channel.channel_type || '').trim()
     return channelTypeLabel(tokenID)
   }

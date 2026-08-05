@@ -78,7 +78,6 @@ const form = reactive({
   type: 'blog',
   thumbnail: '',
   is_published: true,
-  is_home_popup: false,
   category_id: null as number | null,
   product_ids: [] as number[],
 })
@@ -260,7 +259,6 @@ const openCreateModal = () => {
     type: currentTab.value,
     thumbnail: '',
     is_published: true,
-    is_home_popup: false,
     category_id: null,
     product_ids: [],
   })
@@ -280,7 +278,6 @@ const openEditModal = (post: AdminPost) => {
     type: post.type,
     thumbnail: post.thumbnail,
     is_published: post.is_published,
-    is_home_popup: post.is_home_popup || false,
     category_id: post.category_id ?? null,
     product_ids: [],
   })
@@ -300,12 +297,8 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const { product_ids, ...rest } = form
-    const payload: Partial<AdminPost> & { product_ids?: number[] } = {
-      ...rest,
-      is_home_popup: form.type === 'notice' && form.is_home_popup,
-    }
+    const payload: Partial<AdminPost> & { product_ids?: number[] } = { ...rest }
     payload.category_id = form.type === 'blog' ? form.category_id : null
-    // type=blog 提交当前选择的商品；其他类型显式置空，避免历史关联残留出现在商品页
     payload.product_ids = form.type === 'blog' ? [...product_ids] : []
     if (isEditing.value) {
       await adminAPI.updatePost(form.id, payload)
@@ -368,15 +361,6 @@ watch(
     }
   }
 )
-
-watch(
-  () => form.type,
-  (value) => {
-    if (value !== 'notice') {
-      form.is_home_popup = false
-    }
-  }
-)
 </script>
 
 <template>
@@ -435,15 +419,7 @@ watch(
                 >
                   <img :src="getImageUrl(post.thumbnail)" class="h-full w-full object-cover" />
                 </div>
-                <div class="min-w-0">
-                  <div class="break-words font-medium text-foreground">{{ getLocalizedText(post.title) }}</div>
-                  <span
-                    v-if="post.is_home_popup"
-                    class="mt-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700"
-                  >
-                    {{ t('admin.posts.status.homePopup') }}
-                  </span>
-                </div>
+                <div class="break-words font-medium text-foreground">{{ getLocalizedText(post.title) }}</div>
               </div>
             </TableCell>
             <TableCell class="min-w-[220px] px-6 py-4 font-mono text-muted-foreground break-all">{{ post.slug }}</TableCell>
@@ -644,17 +620,6 @@ watch(
             <div class="col-span-1 flex items-center gap-2 border-t border-border pt-4 md:col-span-2">
               <Switch v-model="form.is_published" />
               <span class="text-sm text-muted-foreground">{{ t('admin.posts.form.publishNow') }}</span>
-            </div>
-
-            <div
-              v-if="form.type === 'notice'"
-              class="col-span-1 flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 md:col-span-2"
-            >
-              <Switch v-model="form.is_home_popup" class="mt-0.5" />
-              <div class="space-y-1">
-                <div class="text-sm font-medium text-foreground">{{ t('admin.posts.form.homePopup') }}</div>
-                <p class="text-xs text-muted-foreground">{{ t('admin.posts.form.homePopupHint') }}</p>
-              </div>
             </div>
           </div>
 

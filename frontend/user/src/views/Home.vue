@@ -360,72 +360,6 @@
       @update:visible="quickBuyVisible = $event"
     />
 
-    <Transition name="home-popup">
-      <div
-        v-if="homePopupVisible && homePopupNotice"
-        class="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-0 py-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
-        @click.self="closeHomePopup"
-      >
-        <section
-          class="flex max-h-[calc(100dvh-0.75rem)] w-full flex-col overflow-hidden rounded-t-2xl theme-panel shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-2xl"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="t('notice.popup.title')"
-        >
-          <div v-if="homePopupNotice.thumbnail" class="h-28 shrink-0 overflow-hidden sm:h-48">
-            <img
-              :src="getImageUrl(homePopupNotice.thumbnail)"
-              :alt="getLocalizedText(homePopupNotice.title)"
-              class="h-full w-full object-cover"
-            />
-          </div>
-          <div class="flex min-h-0 flex-1 flex-col p-4 sm:p-6">
-            <div class="mb-3 flex shrink-0 items-start justify-between gap-4 sm:mb-4">
-              <div class="min-w-0">
-                <span class="theme-badge text-xs font-semibold">{{ t('nav.notice') }}</span>
-                <h2 class="mt-2 break-words text-lg font-semibold theme-text-primary sm:mt-3 sm:text-2xl">
-                  {{ getLocalizedText(homePopupNotice.title) }}
-                </h2>
-              </div>
-              <button
-                type="button"
-                class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border theme-btn-secondary"
-                :aria-label="t('notice.popup.close')"
-                @click="closeHomePopup"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div
-              v-if="homePopupHtml"
-              v-html="homePopupHtml"
-              class="prose prose-sm min-h-0 max-w-none flex-1 overflow-y-auto break-words pr-1 dark:prose-invert theme-prose sm:max-h-[60vh] sm:prose-base"
-            ></div>
-
-            <div class="mt-4 grid shrink-0 grid-cols-2 gap-2 border-t pt-3 theme-border sm:mt-6 sm:flex sm:justify-end sm:border-t-0 sm:pt-0">
-              <button
-                type="button"
-                class="inline-flex min-h-[40px] items-center justify-center whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium theme-btn-secondary sm:px-4 sm:text-sm"
-                @click="snoozeHomePopupToday"
-              >
-                {{ t('notice.popup.snoozeToday') }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex min-h-[40px] items-center justify-center whitespace-nowrap rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 sm:px-4 sm:text-sm"
-                @click="goToHomePopupNotice"
-              >
-                {{ t('common.viewDetails') }}
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </Transition>
-
     <AnnouncementModal
       v-if="activeAnnouncement"
       :announcement="activeAnnouncement"
@@ -452,11 +386,8 @@ import ProductListItem from '../components/ProductListItem.vue'
 import ProductQuickBuy from '../components/ProductQuickBuy.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
-import { resolveHomePopupNoticeHtml } from '../utils/homePopupNotice'
 import AnnouncementModal from '../components/AnnouncementModal.vue'
 import { useAnnouncement, type HomeAnnouncement } from '../composables/useAnnouncement'
-
-const HOME_POPUP_SNOOZE_KEY = 'home_popup_notice_snooze'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -472,8 +403,6 @@ const latestSectionVisible = computed(() => blogEnabled.value || noticeEnabled.v
 // ==================== Shared State ====================
 const products = ref<any[]>([])
 const posts = ref<any[]>([])
-const homePopupNotice = ref<any | null>(null)
-const homePopupVisible = ref(false)
 const quickBuyProduct = ref<any>(null)
 const quickBuyVisible = ref(false)
 
@@ -556,59 +485,12 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString()
 }
 
-const homePopupHtml = computed(() => resolveHomePopupNoticeHtml(homePopupNotice.value, getLocalizedText))
-
-const getTodayKey = () => {
-  const now = appStore.getServerDate()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const isHomePopupSnoozedToday = (notice: any) => {
-  try {
-    const raw = localStorage.getItem(HOME_POPUP_SNOOZE_KEY)
-    if (!raw) return false
-    const saved = JSON.parse(raw) as { notice_id?: number; date?: string }
-    return saved.notice_id === notice.id && saved.date === getTodayKey()
-  } catch {
-    return false
-  }
-}
-
-const closeHomePopup = () => {
-  homePopupVisible.value = false
-}
-
-const snoozeHomePopupToday = () => {
-  try {
-    if (homePopupNotice.value) {
-      localStorage.setItem(HOME_POPUP_SNOOZE_KEY, JSON.stringify({
-        notice_id: homePopupNotice.value.id,
-        date: getTodayKey(),
-      }))
-    }
-  } catch {
-    // Storage can be unavailable in restricted browsing contexts.
-  }
-  closeHomePopup()
-}
-
 const goToProduct = (slug: string) => {
   router.push(`/products/${slug}`)
 }
 
 const goToPost = (slug: string) => {
   router.push(`/blog/${slug}`)
-}
-
-const goToHomePopupNotice = () => {
-  const slug = homePopupNotice.value?.slug
-  closeHomePopup()
-  if (slug) {
-    goToPost(slug)
-  }
 }
 
 const loadFeaturedProducts = async () => {
@@ -633,17 +515,6 @@ const loadLatestPosts = async () => {
   }
 }
 
-const loadHomePopupNotice = async () => {
-  try {
-    const response = await postAPI.homePopup()
-    const notice = response.data.data || null
-    homePopupNotice.value = notice
-    homePopupVisible.value = !!notice && !isHomePopupSnoozedToday(notice)
-  } catch (error) {
-    console.error('Failed to load home popup notice:', error)
-  }
-}
-
 // ==================== Lifecycle ====================
 const showAnnouncementIfNeeded = () => {
   const announcement = appStore.config?.announcement as HomeAnnouncement | undefined
@@ -656,9 +527,9 @@ const showAnnouncementIfNeeded = () => {
 onMounted(async () => {
   await appStore.loadConfig()
   if (templateMode.value === 'list') {
-    await Promise.all([loadBanners(), listInitialize(), loadHomePopupNotice()])
-  } else {
-    await Promise.all([loadBanners(), loadFeaturedProducts(), loadLatestPosts(), loadHomePopupNotice()])
+		await Promise.all([loadBanners(), listInitialize()])
+	} else {
+		await Promise.all([loadBanners(), loadFeaturedProducts(), loadLatestPosts()])
   }
   showAnnouncementIfNeeded()
 })
@@ -679,50 +550,4 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-.home-popup-enter-active,
-.home-popup-leave-active {
-  transition: opacity 220ms ease;
-}
-.home-popup-enter-active > section,
-.home-popup-leave-active > section {
-  transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
-}
-.home-popup-enter-from,
-.home-popup-leave-to {
-  opacity: 0;
-}
-.home-popup-enter-from > section,
-.home-popup-leave-to > section {
-  opacity: 0;
-  transform: translateY(100%);
-}
-.home-popup-enter-to > section,
-.home-popup-leave-from > section {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (min-width: 640px) {
-  .home-popup-enter-from > section,
-  .home-popup-leave-to > section {
-    transform: translateY(12px) scale(0.98);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-popup-enter-active,
-  .home-popup-leave-active,
-  .home-popup-enter-active > section,
-  .home-popup-leave-active > section {
-    transition: none;
-  }
-
-  .home-popup-enter-from > section,
-  .home-popup-leave-to > section {
-    transform: none;
-  }
-}
 </style>

@@ -249,6 +249,21 @@ export function useOrderDisplayHelpers(order: Ref<any>) {
     return rows
   }
 
+  const shippingAddressRows = computed(() => {
+    const address = order.value?.shipping_address
+    if (!address || typeof address !== 'object') return []
+    const region = [address.province, address.city, address.district, address.township]
+      .map((value: unknown) => String(value || '').trim())
+      .filter(Boolean)
+      .join(' ')
+    return [
+      { key: 'receiver_name', label: t('orderDetail.shippingReceiverName'), value: String(address.receiver_name || '-') },
+      { key: 'receiver_phone', label: t('orderDetail.shippingReceiverPhone'), value: String(address.receiver_phone || '-') },
+      { key: 'region', label: t('orderDetail.shippingRegion'), value: region || '-' },
+      { key: 'detail_address', label: t('orderDetail.shippingDetailAddress'), value: String(address.detail_address || '-') },
+    ]
+  })
+
   const orderItemSkuText = (item: any) => {
     return buildSkuDisplayTextFromSnapshot(item?.sku_snapshot, {
       locale: appStore.locale,
@@ -322,6 +337,7 @@ export function useOrderDisplayHelpers(order: Ref<any>) {
     formatItemDiscountTotal,
     formatItemPaidAmount,
     manualSubmissionRows,
+    shippingAddressRows,
     fulfillmentDeliveryLines,
     instructionBlocks,
     // 发货复制态

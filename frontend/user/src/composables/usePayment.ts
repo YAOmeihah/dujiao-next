@@ -16,6 +16,8 @@ import {
   shouldAutoOpenPaymentLink,
   type PaymentResetReason,
 } from '../utils/paymentResumePolicy'
+import QRCode from 'qrcode'
+import { type PageAlert } from '../utils/alerts'
 import {
   buildGuestOrderAuthParams,
   hasGuestOrderAuth,
@@ -23,8 +25,6 @@ import {
   saveGuestOrderAuth,
   type GuestOrderAuth,
 } from '../utils/guestOrderAuth'
-import QRCode from 'qrcode'
-import { type PageAlert } from '../utils/alerts'
 
 /**
  * 支付页共享逻辑（classic + vault 双模板共用）。
@@ -106,7 +106,7 @@ export function usePayment() {
     return value === '1' || value === 'true' || value === 'yes'
   }
 
-  const paymentReturnMarkers = ['epay_return', 'alipay_return', 'wechat_return', 'epusdt_return', 'bepusdt_return', 'tokenpay_return', 'vpay_return', 'okpay_return', 'pp_return', 'stripe_return']
+  const paymentReturnMarkers = ['epay_return', 'alipay_return', 'wechat_return', 'epusdt_return', 'bepusdt_return', 'tokenpay_return', 'okpay_return', 'pp_return', 'stripe_return']
   const rechargeBizType = computed(() => readRouteQueryValue('biz_type').toLowerCase())
   const rechargeNoQuery = computed(() => {
     const rechargeNo = readRouteQueryValue('recharge_no')
@@ -787,7 +787,13 @@ export function usePayment() {
     if (isTelegramMiniApp.value) {
       telegramMiniAppStore.openLink(payLink.value)
     } else {
-      window.open(payLink.value, '_blank', 'noopener')
+      // 先创建同源空白页，让浏览器按规范复制当前标签页的 sessionStorage；
+      // 随后立即切断 opener 再跳转到支付站。这样第三方回跳仍能恢复游客订单，
+      // 同时不给外部收银台保留反向控制原页面的能力。
+      const paymentWindow = window.open('', '_blank')
+      if (!paymentWindow) return
+      paymentWindow.opener = null
+      paymentWindow.location.replace(payLink.value)
     }
     openedPayWindow.value = true
   }

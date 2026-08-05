@@ -8,7 +8,6 @@ export const productAPI = {
 export const postAPI = {
     list: (params?: any) => api.get('/public/posts', { params }),
     detail: (slug: string) => api.get(`/public/posts/${slug}`),
-    homePopup: () => api.get('/public/notices/home-popup'),
 }
 
 export const bannerAPI = {

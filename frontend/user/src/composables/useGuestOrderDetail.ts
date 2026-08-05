@@ -3,7 +3,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { guestOrderAPI } from '../api'
 import { debounceAsync } from '../utils/debounce'
-import { useOrderDisplayHelpers } from './useOrderDisplayHelpers'
 import {
   buildGuestOrderAuthParams,
   clearGuestOrderAuth,
@@ -13,6 +12,8 @@ import {
   saveGuestOrderAuth,
   type GuestOrderAuth,
 } from '../utils/guestOrderAuth'
+import { resolveGuestOrderDetailViewState } from '../utils/guestOrderDetailState'
+import { useOrderDisplayHelpers } from './useOrderDisplayHelpers'
 
 /**
  * 游客订单详情逻辑（classic + vault 共用）。
@@ -55,6 +56,11 @@ export function useGuestOrderDetail() {
 
   const hasAuth = computed(() => hasGuestOrderAuth(auth.value))
   const showAuthForm = computed(() => !hasAuth.value || authError.value !== '')
+  const viewState = computed(() => resolveGuestOrderDetailViewState({
+    loading: loading.value,
+    order: order.value,
+    showAuthForm: showAuthForm.value,
+  }))
 
   const loadOrder = async () => {
     loading.value = true
@@ -90,6 +96,7 @@ export function useGuestOrderDetail() {
       return
     }
     persistAuth()
+    loading.value = true
     await debouncedLoadOrder()
   }
 
@@ -119,6 +126,7 @@ export function useGuestOrderDetail() {
     authError,
     auth,
     showAuthForm,
+    viewState,
     handleAuthSubmit,
     clearAuth,
     fulfillmentDownloading,

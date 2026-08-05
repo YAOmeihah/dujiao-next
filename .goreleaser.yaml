@@ -2,20 +2,40 @@ version: 2
 
 project_name: dujiao-next
 
+# 前端在这里构建并拷进 internal/web/dist/，随后由 -tags=fullstack 的 go:embed 打进二进制。
+# 放在 before hooks 而不是 CI step 里，是为了让本地 `goreleaser build --snapshot`
+# 与 GitHub Actions 走完全相同的路径。执行前需要有 pnpm（见 .github/workflows/release.yml）。
+#
+# 注意：hooks 必须是纯字符串。带 cmd/dir/env 的结构化 hook 是 GoReleaser Pro 特性，
+# OSS 版会在解析阶段就报 "cannot unmarshal !!map into string" 而整个发布中止。
+# 因此换目录一律用 `sh -c 'cd X && ...'`，而不是 dir 字段。
+# 另外 hooks 不经过 shell，`cd X && y` 这种写法必须显式包一层 sh -c 才会生效。
 before:
   hooks:
     - go mod tidy
+    - sh -c 'cd frontend/admin && pnpm install --frozen-lockfile'
+    - sh -c 'cd frontend/user  && pnpm install --frozen-lockfile'
+    # admin 用 fullstack 模式构建：base 为 './' 且注入 __DJ_ADMIN_BASE__ 占位符，
+    # 后端启动时按 web.admin_path 替换，使产物可挂载到任意自定义前缀。
+    - sh -c 'cd frontend/admin && pnpm run build:fullstack'
+    - sh -c 'cd frontend/user  && pnpm run build'
+    - sh -c 'rm -rf internal/web/dist && mkdir -p internal/web/dist'
+    - sh -c 'cp -r frontend/admin/dist internal/web/dist/admin'
+    - sh -c 'cp -r frontend/user/dist  internal/web/dist/user'
 
 builds:
-  - id: api
+  # 单一产物：内嵌 admin + user SPA，一个二进制跑完整服务。
+  - id: dujiao-next
     env:
       - CGO_ENABLED=0
     main: ./cmd/server
     binary: dujiao-next
+    # BuildType=release 是后台一键升级的开关：只有 CI 正式产物才允许自我替换，
+    # 本地 go build 的二进制版本号是占位值，放开会把开发者自己编译的产物覆盖掉。
     ldflags:
-      - -s -w -X github.com/dujiao-next/internal/version.Version={{.Tag}}
+      - -s -w -X github.com/dujiao-next/internal/version.Version={{.Tag}} -X github.com/dujiao-next/internal/version.BuildType=release
     flags:
-      - "-tags=release"
+      - "-tags=release,fullstack"
     goos:
       - linux
       - windows
@@ -24,28 +44,10 @@ builds:
       - amd64
       - arm64
 
-  # fullstack 二进制：embed admin + user SPA。仅 linux（小白单二进制部署目标）。
-  # CI workflow 在 GoReleaser 之前 checkout admin/user 同 tag 源码、跑前端 build、
-  # 把 dist 拷到 internal/web/dist/{admin,user}，再由 -tags=fullstack 触发 embed。
-  - id: fullstack
-    env:
-      - CGO_ENABLED=0
-    main: ./cmd/server
-    binary: dujiao-server
-    ldflags:
-      - -s -w -X github.com/dujiao-next/internal/version.Version={{.Tag}}
-    flags:
-      - "-tags=release,fullstack"
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-
 archives:
-  - id: api
+  - id: dujiao-next
     ids:
-      - api
+      - dujiao-next
     formats: [tar.gz]
     files:
       - ./config.yml.example
@@ -53,6 +55,7 @@ archives:
       - src: ./data/address_divisions/*.json
         dst: data/address_divisions
         strip_parent: true
+      - ./scripts/dujiao-next-manager.sh
     name_template: >-
       {{ .ProjectName }}_
       {{- .Tag }}_
@@ -64,21 +67,6 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
-
-  - id: fullstack
-    ids:
-      - fullstack
-    formats: [tar.gz]
-    files:
-      - ./config.yml.example
-      - ./README.md
-    name_template: >-
-      dujiao-all_
-      {{- .Tag }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
 
 changelog:
   sort: asc
@@ -110,6 +98,17 @@ changelog:
       - 'Merge branch'
 
 release:
+  # 过渡版本必须把警告直接放在 GitHub Release body 首部：旧版后台的一键升级
+  # 只会展示 Release notes，不会主动打开新版在线文档。等 v1.3.1 及更早版本
+  # 已完成迁移后，可以在后续版本删除这个一次性 header。
+  header: |
+    > [!WARNING]
+    > **二进制部署从 v1.3.1 或更早版本升级：**如果 systemd unit 仍是 `Restart=on-failure`，请先改成 `Restart=always` 并执行 `sudo systemctl daemon-reload`，再使用后台一键升级；否则本次升级后需要手动执行 `sudo systemctl start <你的 unit 名>`。
+    >
+    > **二進制部署從 v1.3.1 或更早版本升級：**如果 systemd unit 仍是 `Restart=on-failure`，請先改成 `Restart=always` 並執行 `sudo systemctl daemon-reload`，再使用後臺一鍵升級；否則本次升級後需要手動執行 `sudo systemctl start <你的 unit 名>`。
+    >
+    > **Binary deployments upgrading from v1.3.1 or earlier:** if the systemd unit still uses `Restart=on-failure`, change it to `Restart=always` and run `sudo systemctl daemon-reload` before using one-click upgrade. Otherwise, you must run `sudo systemctl start <your-unit>` manually after this upgrade.
+
   footer: >-
     ---
 

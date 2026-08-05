@@ -83,6 +83,11 @@ export interface AdminAuthzPolicy {
   action: string
 }
 
+export interface AdminAuthzRole {
+  role: string
+  immutable: boolean
+}
+
 export interface AdminAuthzMeResponse {
   admin_id: number
   is_super: boolean
@@ -193,7 +198,7 @@ export interface AdminAdjustWalletPayload {
   amount: string
   operation?: 'add' | 'subtract'
   currency?: string
-  remark?: string
+  remark: string
 }
 
 export interface AdminRefundToWalletPayload {
@@ -305,7 +310,7 @@ export const adminAPI = {
   regenerateRecoveryCodes: (data: { code: string }) => api.post('/admin/2fa/recovery-codes/regenerate', data),
   resetAdmin2FA: (id: number) => api.post(`/admin/authz/admins/${id}/2fa/reset`, {}),
   getAuthzMe: () => api.get('/admin/authz/me'),
-  listAuthzRoles: () => api.get('/admin/authz/roles'),
+  listAuthzRoles: () => api.get('/admin/authz/roles', { params: { include_metadata: true } }),
   listAuthzAdmins: () => api.get("/admin/authz/admins"),
   createAuthzAdmin: (data: AuthzCreateAdminRequest) => api.post("/admin/authz/admins", data),
   updateAuthzAdmin: (id: number, data: AuthzUpdateAdminRequest) => api.put(`/admin/authz/admins/${id}`, data),
@@ -371,6 +376,8 @@ export const adminAPI = {
   updateCaptchaSettings: (data: Record<string, unknown>) => api.put('/admin/settings/captcha', data),
   getTelegramAuthSettings: () => api.get('/admin/settings/telegram-auth'),
   updateTelegramAuthSettings: (data: Record<string, unknown>) => api.put('/admin/settings/telegram-auth', data),
+  getGoogleAuthSettings: () => api.get('/admin/settings/google-auth'),
+  updateGoogleAuthSettings: (data: Record<string, unknown>) => api.put('/admin/settings/google-auth', data),
   getOrderEmailTemplateSettings: () => api.get('/admin/settings/order-email-template'),
   updateOrderEmailTemplateSettings: (data: Record<string, unknown>) => api.put('/admin/settings/order-email-template', data),
   resetOrderEmailTemplateSettings: () => api.post('/admin/settings/order-email-template/reset'),
@@ -385,6 +392,13 @@ export const adminAPI = {
   getSystemVersion: () => api.get('/admin/system/version'),
   checkSystemUpdate: (params?: { owner?: string; repo?: string }) =>
     api.get('/admin/system/version/check', { params }),
+  getUpdateCapability: () => api.get('/admin/system/update/capability'),
+  getUpdateStatus: () => api.get('/admin/system/update/status'),
+  startSystemUpdate: () => api.post('/admin/system/update/start'),
+  // force：迁移已开始或元数据不可信时，确认风险后强制回滚
+  rollbackSystemUpdate: (data?: { force?: boolean }) =>
+    api.post('/admin/system/update/rollback', data ?? {}),
+  restartSystemService: () => api.post('/admin/system/restart'),
   getDashboardOverview: (params?: Record<string, unknown>) => api.get('/admin/dashboard/overview', { params }),
   getDashboardTrends: (params?: Record<string, unknown>) => api.get('/admin/dashboard/trends', { params }),
   getDashboardRankings: (params?: Record<string, unknown>) => api.get('/admin/dashboard/rankings', { params }),
@@ -415,6 +429,7 @@ export const adminAPI = {
     api.post(`/admin/users/${id}/wallet/adjust`, data),
   updateUser: (id: number, data: Partial<AdminUser>) => api.put(`/admin/users/${id}`, data),
   unbindUserTelegram: (id: number) => api.delete(`/admin/users/${id}/oauth/telegram`),
+  unbindUserGoogle: (id: number) => api.delete(`/admin/users/${id}/oauth/google`),
   resetUser2FA: (id: number) => api.delete(`/admin/users/${id}/2fa`),
   batchUpdateUserStatus: (data: { user_ids: number[]; status: string }) => api.put('/admin/users/batch-status', data),
   getUserCouponUsages: (id: number, params?: Record<string, unknown>) => api.get(`/admin/users/${id}/coupon-usages`, { params }),

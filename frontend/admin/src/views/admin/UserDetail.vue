@@ -16,6 +16,12 @@ import type { AcceptableValue } from 'reka-ui'
 import { copyText } from '@/utils/clipboard'
 import { confirmAction } from '@/utils/confirm'
 import {
+  formatOAuthIdentityAccount,
+  formatOAuthIdentityUsername,
+  formatOAuthProviderLabel,
+  managedOAuthProvider,
+} from '@/utils/oauthIdentity'
+import {
   orderStatusClass as orderStatusClassMap,
   orderStatusLabel as orderStatusLabelMap,
   paymentStatusClass as paymentStatusClassMap,
@@ -27,7 +33,6 @@ import { formatDate, formatMoney, getLocalizedText } from '@/utils/format'
 
 const { t } = useI18n()
 const route = useRoute()
-const adminPath = import.meta.env.VITE_ADMIN_PATH || ''
 const userId = computed(() => Number(route.params.id))
 
 interface UserDetailCouponUsage {
@@ -284,10 +289,11 @@ const changeTab = (tab: 'orders' | 'payments' | 'coupons' | 'wallet') => {
   }
 }
 
-const orderLink = (orderId: number) => `${adminPath}/orders?order_id=${orderId}`
-const paymentDetailLink = (paymentId: number) => `${adminPath}/payments?payment_id=${paymentId}`
-const orderListLink = computed(() => `${adminPath}/orders?user_id=${userId.value}`)
-const paymentListLink = computed(() => `${adminPath}/payments?user_id=${userId.value}`)
+// 本页链接全部通过 router-link 的 :to 消费，base 前缀由 vue-router 自己带上，这里不能再拼
+const orderLink = (orderId: number) => `/orders?order_id=${orderId}`
+const paymentDetailLink = (paymentId: number) => `/payments?payment_id=${paymentId}`
+const orderListLink = computed(() => `/orders?user_id=${userId.value}`)
+const paymentListLink = computed(() => `/payments?user_id=${userId.value}`)
 
 const statusClass = (status?: string) => userStatusClass(status)
 const statusLabel = (status?: string) => userStatusLabel(t, status)
@@ -331,12 +337,17 @@ const submitWalletAdjust = async () => {
     walletError.value = t('admin.userDetail.wallet.errors.invalidAmount')
     return
   }
+  const remark = walletAdjustForm.remark.trim()
+  if (!remark) {
+    walletError.value = t('admin.userDetail.wallet.errors.remarkRequired')
+    return
+  }
   walletSubmitting.value = true
   try {
     const response = await adminAPI.adjustUserWallet(userId.value, {
       operation: walletAdjustForm.operation as 'add' | 'subtract',
       amount,
-      remark: walletAdjustForm.remark.trim() || undefined,
+      remark,
     })
     walletAccount.value = response.data.data?.account || walletAccount.value
     walletAdjustForm.amount = ''
@@ -413,23 +424,17 @@ const handleResetUser2FA = async () => {
   }
 }
 
-const formatProviderLabel = (provider?: string) => {
-  if (!provider) return '-'
-  const normalized = provider.trim().toLowerCase()
-  if (normalized === 'telegram') return 'Telegram'
-  return normalized
-}
-
-const isTelegramIdentity = (identity: AdminUserOAuthIdentity) => {
-  return identity.provider?.trim().toLowerCase() === 'telegram'
-}
-
-const handleUnbindTelegram = async (identity: AdminUserOAuthIdentity) => {
-  if (!Number.isFinite(userId.value) || userId.value <= 0 || !isTelegramIdentity(identity)) return
-  const account = identity.username ? `@${identity.username}` : identity.provider_user_id || 'Telegram'
+const handleUnbindOAuthIdentity = async (identity: AdminUserOAuthIdentity) => {
+  const provider = managedOAuthProvider(identity)
+  if (!Number.isFinite(userId.value) || userId.value <= 0 || !provider) return
+  const isGoogle = provider === 'google'
+  const account = formatOAuthIdentityAccount(identity)
   const confirmed = await confirmAction({
-    description: t('admin.userDetail.oauth.confirmUnbindTelegram', { account }),
-    confirmText: t('admin.userDetail.oauth.unbindTelegram'),
+    description: t(
+      isGoogle ? 'admin.userDetail.oauth.confirmUnbindGoogle' : 'admin.userDetail.oauth.confirmUnbindTelegram',
+      { account },
+    ),
+    confirmText: t(isGoogle ? 'admin.userDetail.oauth.unbindGoogle' : 'admin.userDetail.oauth.unbindTelegram'),
     variant: 'destructive',
   })
   if (!confirmed) return
@@ -437,11 +442,19 @@ const handleUnbindTelegram = async (identity: AdminUserOAuthIdentity) => {
   oauthSuccess.value = ''
   oauthUnbindingId.value = identity.id
   try {
-    await adminAPI.unbindUserTelegram(userId.value)
+    if (isGoogle) {
+      await adminAPI.unbindUserGoogle(userId.value)
+    } else {
+      await adminAPI.unbindUserTelegram(userId.value)
+    }
     await fetchUser()
-    oauthSuccess.value = t('admin.userDetail.oauth.unbindSuccess')
+    oauthSuccess.value = t(
+      isGoogle ? 'admin.userDetail.oauth.unbindGoogleSuccess' : 'admin.userDetail.oauth.unbindTelegramSuccess',
+    )
   } catch (err: any) {
-    oauthError.value = err?.message || t('admin.userDetail.oauth.unbindFailed')
+    oauthError.value =
+      err?.message ||
+      t(isGoogle ? 'admin.userDetail.oauth.unbindGoogleFailed' : 'admin.userDetail.oauth.unbindTelegramFailed')
   } finally {
     oauthUnbindingId.value = null
   }
@@ -470,7 +483,7 @@ watch(
   <div class="space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-3">
-        <router-link :to="`${adminPath}/users`" class="text-muted-foreground hover:text-foreground transition-colors">
+        <router-link to="/users" class="text-muted-foreground hover:text-foreground transition-colors">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
@@ -642,26 +655,47 @@ watch(
                   class="h-10 w-10 rounded-full border border-border object-cover"
                 />
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-foreground">{{ formatProviderLabel(identity.provider) }}</div>
+                  <div class="text-sm font-medium text-foreground">{{ formatOAuthProviderLabel(identity.provider) }}</div>
                   <div class="truncate text-xs text-muted-foreground">
-                    {{ identity.username ? `@${identity.username}` : identity.provider_user_id }}
+                    {{ formatOAuthIdentityAccount(identity) }}
                   </div>
                 </div>
               </div>
               <Button
-                v-if="isTelegramIdentity(identity)"
+                v-if="managedOAuthProvider(identity)"
                 size="sm"
                 variant="destructive"
                 class="shrink-0 cursor-pointer"
                 :disabled="oauthUnbindingId === identity.id"
-                @click="handleUnbindTelegram(identity)"
+                @click="handleUnbindOAuthIdentity(identity)"
               >
-                {{ oauthUnbindingId === identity.id ? t('admin.userDetail.oauth.unbindingTelegram') : t('admin.userDetail.oauth.unbindTelegram') }}
+                {{
+                  oauthUnbindingId === identity.id
+                    ? t(
+                        managedOAuthProvider(identity) === 'google'
+                          ? 'admin.userDetail.oauth.unbindingGoogle'
+                          : 'admin.userDetail.oauth.unbindingTelegram',
+                      )
+                    : t(
+                        managedOAuthProvider(identity) === 'google'
+                          ? 'admin.userDetail.oauth.unbindGoogle'
+                          : 'admin.userDetail.oauth.unbindTelegram',
+                      )
+                }}
               </Button>
             </div>
             <div class="mt-3 space-y-1 text-xs text-muted-foreground">
               <div>{{ t('admin.userDetail.oauth.providerUserId') }}: <span class="font-mono text-foreground">{{ identity.provider_user_id || '-' }}</span></div>
-              <div>{{ t('admin.userDetail.oauth.username') }}: <span class="text-foreground">{{ identity.username ? `@${identity.username}` : '-' }}</span></div>
+              <div>
+                {{
+                  t(
+                    managedOAuthProvider(identity) === 'google'
+                      ? 'admin.userDetail.oauth.email'
+                      : 'admin.userDetail.oauth.username',
+                  )
+                }}:
+                <span class="text-foreground">{{ formatOAuthIdentityUsername(identity) }}</span>
+              </div>
               <div>{{ t('admin.userDetail.oauth.boundAt') }}: <span class="text-foreground">{{ formatDate(identity.created_at) }}</span></div>
             </div>
           </div>
@@ -915,8 +949,10 @@ watch(
             <Input v-model="walletAdjustForm.amount" :placeholder="t('admin.userDetail.wallet.amountPlaceholder')" />
           </div>
           <div>
-            <label class="mb-1.5 block text-xs text-muted-foreground">{{ t('admin.userDetail.wallet.remarkLabel') }}</label>
-            <Input v-model="walletAdjustForm.remark" :placeholder="t('admin.userDetail.wallet.remarkPlaceholder')" />
+            <label class="mb-1.5 block text-xs text-muted-foreground">
+              {{ t('admin.userDetail.wallet.remarkLabel') }} <span class="text-destructive" aria-hidden="true">*</span>
+            </label>
+            <Input v-model="walletAdjustForm.remark" required :placeholder="t('admin.userDetail.wallet.remarkPlaceholder')" />
           </div>
           <div class="flex items-end">
             <Button type="submit" class="w-full md:w-auto" :disabled="walletSubmitting">

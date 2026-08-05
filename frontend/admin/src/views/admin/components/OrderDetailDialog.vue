@@ -22,6 +22,7 @@ import {
 } from '@/utils/fulfillment'
 import { formatDate, formatMoney, getLocalizedText, hasPositiveAmount } from '@/utils/format'
 import { resolveSkuCodeFromSnapshot, resolveSkuSpecFromSnapshot } from '@/utils/sku'
+import { adminUrl } from '@/utils/adminBase'
 
 const props = defineProps<{
   modelValue: boolean
@@ -59,13 +60,12 @@ const manualRefundForm = reactive({
   reason: '',
 })
 
-const adminPath = import.meta.env.VITE_ADMIN_PATH || ''
 
-const userDetailLink = (userId: number) => `${adminPath}/users/${userId}`
-const productLink = (productId: number) => `${adminPath}/products?product_id=${productId}`
-const couponCodeLink = (code: string) => `${adminPath}/coupons?code=${encodeURIComponent(code)}`
-const promotionLink = (promotionId: number) => `${adminPath}/promotions?id=${promotionId}`
-const paymentLink = (paymentId: number) => `${adminPath}/payments?payment_id=${paymentId}`
+const userDetailLink = (userId: number) => adminUrl(`/users/${userId}`)
+const productLink = (productId: number) => adminUrl(`/products?product_id=${productId}`)
+const couponCodeLink = (code: string) => adminUrl(`/coupons?code=${encodeURIComponent(code)}`)
+const promotionLink = (promotionId: number) => adminUrl(`/promotions?id=${promotionId}`)
+const paymentLink = (paymentId: number) => adminUrl(`/payments?payment_id=${paymentId}`)
 
 const statusLabel = (status: string) => orderStatusLabel(t, status)
 const statusClass = (status: string) => orderStatusClass(status)
@@ -78,6 +78,7 @@ const providerTypeLabel = (value?: string) => {
   const map: Record<string, string> = {
     official: t('admin.paymentChannels.providerTypes.official'),
     epay: t('admin.paymentChannels.providerTypes.epay'),
+    bepusdt: t('admin.paymentChannels.providerTypes.bepusdt'),
     epusdt: t('admin.paymentChannels.providerTypes.epusdt'),
     tokenpay: t('admin.paymentChannels.providerTypes.tokenpay'),
     vpay: t('admin.paymentChannels.providerTypes.vpay'),
@@ -98,10 +99,17 @@ const channelTypeLabel = (value?: string) => {
     'usdt-trc20': t('admin.paymentChannels.channelTypes.usdtTrc20'),
     'usdc-trc20': t('admin.paymentChannels.channelTypes.usdcTrc20'),
     trx: t('admin.paymentChannels.channelTypes.trx'),
+    bepusdt: t('admin.paymentChannels.channelTypes.bepusdtCashier'),
+    epusdt: t('admin.paymentChannels.channelTypes.epusdtCashier'),
     balance: t('admin.paymentChannels.channelTypes.balance'),
   }
   if (!value) return '-'
   return map[value] || value
+}
+
+const paymentChannelTypeLabel = (payment: AdminPayment) => {
+  const value = String(payment.display_channel_type || payment.channel_type || '').trim()
+  return channelTypeLabel(value)
 }
 
 const itemRevenueAmount = (item: AdminOrderItem) => {
@@ -1146,7 +1154,7 @@ watch(
                     </TableCell>
                     <TableCell class="px-4 py-3 text-xs">
                       <div class="text-foreground">{{ payment.channel_name || '-' }}</div>
-                      <div class="text-muted-foreground">{{ providerTypeLabel(payment.provider_type) }} / {{ channelTypeLabel(payment.channel_type) }}</div>
+                      <div class="text-muted-foreground">{{ providerTypeLabel(payment.provider_type) }} / {{ paymentChannelTypeLabel(payment) }}</div>
                     </TableCell>
                     <TableCell class="px-4 py-3 text-xs">
                       <span class="inline-flex rounded-full border px-2.5 py-1 text-xs" :class="paymentStatusClass(payment.status)">

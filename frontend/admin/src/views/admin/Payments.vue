@@ -20,6 +20,7 @@ import { paymentStatusClass, paymentStatusLabel } from '@/utils/status'
 import ComplianceGuardWrapper from '@/components/ComplianceGuardWrapper.vue'
 import { copyText } from '@/utils/clipboard'
 import { formatDate, toRFC3339 } from '@/utils/format'
+import { adminUrl } from '@/utils/adminBase'
 
 const loading = ref(true)
 const { refreshing, refreshList } = useListRefresh()
@@ -30,7 +31,6 @@ const pagination = ref({
   total: 0,
   total_page: 1,
 })
-const adminPath = import.meta.env.VITE_ADMIN_PATH || ''
 const filters = reactive({
   userId: '',
   orderId: '',
@@ -95,9 +95,9 @@ const changePageSize = (size: number) => {
   fetchPayments(1)
 }
 
-const orderLink = (orderId: number) => `${adminPath}/orders?order_id=${orderId}`
-const userDetailLink = (userId: number) => `${adminPath}/users/${userId}`
-const channelLink = (channelId: number) => `${adminPath}/payment-channels?channel_id=${channelId}`
+const orderLink = (orderId: number) => adminUrl(`/orders?order_id=${orderId}`)
+const userDetailLink = (userId: number) => adminUrl(`/users/${userId}`)
+const channelLink = (channelId: number) => adminUrl(`/payment-channels?channel_id=${channelId}`)
 
 const handleExport = async () => {
   exportError.value = ''
@@ -163,6 +163,7 @@ const providerTypeLabel = (value?: string) => {
   const map: Record<string, string> = {
     official: t('admin.paymentChannels.providerTypes.official'),
     epay: t('admin.paymentChannels.providerTypes.epay'),
+    bepusdt: t('admin.paymentChannels.providerTypes.bepusdt'),
     epusdt: t('admin.paymentChannels.providerTypes.epusdt'),
     tokenpay: t('admin.paymentChannels.providerTypes.tokenpay'),
     vpay: t('admin.paymentChannels.providerTypes.vpay'),
@@ -183,10 +184,17 @@ const channelTypeLabel = (value?: string) => {
     'usdt-trc20': t('admin.paymentChannels.channelTypes.usdtTrc20'),
     'usdc-trc20': t('admin.paymentChannels.channelTypes.usdcTrc20'),
     trx: t('admin.paymentChannels.channelTypes.trx'),
+    bepusdt: t('admin.paymentChannels.channelTypes.bepusdtCashier'),
+    epusdt: t('admin.paymentChannels.channelTypes.epusdtCashier'),
     balance: t('admin.paymentChannels.channelTypes.balance'),
   }
   if (!value) return '-'
   return map[value] || value
+}
+
+const paymentChannelTypeLabel = (payment: AdminPayment) => {
+  const value = String(payment.display_channel_type || payment.channel_type || '').trim()
+  return channelTypeLabel(value)
 }
 
 const handleCopyOrderNo = async (orderNo?: string) => {
@@ -413,7 +421,7 @@ watch(
             </TableCell>
             <TableCell class="min-w-[180px] px-6 py-4 text-xs text-muted-foreground">
               <div class="break-words text-foreground">{{ payment.channel_name || '-' }}</div>
-              <div class="break-words text-muted-foreground">{{ providerTypeLabel(payment.provider_type) }} / {{ channelTypeLabel(payment.channel_type) }}</div>
+              <div class="break-words text-muted-foreground">{{ providerTypeLabel(payment.provider_type) }} / {{ paymentChannelTypeLabel(payment) }}</div>
               <div class="text-muted-foreground mt-0.5">
                 {{ t('admin.payments.channelId') }}:
                 <a v-if="payment.channel_id" :href="channelLink(payment.channel_id)" target="_blank" rel="noopener" class="text-primary underline-offset-4 hover:underline">
@@ -515,7 +523,7 @@ watch(
                 <CardContent class="p-4">
                   <div class="text-xs text-muted-foreground mb-2">{{ t('admin.payments.detailChannel') }}</div>
                   <div class="text-foreground text-sm break-words">{{ detailPayment.channel_name || '-' }}</div>
-                  <div class="text-xs text-muted-foreground mt-1 break-words">{{ providerTypeLabel(detailPayment.provider_type) }} / {{ channelTypeLabel(detailPayment.channel_type) }}</div>
+                  <div class="text-xs text-muted-foreground mt-1 break-words">{{ providerTypeLabel(detailPayment.provider_type) }} / {{ paymentChannelTypeLabel(detailPayment) }}</div>
                 </CardContent>
               </Card>
               <Card class="rounded-lg border-border bg-background shadow-none">

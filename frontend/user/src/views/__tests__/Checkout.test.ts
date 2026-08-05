@@ -96,6 +96,10 @@ describe('Checkout mobile buy-now flow', () => {
     window.scrollTo = vi.fn()
   })
 
+  it('loads the fork mobile checkout translations', () => {
+    expect(i18n.global.t('checkout.mobile.actionContinueBuyer')).toBe('确认购买信息并继续')
+  })
+
   it('submits the order when confirming a ready payment method', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -137,6 +141,7 @@ describe('Checkout mobile buy-now flow', () => {
       global: {
         plugins: [createHead(), pinia, i18n],
         stubs: {
+          RouterLink: true,
           CheckoutSteps: true,
           EmptyState: true,
           SmartImage: true,
@@ -157,6 +162,9 @@ describe('Checkout mobile buy-now flow', () => {
     expect(userOrderAPI.getPaymentChannels).toHaveBeenCalled()
     expect(walletAPI.account).toHaveBeenCalled()
     expect(wrapper.text()).toContain('支付宝')
+    const desktopGrid = wrapper.get('.hidden.grid-cols-1.gap-8')
+    expect(desktopGrid.text()).toContain(i18n.global.t('checkout.itemsTitle'))
+    expect(desktopGrid.text()).toContain(i18n.global.t('checkout.submitTitle'))
     expect(wrapper.get('[data-mobile-primary-action]').text()).toBe(i18n.global.t('checkout.mobile.actionContinueBuyer'))
 
     await wrapper.get('[data-mobile-primary-action]').trigger('click')

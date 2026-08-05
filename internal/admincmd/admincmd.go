@@ -1,6 +1,6 @@
 // Package admincmd 提供 admin 子命令实现，作为运维工具集合：
 // 列出管理员、重置 2FA、重置密码。所有命令共享调用方初始化好的
-// models.DB，无需重复 config.Load / InitDB。
+// gormdb.DB，无需重复 config.Load / InitDB。
 //
 // 入口由 cmd/server/main.go 在检测到 "admin" 子命令时调用 Run(args)，
 // 容器只需要 dujiao-api 一个二进制即可执行所有运维操作。
@@ -16,8 +16,10 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/constants"
-	"github.com/dujiao-next/internal/models"
-	"github.com/dujiao-next/internal/repository"
+	auditlogapp "github.com/dujiao-next/internal/modules/auditlog/application"
+	auditloggormstore "github.com/dujiao-next/internal/modules/auditlog/infrastructure/gormstore"
+	adminstore "github.com/dujiao-next/internal/modules/identity/admin/infrastructure/gormstore"
+	"github.com/dujiao-next/internal/platform/database/gormdb"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -39,7 +41,7 @@ func Usage() {
 }
 
 // Run 分发 admin 子命令。args 是去掉 "admin" 之后的参数（os.Args[2:]）。
-// caller 需先完成 config.Load + models.InitDB。
+// caller 需先完成 config.Load + gormdb.InitDB。
 //
 // 失败时直接 os.Exit(1)，与原 admin-tool 二进制行为保持一致；这是 CLI 运维
 // 工具的约定（脚本可靠 exit code 判定），不抛出 error 给调用方。
@@ -93,7 +95,7 @@ func parseStringFlag(args []string, name string) string {
 }
 
 func listAdmins() {
-	repo := repository.NewAdminRepository(models.DB)
+	repo := adminstore.New(gormdb.DB)
 	admins, err := repo.List()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "list: %v\n", err)
@@ -116,8 +118,8 @@ func listAdmins() {
 }
 
 func resetTOTP(username string) {
-	repo := repository.NewAdminRepository(models.DB)
-	logRepo := repository.NewAdminLoginLogRepository(models.DB)
+	repo := adminstore.New(gormdb.DB)
+	logService := auditlogapp.NewAdminLoginService(auditloggormstore.NewAdminLoginStore(gormdb.DB))
 
 	admin, err := repo.GetByUsername(username)
 	if err != nil {
@@ -133,7 +135,7 @@ func resetTOTP(username string) {
 		os.Exit(1)
 	}
 	rid := "cli-" + uuid.NewString()
-	_ = logRepo.Create(&models.AdminLoginLog{
+	_ = logService.Record(auditlogapp.AdminLoginRecord{
 		AdminID:   admin.ID,
 		Username:  admin.Username,
 		EventType: constants.AdminLoginEvent2FAResetByAdmin,
@@ -146,8 +148,8 @@ func resetTOTP(username string) {
 }
 
 func resetPassword(username, providedPassword string) {
-	repo := repository.NewAdminRepository(models.DB)
-	logRepo := repository.NewAdminLoginLogRepository(models.DB)
+	repo := adminstore.New(gormdb.DB)
+	logService := auditlogapp.NewAdminLoginService(auditloggormstore.NewAdminLoginStore(gormdb.DB))
 
 	admin, err := repo.GetByUsername(username)
 	if err != nil {
@@ -177,7 +179,7 @@ func resetPassword(username, providedPassword string) {
 	}
 
 	rid := "cli-" + uuid.NewString()
-	_ = logRepo.Create(&models.AdminLoginLog{
+	_ = logService.Record(auditlogapp.AdminLoginRecord{
 		AdminID:   admin.ID,
 		Username:  admin.Username,
 		EventType: constants.AdminLoginEventPasswordResetByCLI,

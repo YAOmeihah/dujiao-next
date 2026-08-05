@@ -8,8 +8,22 @@ import { useTelegramMiniAppStore } from '../stores/telegramMiniApp'
 import { buildTelegramMiniAppEntryLink, isTelegramUrlEnvironment, openTelegramCompatibleLink } from '../utils/telegramMiniApp'
 import { userAuthAPI } from '../api'
 import type { CaptchaPayload, TelegramAuthPayload } from '../api'
+import {
+  canShowGoogleIdentityButton,
+  detectGoogleIdentityUXMode,
+  hasThirdPartyLoginOption,
+} from '../utils/googleIdentity'
+import {
+  createGoogleRedirectIntent,
+  createGoogleRedirectPreparedIntent,
+  getGoogleRedirectSessionStorage,
+  shouldResumeGoogleRedirect2FA,
+  storeGoogleRedirectIntent,
+  tryBuildGoogleRedirectCredentialCallbackURL,
+} from '../utils/googleRedirect'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
+import CapCaptcha from '../components/captcha/CapCaptcha.vue'
 import { useFormValidation } from './useFormValidation'
 
 /**
@@ -34,7 +48,13 @@ export function useLogin() {
   const showPassword = ref(false)
   const rememberMe = ref(true)
 
-  const step = ref<'password' | 'totp'>('password')
+  const resumeGoogleRedirect2FAOnMount = shouldResumeGoogleRedirect2FA(
+    route.query.google2fa,
+    userAuthStore.challengeToken,
+  )
+  const step = ref<'password' | 'totp'>(
+    resumeGoogleRedirect2FAOnMount ? 'totp' : 'password',
+  )
   const totpMode = ref<'code' | 'recovery'>('code')
   const totpCode = ref('')
   const recoveryCode = ref('')
@@ -49,20 +69,33 @@ export function useLogin() {
   const info = ref('')
   const captchaPayload = ref<CaptchaPayload>({})
   const turnstileToken = ref('')
+  const capToken = ref('')
   const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
   const turnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+  const capRef = ref<InstanceType<typeof CapCaptcha> | null>(null)
   const telegramWidgetRef = ref<HTMLDivElement | null>(null)
 
   const captchaConfig = computed(() => appStore.config?.captcha || null)
   const captchaProvider = computed(() => String(captchaConfig.value?.provider || 'none'))
   const loginCaptchaEnabled = computed(() => !!captchaConfig.value?.scenes?.login && captchaProvider.value !== 'none')
   const turnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+  const capEndpoint = computed(() => String(captchaConfig.value?.cap?.endpoint || ''))
+  const capSiteKey = computed(() => String(captchaConfig.value?.cap?.site_key || ''))
   const telegramConfig = computed(() => appStore.config?.telegram_auth || null)
   const telegramBotUsername = computed(() => String(telegramConfig.value?.bot_username || '').trim())
   const telegramMiniAppURL = computed(() => String(telegramConfig.value?.mini_app_url || '').trim())
   const telegramEnabled = computed(() => !!telegramConfig.value?.enabled && telegramBotUsername.value !== '')
   const telegramLoginMode = computed(() => String(telegramConfig.value?.mode || '').trim())
   const isWidgetMode = computed(() => telegramLoginMode.value === 'widget' || (telegramLoginMode.value === '' && telegramEnabled.value))
+  const googleConfig = computed(() => appStore.config?.google_auth || null)
+  const googleClientID = computed(() => String(googleConfig.value?.client_id || '').trim())
+  const googleEnabled = computed(() => !!googleConfig.value?.enabled && googleClientID.value !== '')
+  const googleButtonLocale = computed(() => String(appStore.locale || '').trim())
+  const googleIdentityUXMode = detectGoogleIdentityUXMode()
+  const googleRedirectLoginURI = googleIdentityUXMode === 'redirect'
+    ? tryBuildGoogleRedirectCredentialCallbackURL()
+    : ''
+  const googleRedirectAvailable = googleIdentityUXMode === 'popup' || googleRedirectLoginURI !== ''
   const registrationEnabled = computed(() => appStore.config?.registration_enabled !== false)
   const emailVerificationEnabled = computed(() => appStore.config?.email_verification_enabled !== false)
   const isTelegramUrlEnv = isTelegramUrlEnvironment()
@@ -71,6 +104,17 @@ export function useLogin() {
   const showTelegramWidget = computed(() => isWidgetMode.value && telegramEnabled.value && !isTelegramMiniApp.value)
   const showTelegramOidc = computed(() => telegramLoginMode.value === 'oidc' && telegramEnabled.value && !isTelegramMiniApp.value)
   const showMiniAppLoginHint = computed(() => isTelegramMiniApp.value)
+  const showGoogleLogin = computed(() => canShowGoogleIdentityButton(
+    googleEnabled.value,
+    googleClientID.value,
+    isTelegramMiniApp.value,
+  ) && googleRedirectAvailable)
+  const showThirdPartyLogin = computed(() => hasThirdPartyLoginOption(
+    showTelegramWidget.value,
+    showTelegramOidc.value,
+    showMiniAppLoginHint.value,
+    showGoogleLogin.value,
+  ))
   const telegramMiniAppEntryLink = computed(() => buildTelegramMiniAppEntryLink(telegramBotUsername.value, telegramMiniAppURL.value))
   const showTelegramMiniAppEntry = computed(() => !isTelegramMiniApp.value && telegramMiniAppEntryLink.value !== '')
   const telegramCallbackName = '__dujiaoUserTelegramLogin'
@@ -90,6 +134,11 @@ export function useLogin() {
         turnstile_token: turnstileToken.value,
       }
     }
+    if (captchaProvider.value === 'cap') {
+      return {
+        cap_token: capToken.value,
+      }
+    }
     return undefined
   }
 
@@ -97,6 +146,7 @@ export function useLogin() {
     await appStore.loadConfig(true)
     captchaPayload.value = {}
     turnstileToken.value = ''
+    capToken.value = ''
   }
 
   const redirectAfterLogin = () => {
@@ -126,6 +176,12 @@ export function useLogin() {
         return
       }
     }
+    if (loginCaptchaEnabled.value && captchaProvider.value === 'cap') {
+      if (!capToken.value) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
 
     try {
       const result = await userAuthStore.login({
@@ -147,6 +203,10 @@ export function useLogin() {
       if (captchaProvider.value === 'turnstile') {
         turnstileRef.value?.reset()
         turnstileToken.value = ''
+      }
+      if (captchaProvider.value === 'cap') {
+        capRef.value?.reset()
+        capToken.value = ''
       }
     }
   }
@@ -270,6 +330,46 @@ export function useLogin() {
     }
   }
 
+  const handleGoogleCredential = async (credential: string) => {
+    if (userAuthStore.loading) return
+    error.value = ''
+    const normalizedCredential = String(credential || '').trim()
+    if (normalizedCredential === '') {
+      error.value = t('auth.login.googleInvalidCredential')
+      return
+    }
+
+    try {
+      const result = await userAuthStore.googleLogin(normalizedCredential)
+      if (result?.requiresTotp) {
+        enter2FAStep()
+        return
+      }
+      await redirectAfterLogin()
+    } catch (err: any) {
+      error.value = err?.message || t('auth.login.googleLoginFailed')
+    }
+  }
+
+  const handleGoogleScriptError = () => {
+    error.value = t('auth.login.googleWidgetLoadFailed')
+  }
+
+  const prepareGoogleRedirectLogin = async () => {
+    const response = await userAuthAPI.googleRedirectIntent()
+    const preparedIntent = createGoogleRedirectPreparedIntent(response.data.data)
+    if (!preparedIntent) {
+      throw new Error('Google redirect state is invalid')
+    }
+    const intent = createGoogleRedirectIntent(
+      'login',
+      route.query.redirect,
+      preparedIntent.issuedAt,
+    )
+    storeGoogleRedirectIntent(getGoogleRedirectSessionStorage(), intent)
+    return preparedIntent
+  }
+
   const tryTelegramMiniAppLogin = async () => {
     if (!isTelegramMiniApp.value || miniAppInitData.value === '' || miniAppLoginAttempted.value || attemptingMiniAppLogin.value) {
       return
@@ -351,10 +451,16 @@ export function useLogin() {
     win[telegramCallbackName] = handleTelegramAuth
     renderTelegramWidget()
 
-    if (route.query.tg2fa === '1' && userAuthStore.challengeToken) {
+    const resumeTelegram2FA = route.query.tg2fa === '1' && userAuthStore.challengeToken
+    const resumeGoogle2FA = shouldResumeGoogleRedirect2FA(
+      route.query.google2fa,
+      userAuthStore.challengeToken,
+    )
+    if (resumeTelegram2FA || resumeGoogle2FA) {
       enter2FAStep()
       const nextQuery = { ...route.query }
       delete nextQuery.tg2fa
+      delete nextQuery.google2fa
       router.replace({ path: route.path, query: nextQuery })
     }
 
@@ -412,9 +518,13 @@ export function useLogin() {
     captchaProvider,
     captchaPayload,
     turnstileToken,
+    capToken,
     turnstileSiteKey,
+    capEndpoint,
+    capSiteKey,
     imageCaptchaRef,
     turnstileRef,
+    capRef,
     handleCaptchaConfigStale,
     // flags
     registrationEnabled,
@@ -428,6 +538,16 @@ export function useLogin() {
     attemptingMiniAppLogin,
     showTelegramMiniAppEntry,
     openTelegramMiniAppEntry,
+    // google
+    googleClientID,
+    googleButtonLocale,
+    googleIdentityUXMode,
+    googleRedirectLoginURI,
+    prepareGoogleRedirectLogin,
+    showGoogleLogin,
+    showThirdPartyLogin,
+    handleGoogleCredential,
+    handleGoogleScriptError,
     // actions
     handleLogin,
   }

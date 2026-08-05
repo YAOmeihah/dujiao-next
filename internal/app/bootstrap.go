@@ -3,21 +3,12 @@ package app
 import (
 	"errors"
 
+	"github.com/dujiao-next/internal/app/container"
+	"github.com/dujiao-next/internal/app/httpserver"
+	"github.com/dujiao-next/internal/app/jobs"
+	jobconsumer "github.com/dujiao-next/internal/app/jobs/consumer"
 	"github.com/dujiao-next/internal/config"
-	"github.com/dujiao-next/internal/provider"
-	"github.com/dujiao-next/internal/router"
-	"github.com/dujiao-next/internal/worker"
 )
-
-func shouldStartWorker(cfg *config.Config, mode string) bool {
-	if cfg == nil {
-		return false
-	}
-	if !cfg.Queue.Enabled {
-		return false
-	}
-	return mode == ModeAll || mode == ModeWorker
-}
 
 // BuildRunner 构建服务运行器
 func BuildRunner(cfg *config.Config, mode string) (*Runner, error) {
@@ -25,22 +16,25 @@ func BuildRunner(cfg *config.Config, mode string) (*Runner, error) {
 		return nil, errors.New("config is nil")
 	}
 
-	container := provider.NewContainer(cfg)
+	dependencies, err := container.NewContainer(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	var services []Service
 
 	// 初始化 HTTP 服务
 	if mode == ModeAll || mode == ModeAPI {
-		engine := router.SetupRouter(cfg, container)
+		engine := httpserver.SetupRouter(cfg, dependencies)
 		addr := cfg.Server.Host + ":" + cfg.Server.Port
 		httpService := NewHTTPService(addr, engine)
 		services = append(services, httpService)
 	}
 
 	// 初始化 Worker 服务
-	if shouldStartWorker(cfg, mode) {
-		consumer := worker.NewConsumer(container)
-		workerService, err := worker.NewService(&cfg.Queue, consumer)
+	if mode == ModeAll || mode == ModeWorker {
+		consumer := jobconsumer.New(dependencies)
+		workerService, err := jobs.NewService(&cfg.Queue, consumer)
 		if err != nil {
 			return nil, err
 		}

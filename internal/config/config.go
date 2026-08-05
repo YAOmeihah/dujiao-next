@@ -7,6 +7,7 @@ import (
 
 	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/logger"
+	"github.com/dujiao-next/internal/shared/passwordpolicy"
 
 	"github.com/spf13/viper"
 )
@@ -21,6 +22,7 @@ type Config struct {
 	UserJWT      JWTConfig          `mapstructure:"user_jwt"`
 	Bootstrap    BootstrapConfig    `mapstructure:"bootstrap"`
 	TelegramAuth TelegramAuthConfig `mapstructure:"telegram_auth"`
+	GoogleAuth   GoogleAuthConfig   `mapstructure:"google_auth"`
 	Redis        RedisConfig        `mapstructure:"redis"`
 	Queue        QueueConfig        `mapstructure:"queue"`
 	Upload       UploadConfig       `mapstructure:"upload"`
@@ -106,6 +108,12 @@ type TelegramAuthConfig struct {
 	MiniAppURL         string `mapstructure:"mini_app_url"`
 	LoginExpireSeconds int    `mapstructure:"login_expire_seconds"`
 	ReplayTTLSeconds   int    `mapstructure:"replay_ttl_seconds"`
+}
+
+// GoogleAuthConfig Google Identity Services 登录配置。
+type GoogleAuthConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	ClientID string `mapstructure:"client_id"`
 }
 
 // RedisConfig Redis 配置
@@ -272,6 +280,17 @@ type PasswordPolicyConfig struct {
 	RequireSpecial bool `mapstructure:"require_special"`
 }
 
+// ValidationPolicy converts configuration into the shared identity policy.
+func (p PasswordPolicyConfig) ValidationPolicy() passwordpolicy.Policy {
+	return passwordpolicy.Policy{
+		MinLength:      p.MinLength,
+		RequireUpper:   p.RequireUpper,
+		RequireLower:   p.RequireLower,
+		RequireNumber:  p.RequireNumber,
+		RequireSpecial: p.RequireSpecial,
+	}
+}
+
 // WebConfig 仅在 fullstack 二进制模式下生效。
 // 默认构建模式（无 -tags fullstack）下这些字段不被任何代码读取。
 type WebConfig struct {
@@ -330,6 +349,8 @@ func Load() *Config {
 	viper.SetDefault("telegram_auth.bot_token", "")
 	viper.SetDefault("telegram_auth.login_expire_seconds", 300)
 	viper.SetDefault("telegram_auth.replay_ttl_seconds", 300)
+	viper.SetDefault("google_auth.enabled", false)
+	viper.SetDefault("google_auth.client_id", "")
 	viper.SetDefault("redis.enabled", true)
 	viper.SetDefault("redis.host", "127.0.0.1")
 	viper.SetDefault("redis.port", 6379)

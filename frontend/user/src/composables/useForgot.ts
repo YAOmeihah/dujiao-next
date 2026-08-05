@@ -7,6 +7,7 @@ import { useAppStore } from '../stores/app'
 import type { CaptchaPayload } from '../api'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
+import CapCaptcha from '../components/captcha/CapCaptcha.vue'
 
 /**
  * 找回密码页共享逻辑（classic + vault 双模板共用）。
@@ -33,14 +34,18 @@ export function useForgot() {
   const countdown = ref(0)
   const captchaPayload = ref<CaptchaPayload>({})
   const turnstileToken = ref('')
+  const capToken = ref('')
   const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
   const turnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+  const capRef = ref<InstanceType<typeof CapCaptcha> | null>(null)
   let timer: number | undefined
 
   const captchaConfig = computed(() => appStore.config?.captcha || null)
   const captchaProvider = computed(() => String(captchaConfig.value?.provider || 'none'))
   const sendCodeCaptchaEnabled = computed(() => !!captchaConfig.value?.scenes?.reset_send_code && captchaProvider.value !== 'none')
   const turnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+  const capEndpoint = computed(() => String(captchaConfig.value?.cap?.endpoint || ''))
+  const capSiteKey = computed(() => String(captchaConfig.value?.cap?.site_key || ''))
 
   const startCountdown = () => {
     countdown.value = 60
@@ -66,6 +71,11 @@ export function useForgot() {
         turnstile_token: turnstileToken.value,
       }
     }
+    if (captchaProvider.value === 'cap') {
+      return {
+        cap_token: capToken.value,
+      }
+    }
     return undefined
   }
 
@@ -73,6 +83,7 @@ export function useForgot() {
     await appStore.loadConfig(true)
     captchaPayload.value = {}
     turnstileToken.value = ''
+    capToken.value = ''
   }
 
   const performSendCode = async () => {
@@ -95,6 +106,12 @@ export function useForgot() {
         return
       }
     }
+    if (sendCodeCaptchaEnabled.value && captchaProvider.value === 'cap') {
+      if (!capToken.value) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
 
     sending.value = true
     try {
@@ -112,6 +129,10 @@ export function useForgot() {
       if (captchaProvider.value === 'turnstile') {
         turnstileRef.value?.reset()
         turnstileToken.value = ''
+      }
+      if (captchaProvider.value === 'cap') {
+        capRef.value?.reset()
+        capToken.value = ''
       }
     } finally {
       sending.value = false
@@ -152,11 +173,15 @@ export function useForgot() {
     countdown,
     captchaPayload,
     turnstileToken,
+    capToken,
     imageCaptchaRef,
     turnstileRef,
+    capRef,
     captchaProvider,
     sendCodeCaptchaEnabled,
     turnstileSiteKey,
+    capEndpoint,
+    capSiteKey,
     handleCaptchaConfigStale,
     handleSendCode,
     handleReset,

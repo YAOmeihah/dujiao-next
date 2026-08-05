@@ -13,11 +13,18 @@ import { buildSkuDisplayText, normalizeSkuId } from '../utils/sku'
 import { refreshCartStockSnapshots, cartItemPurchaseLimit as itemPurchaseLimit, cartItemPurchaseMin as itemPurchaseMin } from '../utils/cartStock'
 import { getImageUrl } from '../utils/image'
 import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
+import { saveGuestOrderAuth } from '../utils/guestOrderAuth'
+import type { ShippingAddressFormValue } from '../types/address'
+import {
+  clearGuestShippingAddressRecall,
+  createGuestShippingAddressRecallRecord,
+  loadGuestShippingAddressRecall,
+  shouldEnableGuestShippingAddressRecall,
+  type GuestShippingAddressRecallRecord,
+} from './useGuestShippingAddressRecall'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CapCaptcha from '../components/captcha/CapCaptcha.vue'
-import type { ShippingAddressFormValue } from '../types/address'
-import { saveGuestOrderAuth } from '../utils/guestOrderAuth'
 import { useLocalized, useProductLabels } from './useProduct'
 
 interface ManualFormField {
@@ -601,7 +608,42 @@ export function useCheckout() {
   }
 
   const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAddressPayload() || null))
+  const guestShippingRecallRecord = ref<GuestShippingAddressRecallRecord | null>(null)
+  const guestShippingRecallApplied = ref(false)
+  const guestShippingRecallRewriteMode = ref(false)
   const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
+  const guestShippingRecallEnabled = computed(() => shouldEnableGuestShippingAddressRecall({
+    orderRequiresShippingAddress: orderRequiresShippingAddress.value,
+    isAuthenticated: userAuthStore.isAuthenticated,
+    checkoutMode: checkoutMode.value,
+  }))
+  const hasManualShippingInput = computed(() => Boolean(
+    shippingAddress.value.receiver_name.trim()
+    || shippingAddress.value.receiver_phone.trim()
+    || shippingAddress.value.province_code.trim()
+    || shippingAddress.value.city_code.trim()
+    || shippingAddress.value.district_code.trim()
+    || shippingAddress.value.township_code.trim()
+    || shippingAddress.value.detail_address.trim(),
+  ))
+  const showGuestShippingRecallCard = computed(() => guestShippingRecallEnabled.value && !!guestShippingRecallRecord.value)
+  const guestShippingRecallMuted = computed(() => (
+    !guestShippingRecallApplied.value && (hasManualShippingInput.value || guestShippingRecallRewriteMode.value)
+  ))
+  const guestShippingRecallSummaryLines = computed(() => {
+    const record = guestShippingRecallRecord.value
+    if (!record) return []
+
+    const trimmedPhone = record.receiver_phone.trim()
+    const maskedPhone = trimmedPhone.length >= 7
+      ? `${trimmedPhone.slice(0, 3)}****${trimmedPhone.slice(-4)}`
+      : trimmedPhone
+
+    return [
+      `${record.receiver_name} · ${maskedPhone}`,
+      [record.province, record.city, record.district, record.township, record.detail_address].filter(Boolean).join(' '),
+    ]
+  })
   const shouldSyncGuestPhoneFromShipping = computed(() => isGuestCheckout.value && orderRequiresShippingAddress.value && guestPhoneAutoManaged.value)
   const guestPhoneValid = computed(() => {
     if (!isGuestCheckout.value) return true
@@ -619,6 +661,60 @@ export function useCheckout() {
     const shippingPhone = shippingAddress.value.receiver_phone
     guestPhone.value = nextValue
     guestPhoneAutoManaged.value = nextValue === '' || nextValue === shippingPhone
+  }
+
+  const resetShippingAddressForm = () => {
+    shippingAddress.value = emptyShippingAddress()
+  }
+
+  const applyGuestShippingRecall = () => {
+    const record = guestShippingRecallRecord.value
+    if (!record) return
+
+    shippingAddress.value = {
+      receiver_name: record.receiver_name,
+      receiver_phone: record.receiver_phone,
+      province: record.province,
+      province_code: record.province_code,
+      city: record.city,
+      city_code: record.city_code,
+      district: record.district,
+      district_code: record.district_code,
+      township: record.township,
+      township_code: record.township_code,
+      detail_address: record.detail_address,
+    }
+    guestShippingRecallApplied.value = true
+    guestShippingRecallRewriteMode.value = false
+  }
+
+  const handleGuestShippingRewrite = () => {
+    resetShippingAddressForm()
+    guestShippingRecallApplied.value = false
+    guestShippingRecallRewriteMode.value = true
+  }
+
+  const handleGuestShippingClearForm = () => {
+    resetShippingAddressForm()
+    guestShippingRecallApplied.value = false
+    guestShippingRecallRewriteMode.value = true
+  }
+
+  const handleGuestShippingClearRecord = () => {
+    clearGuestShippingAddressRecall()
+    guestShippingRecallRecord.value = null
+    guestShippingRecallApplied.value = false
+    guestShippingRecallRewriteMode.value = false
+  }
+
+  const persistGuestShippingRecallFromCurrentAddress = () => {
+    const shippingPayload = buildShippingAddressPayload()
+    if (!isGuestCheckout.value || !shippingPayload) return null
+
+    const recentRecord = createGuestShippingAddressRecallRecord(shippingPayload)
+    guestShippingRecallRecord.value = recentRecord
+    guestShippingRecallRewriteMode.value = false
+    return recentRecord
   }
 
   const captchaConfig = computed(() => appStore.config?.captcha || null)
@@ -943,6 +1039,7 @@ export function useCheckout() {
           order_password: guestPassword.value,
           captcha_payload: getGuestCaptchaPayload(),
         })
+        persistGuestShippingRecallFromCurrentAddress()
         saveGuestOrderAuth({
           phone: guestPhone.value.trim(),
           email: guestEmail.value.trim(),
@@ -1052,6 +1149,7 @@ export function useCheckout() {
   }
 
   onMounted(async () => {
+    guestShippingRecallRecord.value = loadGuestShippingAddressRecall()
     if (!appStore.config) {
       await appStore.loadConfig()
     }
@@ -1291,6 +1389,14 @@ export function useCheckout() {
     orderRequiresShippingAddress,
     shippingRegionMissing,
     shippingAddressValidation,
+    showGuestShippingRecallCard,
+    guestShippingRecallSummaryLines,
+    guestShippingRecallApplied,
+    guestShippingRecallMuted,
+    applyGuestShippingRecall,
+    handleGuestShippingRewrite,
+    handleGuestShippingClearForm,
+    handleGuestShippingClearRecord,
     // preview amounts
     previewCurrency,
     previewOriginal,
@@ -1327,5 +1433,17 @@ export function useCheckout() {
     submitting,
     canSubmit,
     handleSubmit,
+    // mobile checkout adapter contract
+    mobileCheckout: {
+      syncingStock,
+      error,
+      previewError,
+      manualFormValidation,
+      manualFormFingerprint,
+      shippingAddressFingerprint,
+      selectedChannelAmountHint,
+      expectedWalletPaidCents,
+      persistGuestShippingRecallFromCurrentAddress,
+    },
   }
 }
