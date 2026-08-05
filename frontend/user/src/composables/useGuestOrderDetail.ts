@@ -1,0 +1,128 @@
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { guestOrderAPI } from '../api'
+import { debounceAsync } from '../utils/debounce'
+import { useOrderDisplayHelpers } from './useOrderDisplayHelpers'
+import {
+  buildGuestOrderAuthParams,
+  clearGuestOrderAuth,
+  createEmptyGuestOrderAuth,
+  hasGuestOrderAuth,
+  loadGuestOrderAuth,
+  saveGuestOrderAuth,
+  type GuestOrderAuth,
+} from '../utils/guestOrderAuth'
+
+/**
+ * 游客订单详情逻辑（classic + vault 共用）。
+ */
+export function useGuestOrderDetail() {
+  const route = useRoute()
+  const router = useRouter()
+  const { t } = useI18n()
+
+  const loading = ref(true)
+  const order = ref<any>(null)
+  const authError = ref('')
+  const auth = ref<GuestOrderAuth>(createEmptyGuestOrderAuth())
+  const fulfillmentDownloading = ref(false)
+
+  const helpers = useOrderDisplayHelpers(order)
+
+  const handleDownloadFulfillment = async (orderNo: string) => {
+    if (fulfillmentDownloading.value) return
+    fulfillmentDownloading.value = true
+    try {
+      const res = await guestOrderAPI.downloadFulfillment(orderNo, {
+        ...buildGuestOrderAuthParams(auth.value),
+      })
+      const blob = new Blob([res.data], { type: 'text/plain; charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `fulfillment-${orderNo}.txt`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {} finally {
+      fulfillmentDownloading.value = false
+    }
+  }
+
+  const loadSavedAuth = () => {
+    auth.value = loadGuestOrderAuth()
+  }
+
+  const hasAuth = computed(() => hasGuestOrderAuth(auth.value))
+  const showAuthForm = computed(() => !hasAuth.value || authError.value !== '')
+
+  const loadOrder = async () => {
+    loading.value = true
+    try {
+      if (!hasAuth.value) {
+        order.value = null
+        authError.value = t('guestOrderDetail.authRequired')
+        return
+      }
+      const response = await guestOrderAPI.detail(String(route.params.order_no || '').trim(), {
+        ...buildGuestOrderAuthParams(auth.value),
+      })
+      order.value = response.data.data
+      authError.value = ''
+    } catch (error) {
+      order.value = null
+      authError.value = t('guestOrderDetail.authInvalid')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const debouncedLoadOrder = debounceAsync(loadOrder, 300)
+
+  const persistAuth = () => {
+    auth.value = saveGuestOrderAuth(auth.value)
+  }
+
+  const handleAuthSubmit = async () => {
+    authError.value = ''
+    if (!hasAuth.value) {
+      authError.value = t('guestOrderDetail.authRequired')
+      return
+    }
+    persistAuth()
+    await debouncedLoadOrder()
+  }
+
+  const clearAuth = () => {
+    clearGuestOrderAuth()
+    auth.value = createEmptyGuestOrderAuth()
+    order.value = null
+    authError.value = t('guestOrderDetail.authRequired')
+  }
+
+  onMounted(() => {
+    if (!route.params.order_no) {
+      router.push('/guest/orders')
+      return
+    }
+    loadSavedAuth()
+    loadOrder()
+  })
+
+  onUnmounted(() => {
+    debouncedLoadOrder.cancel()
+  })
+
+  return {
+    loading,
+    order,
+    authError,
+    auth,
+    showAuthForm,
+    handleAuthSubmit,
+    clearAuth,
+    fulfillmentDownloading,
+    handleDownloadFulfillment,
+    ...helpers,
+  }
+}
