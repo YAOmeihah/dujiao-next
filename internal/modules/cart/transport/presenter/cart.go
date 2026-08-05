@@ -8,17 +8,17 @@ import (
 
 // CartProductResp 购物车商品摘要
 type CartProductResp struct {
-	Slug                string            `json:"slug"`
-	Title               jsonmap.JSON      `json:"title"`
-	PriceAmount         money.Amount      `json:"price_amount"`
-	Images              jsonslice.Strings `json:"images"`
-	Tags                jsonslice.Strings `json:"tags"`
-	PurchaseType        string            `json:"purchase_type"`
-	MinPurchaseQuantity int               `json:"min_purchase_quantity"`
-	MaxPurchaseQuantity int               `json:"max_purchase_quantity"`
-	FulfillmentType     string            `json:"fulfillment_type"`
-	RequiresShippingAddress bool          `json:"requires_shipping_address"`
-	IsActive            bool              `json:"is_active"`
+	Slug                    string            `json:"slug"`
+	Title                   jsonmap.JSON      `json:"title"`
+	PriceAmount             money.Amount      `json:"price_amount"`
+	Images                  jsonslice.Strings `json:"images"`
+	Tags                    jsonslice.Strings `json:"tags"`
+	PurchaseType            string            `json:"purchase_type"`
+	MinPurchaseQuantity     int               `json:"min_purchase_quantity"`
+	MaxPurchaseQuantity     int               `json:"max_purchase_quantity"`
+	FulfillmentType         string            `json:"fulfillment_type"`
+	RequiresShippingAddress bool              `json:"requires_shipping_address"`
+	IsActive                bool              `json:"is_active"`
 }
 
 // CartItemResp 购物车项响应

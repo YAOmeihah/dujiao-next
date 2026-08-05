@@ -95,21 +95,21 @@ type CreateProductInput struct {
 	PriceAmount          decimal.Decimal
 	CostPriceAmount      decimal.Decimal
 	// WholesalePrices 为可选字段：nil 表示更新时保留，非 nil 表示整体覆盖。
-	WholesalePrices     *[]productdomain.WholesalePriceInput
-	Images              []string
-	Tags                []string
-	PurchaseType        string
-	MinPurchaseQuantity *int
-	MaxPurchaseQuantity *int
-	StockDisplayMode    string
-	FulfillmentType     string
-	ManualStockTotal    *int
-	SKUs                []ProductSKUInput
-	PaymentChannelIDs   []uint
-	IsAffiliateEnabled  *bool
+	WholesalePrices         *[]productdomain.WholesalePriceInput
+	Images                  []string
+	Tags                    []string
+	PurchaseType            string
+	MinPurchaseQuantity     *int
+	MaxPurchaseQuantity     *int
+	StockDisplayMode        string
+	FulfillmentType         string
+	ManualStockTotal        *int
+	SKUs                    []ProductSKUInput
+	PaymentChannelIDs       []uint
+	IsAffiliateEnabled      *bool
 	RequiresShippingAddress *bool
-	IsActive            *bool
-	SortOrder           int
+	IsActive                *bool
+	SortOrder               int
 }
 
 // ProductSKUInput 描述商品 SKU 的完整写入值。

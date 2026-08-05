@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	affiliatedomain "github.com/dujiao-next/internal/modules/affiliate/domain"
 	addresscontract "github.com/dujiao-next/internal/modules/addressdivision/contract"
+	affiliatedomain "github.com/dujiao-next/internal/modules/affiliate/domain"
 	productcontract "github.com/dujiao-next/internal/modules/catalog/product/contract"
 	productdomain "github.com/dujiao-next/internal/modules/catalog/product/domain"
 	couponcontract "github.com/dujiao-next/internal/modules/coupon/contract"
