@@ -3,7 +3,7 @@
 本文档是本 fork 的二开功能事实来源，用于功能开发、问题归属判断、上游同步、代码审查和回归测试。
 
 - 当前官方同步基线：`v1.4.2`
-- 当前 fork 发布版本：`v1.4.2-fork.2`
+- 当前 fork 发布版本：`v1.4.2-fork.3`
 - 最后核对日期：`2026-08-07`
 - 维护原则：只记录维护者已经确认的稳定二开，不记录设想、临时方案或未确认需求。
 
@@ -19,6 +19,7 @@
 | F04 | CAP 验证器 | 保留，已接入统一 captcha 模块 | API、管理端、用户端 |
 | F05 | classic/default/vault 模板与二开样式兼容 | 保留 | API 设置、管理端、用户端 |
 | F06 | 移动端分步结算 | 保留，使用薄适配层 | 用户端，复用 API 结算链路 |
+| F07 | Fork 后台一键升级 | 保留，适配 fork 发布源 | API、管理端、GitHub Release、生产部署 |
 
 ## F01 游客手机号、订单密码与可选邮箱
 
@@ -238,6 +239,48 @@
 - 上游修改 `useCheckout` 返回值或结算页面结构时，只更新 adapter 和组件绑定，避免把业务逻辑复制进移动流程。
 - 同步后重点检查 desktop 结算仍使用同一业务状态，移动适配不能反向改变桌面行为。
 
+## F07 Fork 后台一键升级
+
+### 功能说明
+
+- 复用官方后台一键升级、自更新校验、二进制原子替换和回滚机制，不维护平行更新流程。
+- 更新源固定为本 fork 仓库 `YAOmeihah/dujiao-next`，禁止从官方 `dujiao-next/dujiao-next` 下载二进制，避免升级后丢失 F01-F07 二开功能。
+- 自动更新只接受严格符合 `vX.Y.Z-fork.N` 的正式 GitHub Release；同一上游版本递增 `fork.N`，升级上游基线后从 `fork.1` 重新开始。
+- GitHub Actions 使用 GoReleaser 构建内嵌 API、管理端和用户端的单一二进制；后台升级会按当前平台下载 fork Release、校验 checksums 后替换正在运行的可执行文件。
+- 裸二进制生产环境使用稳定路径 `/www/wwwroot/djxy/api/dujiao-next`，Supervisor 不得指向 `releases/<版本>/dujiao-next`，也不得用指向版本目录的软链接代替稳定文件。
+- 宝塔 Supervisor 不会被官方更新器识别为可自动重启的 systemd。二进制替换完成后必须在宝塔手动重启进程，并检查健康状态和前后台版本。
+
+### 更新边界与生产目录
+
+- 后台一键升级只提取并替换 `dujiao-next` 二进制，同时维护同目录的 `.backup`、锁和升级元数据；不会更新 `config.yml`、`config.yml.example`、数据库、`uploads/`、`logs/` 或 `data/address_divisions/`。
+- 上游或 fork 新版本增加配置项时，必须检查 Release notes 和新版 `config.yml.example`，按需人工合并到生产 `config.yml`，不能假设一键升级会补齐配置。
+- F02 依赖的 `data/address_divisions/` 必须长期保留。若后续 Release 更新区划数据，需要单独安排人工更新和验证。
+- 生产目录迁移遗留物只在备份、停服检查和升级验证完成后人工清理；不得在应用、自更新器或部署脚本中加入自动清理生产目录的逻辑。
+- 稳定运行所需内容包括 `dujiao-next`、`config.yml`、`data/address_divisions/`、`uploads/`、`logs/`、当前数据库所需文件，以及自更新器生成的备份和元数据文件。
+
+### 主要代码入口
+
+- fork 发布源和标签校验：`internal/version/release.go`
+- 官方自更新机制：`internal/selfupdate`
+- 后台更新接口：`internal/platform/http/system/update_handler.go`
+- 管理端更新界面：`frontend/admin/src/components/SystemUpdateDialog.vue`
+- fork Release 构建：`.github/workflows/release.yml`、`.goreleaser.yaml`
+
+### 回归检查
+
+- 后台检查更新返回的来源必须是 `https://github.com/YAOmeihah/dujiao-next/releases`，不得回退到官方仓库。
+- `vX.Y.Z-fork.N` 可参与版本比较和升级；普通官方 tag、RC tag、缺少 `v` 或 `fork.N` 非法的 tag 必须被拒绝。
+- fork Release 必须包含当前平台归档和 checksums，归档内二进制必须同时包含 API、管理端和用户端。
+- 升级前后 `config.yml`、数据库、上传文件和区划数据保持不变；旧二进制备份及更新元数据可用于官方回滚流程。
+- 宝塔环境升级完成后不会错误宣称已自动重启；人工重启后 `/health`、商城首页和隐藏后台路径均可访问，运行版本与目标 fork tag 一致。
+
+### 上游同步注意
+
+- 每次上游修改 `internal/version`、`internal/selfupdate`、后台更新接口、管理端更新界面、`.goreleaser.yaml` 或 Release workflow 时，都必须同步官方安全修复和功能变化，同时重新核对 fork 发布源与标签约束。
+- 解决冲突后必须确认 `repoOwner` 仍为 `YAOmeihah`，Release tag 仍只接受 `vX.Y.Z-fork.N`，不能因采用上游文件而恢复为 `dujiao-next/dujiao-next`。
+- 上游若调整附件命名、校验文件、压缩格式、二进制替换、回滚元数据或进程重启机制，必须同步更新 fork 适配和回归测试，确保 GitHub Release 产物仍能被后台更新器识别。
+- 上游若开始自动修改配置文件或附带数据，必须先评估对生产密钥、数据库、上传文件和 F02 区划数据的影响，再决定是否跟进；不得在冲突处理中直接启用。
+
 ## 已由上游接管
 
 ### 首页公告弹窗
@@ -277,5 +320,6 @@
 
 | 日期 | 官方基线 | 变更 |
 | --- | --- | --- |
+| 2026-08-07 | `v1.4.2` | 发布 `v1.4.2-fork.3`；新增 F07：官方后台一键升级适配 fork Release，固定更新源、fork tag 规则、生产二进制路径和上游同步核对要求。 |
 | 2026-08-07 | `v1.4.2` | 明确历史游客订单不做邮箱兼容、VPay 仅支持 CNY；补充地址存储容错、手机号规范化、移动校验边界和 vault 移动结算共享实现。 |
 | 2026-08-06 | `v1.4.2` | 在官方单仓新架构上确认并记录 F01-F06；首页公告改由官方实现接管；明确 SKU 批发价/会员价、分销和站点定制不属于二开。 |

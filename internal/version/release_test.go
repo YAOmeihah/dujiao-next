@@ -2,6 +2,37 @@ package version
 
 import "testing"
 
+func TestReleaseRepositoryPointsToFork(t *testing.T) {
+	if repoOwner != "YAOmeihah" || repoName != "dujiao-next" {
+		t.Fatalf("release repository = %s/%s, want YAOmeihah/dujiao-next", repoOwner, repoName)
+	}
+}
+
+func TestIsForkReleaseTag(t *testing.T) {
+	cases := []struct {
+		tag  string
+		want bool
+	}{
+		{"v1.4.2-fork.1", true},
+		{"v1.4.2-fork.12", true},
+		{"v2.0.0-fork.1", true},
+		{"v1.4.2", false},
+		{"1.4.2-fork.1", false},
+		{"v1.4.2-fork.0", false},
+		{"v1.4.2-fork.01", false},
+		{"v1.4.2-rc.1", false},
+		{"v01.4.2-fork.1", false},
+		{"v1.4-fork.1", false},
+		{"", false},
+	}
+
+	for _, c := range cases {
+		if got := isForkReleaseTag(c.tag); got != c.want {
+			t.Errorf("isForkReleaseTag(%q) = %v, want %v", c.tag, got, c.want)
+		}
+	}
+}
+
 func TestIsNewerVersion(t *testing.T) {
 	cases := []struct {
 		latest, current string
@@ -15,6 +46,8 @@ func TestIsNewerVersion(t *testing.T) {
 		{"1.2.3", "v1.2.3", false},
 		{"v1.2.3-rc.1", "v1.2.3", false},
 		{"v1.2.4", "v1.2.3-rc.1", true},
+		{"v1.4.2-fork.3", "v1.4.2-fork.2", true},
+		{"v1.5.0-fork.1", "v1.4.2-fork.9", true},
 
 		// 预发布优先级：正式版高于同核心版本号的预发布版。
 		// 这条是关键——少了它，跑 RC 的用户永远收不到同版本号正式版的升级提示。

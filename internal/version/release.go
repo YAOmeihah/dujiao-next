@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// repoOwner GitHub 仓库所有者，用于检测最新发布版本
-	repoOwner = "dujiao-next"
+	// repoOwner 固定为 fork 仓库，避免一键升级覆盖为不含二开功能的官方二进制。
+	repoOwner = "YAOmeihah"
 	// repoName GitHub 仓库名称
 	repoName = "dujiao-next"
 
@@ -73,7 +73,7 @@ type CheckResult struct {
 var ErrRateLimited = errors.New("github api rate limit exceeded")
 
 // CheckLatestRelease 通过 GitHub Releases API 获取最新发行版并与当前版本比较。
-// 仓库地址固定为 dujiao-next/dujiao-next，不接受外部传入，避免 SSRF。
+// 仓库地址固定为 YAOmeihah/dujiao-next，不接受外部传入，避免 SSRF。
 func CheckLatestRelease(ctx context.Context) (*CheckResult, error) {
 	release, err := FetchLatestRelease(ctx)
 	if err != nil {
@@ -140,6 +140,9 @@ func FetchLatestRelease(ctx context.Context) (*Release, error) {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("decode release: %w", err)
 	}
+	if !isForkReleaseTag(strings.TrimSpace(payload.TagName)) {
+		return nil, fmt.Errorf("refuse non-fork release tag %q from %s/%s", payload.TagName, repoOwner, repoName)
+	}
 
 	release := &Release{
 		TagName:     strings.TrimSpace(payload.TagName),
@@ -156,6 +159,12 @@ func FetchLatestRelease(ctx context.Context) (*Release, error) {
 		})
 	}
 	return release, nil
+}
+
+var forkReleaseTag = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-fork\.([1-9][0-9]*)$`)
+
+func isForkReleaseTag(tag string) bool {
+	return forkReleaseTag.MatchString(strings.TrimSpace(tag))
 }
 
 // semver 一个解析后的版本号。prerelease 为空表示正式版。
