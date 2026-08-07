@@ -316,32 +316,12 @@ type orderCreateAdapter struct {
 }
 
 func (a orderCreateAdapter) CreateOrder(input ordertransport.CreateOrderInput) (*orderdomain.Order, error) {
-	order, err := a.orders.CreateOrder(orderapp.CreateOrderInput{
-		UserID:              input.UserID,
-		Tenant:              input.Tenant,
-		Items:               mapServiceOrderItems(input.Items),
-		CouponCode:          input.CouponCode,
-		AffiliateCode:       input.AffiliateCode,
-		AffiliateVisitorKey: input.AffiliateVisitorKey,
-		ClientIP:            input.ClientIP,
-		ManualFormData:      input.ManualFormData,
-	})
+	order, err := a.orders.CreateOrder(mapOrderInput(input))
 	return order, mapOrderTransportError(err)
 }
 
 func (a orderCreateAdapter) CreateGuestOrder(input ordertransport.CreateGuestOrderInput) (*orderdomain.Order, error) {
-	order, err := a.orders.CreateGuestOrder(orderapp.CreateGuestOrderInput{
-		Email:               input.Email,
-		OrderPassword:       input.OrderPassword,
-		Locale:              input.Locale,
-		Tenant:              input.Tenant,
-		Items:               mapServiceOrderItems(input.Items),
-		CouponCode:          input.CouponCode,
-		AffiliateCode:       input.AffiliateCode,
-		AffiliateVisitorKey: input.AffiliateVisitorKey,
-		ClientIP:            input.ClientIP,
-		ManualFormData:      input.ManualFormData,
-	})
+	order, err := a.orders.CreateGuestOrder(mapGuestOrderInput(input))
 	return order, mapOrderTransportError(err)
 }
 
@@ -388,7 +368,23 @@ func (a orderPaymentCreatorAdapter) CreatePayment(input ordertransport.CreatePay
 }
 
 func (a orderPreviewAdapter) PreviewOrder(input ordertransport.CreateOrderInput) (*ordertransport.OrderPreview, error) {
-	preview, err := a.orders.PreviewOrder(orderapp.CreateOrderInput{
+	preview, err := a.orders.PreviewOrder(mapOrderInput(input))
+	if err != nil {
+		return nil, mapOrderTransportError(err)
+	}
+	return mapOrderPreview(preview), nil
+}
+
+func (a orderPreviewAdapter) PreviewGuestOrder(input ordertransport.CreateGuestOrderInput) (*ordertransport.OrderPreview, error) {
+	preview, err := a.orders.PreviewGuestOrder(mapGuestOrderInput(input))
+	if err != nil {
+		return nil, mapOrderTransportError(err)
+	}
+	return mapOrderPreview(preview), nil
+}
+
+func mapOrderInput(input ordertransport.CreateOrderInput) orderapp.CreateOrderInput {
+	return orderapp.CreateOrderInput{
 		UserID:              input.UserID,
 		Tenant:              input.Tenant,
 		Items:               mapServiceOrderItems(input.Items),
@@ -397,15 +393,13 @@ func (a orderPreviewAdapter) PreviewOrder(input ordertransport.CreateOrderInput)
 		AffiliateVisitorKey: input.AffiliateVisitorKey,
 		ClientIP:            input.ClientIP,
 		ManualFormData:      input.ManualFormData,
-	})
-	if err != nil {
-		return nil, mapOrderTransportError(err)
+		ShippingAddress:     input.ShippingAddress,
 	}
-	return mapOrderPreview(preview), nil
 }
 
-func (a orderPreviewAdapter) PreviewGuestOrder(input ordertransport.CreateGuestOrderInput) (*ordertransport.OrderPreview, error) {
-	preview, err := a.orders.PreviewGuestOrder(orderapp.CreateGuestOrderInput{
+func mapGuestOrderInput(input ordertransport.CreateGuestOrderInput) orderapp.CreateGuestOrderInput {
+	return orderapp.CreateGuestOrderInput{
+		Phone:               input.Phone,
 		Email:               input.Email,
 		OrderPassword:       input.OrderPassword,
 		Locale:              input.Locale,
@@ -416,11 +410,8 @@ func (a orderPreviewAdapter) PreviewGuestOrder(input ordertransport.CreateGuestO
 		AffiliateVisitorKey: input.AffiliateVisitorKey,
 		ClientIP:            input.ClientIP,
 		ManualFormData:      input.ManualFormData,
-	})
-	if err != nil {
-		return nil, mapOrderTransportError(err)
+		ShippingAddress:     input.ShippingAddress,
 	}
-	return mapOrderPreview(preview), nil
 }
 
 func mapServiceOrderItems(items []ordertransport.CreateOrderItem) []orderapp.CreateOrderItem {

@@ -68,22 +68,42 @@ const isRecordExpired = (savedAt: string, now = Date.now()) => {
   return now - parsed > GUEST_SHIPPING_ADDRESS_MAX_AGE_MS
 }
 
+const removeStoredRecall = (storage: Storage) => {
+  try {
+    storage.removeItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)
+  } catch {
+    // Browser storage may be unavailable or read-only; recall is optional.
+  }
+}
+
 export const loadGuestShippingAddressRecall = (
   storage: Storage = localStorage,
   now = Date.now(),
 ) => {
-  const raw = storage.getItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)
+  let raw: string | null
+  try {
+    raw = storage.getItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)
+  } catch {
+    return null
+  }
   if (!raw) return null
 
   try {
     const parsed = JSON.parse(raw)
-    if (!isRecordShapeValid(parsed)) return null
+    if (!isRecordShapeValid(parsed)) {
+      removeStoredRecall(storage)
+      return null
+    }
 
     const normalized = normalizeRecord(parsed)
-    if (isRecordExpired(normalized.saved_at, now)) return null
+    if (isRecordExpired(normalized.saved_at, now)) {
+      removeStoredRecall(storage)
+      return null
+    }
 
     return normalized
   } catch {
+    removeStoredRecall(storage)
     return null
   }
 }
@@ -92,10 +112,15 @@ export const saveGuestShippingAddressRecall = (
   record: GuestShippingAddressRecallRecord,
   storage: Storage = localStorage,
 ) => {
-  storage.setItem(
-    GUEST_SHIPPING_ADDRESS_STORAGE_KEY,
-    JSON.stringify(normalizeRecord(record)),
-  )
+  try {
+    storage.setItem(
+      GUEST_SHIPPING_ADDRESS_STORAGE_KEY,
+      JSON.stringify(normalizeRecord(record)),
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const createGuestShippingAddressRecallRecord = (
@@ -118,7 +143,7 @@ export const createGuestShippingAddressRecallRecord = (
 }
 
 export const clearGuestShippingAddressRecall = (storage: Storage = localStorage) => {
-  storage.removeItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)
+  removeStoredRecall(storage)
 }
 
 export const shouldEnableGuestShippingAddressRecall = ({

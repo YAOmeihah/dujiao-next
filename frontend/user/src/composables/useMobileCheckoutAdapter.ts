@@ -149,6 +149,7 @@ export function useMobileCheckoutAdapter(checkout: CheckoutContract) {
     shippingComplete: mobileShippingComplete.value,
     buyerComplete: mobileBuyerComplete.value,
     paymentComplete: mobilePaymentComplete.value,
+    showCouponSection: !checkout.isResellerTenant.value,
   }))
 
   const mobileShippingErrorMessage = computed(() => {

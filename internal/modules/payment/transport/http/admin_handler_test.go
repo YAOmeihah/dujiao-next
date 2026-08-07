@@ -125,6 +125,7 @@ func TestGetPaymentChannelRedactsSecrets(t *testing.T) {
 			"api_base_url":   "https://pay.example",
 			"api_key_id":     "key-id",
 			"api_secret":     "api-secret-value",
+			"sign_key":       "sign-key-value",
 			"webhook_secret": "webhook-secret-value",
 			"token":          "usdt",
 		},
@@ -138,7 +139,7 @@ func TestGetPaymentChannelRedactsSecrets(t *testing.T) {
 	handler.GetPaymentChannel(ctx)
 
 	body := recorder.Body.String()
-	if strings.Contains(body, "api-secret-value") || strings.Contains(body, "webhook-secret-value") {
+	if strings.Contains(body, "api-secret-value") || strings.Contains(body, "sign-key-value") || strings.Contains(body, "webhook-secret-value") {
 		t.Fatalf("payment channel response leaked a secret: %s", body)
 	}
 	if !strings.Contains(body, redactedPaymentConfigValue) {

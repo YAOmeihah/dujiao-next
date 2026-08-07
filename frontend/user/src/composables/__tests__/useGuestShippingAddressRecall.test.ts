@@ -52,6 +52,25 @@ describe('guest shipping address recall storage', () => {
     expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toBeNull()
   })
 
+  it('returns null when browser storage cannot be read', () => {
+    const storage = {
+      getItem: () => { throw new Error('storage blocked') },
+    } as unknown as Storage
+
+    expect(loadGuestShippingAddressRecall(storage, TEST_NOW_MS)).toBeNull()
+  })
+
+  it('removes malformed and expired records when browser storage allows cleanup', () => {
+    const removedKeys: string[] = []
+    const storage = {
+      getItem: () => JSON.stringify({ ...record, saved_at: 'not-a-date' }),
+      removeItem: (key: string) => { removedKeys.push(key) },
+    } as unknown as Storage
+
+    expect(loadGuestShippingAddressRecall(storage, TEST_NOW_MS)).toBeNull()
+    expect(removedKeys).toEqual([GUEST_SHIPPING_ADDRESS_STORAGE_KEY])
+  })
+
   it('writes a normalized record back to localStorage', () => {
     saveGuestShippingAddressRecall({
       ...record,
@@ -103,10 +122,38 @@ describe('guest shipping address recall storage', () => {
     expect(loadGuestShippingAddressRecall(localStorage, TEST_NOW_MS)).toEqual(recentRecord)
   })
 
+  it('returns the recent record when browser storage rejects the write', () => {
+    const storage = {
+      setItem: () => { throw new Error('quota exceeded') },
+    } as unknown as Storage
+
+    expect(() => createGuestShippingAddressRecallRecord({
+      receiver_name: record.receiver_name,
+      receiver_phone: record.receiver_phone,
+      province: record.province,
+      province_code: record.province_code,
+      city: record.city,
+      city_code: record.city_code,
+      district: record.district,
+      district_code: record.district_code,
+      township: record.township,
+      township_code: record.township_code,
+      detail_address: record.detail_address,
+    }, { storage })).not.toThrow()
+  })
+
   it('clears the saved record', () => {
     localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify(record))
     clearGuestShippingAddressRecall()
     expect(localStorage.getItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)).toBeNull()
+  })
+
+  it('does not throw when browser storage rejects cleanup', () => {
+    const storage = {
+      removeItem: () => { throw new Error('storage blocked') },
+    } as unknown as Storage
+
+    expect(() => clearGuestShippingAddressRecall(storage)).not.toThrow()
   })
 })
 

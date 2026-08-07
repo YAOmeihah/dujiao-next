@@ -52,6 +52,9 @@ func (a *vpayAdapter) ValidateConfig(raw jsonmap.JSON, channelType string) error
 }
 
 func (a *vpayAdapter) CreatePayment(ctx context.Context, raw jsonmap.JSON, input paymentcontract.GatewayCreateInput) (*paymentcontract.GatewayCreateResult, error) {
+	if strings.ToUpper(strings.TrimSpace(input.Currency)) != "CNY" {
+		return nil, fmt.Errorf("%w: vpay only supports CNY payments", paymentcontract.ErrGatewayConfigInvalid)
+	}
 	if !vpay.IsSupportedChannelType(input.ChannelType) {
 		return nil, fmt.Errorf("%w: vpay channel_type %s", paymentcontract.ErrGatewayUnsupportedChannel, input.ChannelType)
 	}

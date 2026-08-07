@@ -1,3 +1,5 @@
+import { isGuestPhoneValid } from '../utils/phone'
+
 export type MobileCheckoutSectionKey = 'items' | 'shipping' | 'buyer' | 'coupon' | 'payment'
 export type MobileCheckoutPrimaryActionKey = 'saveShipping' | 'continueBuyer' | 'choosePayment' | 'submit'
 
@@ -18,6 +20,7 @@ export interface MobileCheckoutFlowInput {
   shippingComplete: boolean
   buyerComplete: boolean
   paymentComplete: boolean
+  showCouponSection?: boolean
 }
 
 export interface MobileCheckoutFlowState {
@@ -128,7 +131,7 @@ export const isMobileShippingReady = ({
 
   return (
     hasMeaningfulText(receiverName, 2) &&
-    phonePattern.test(String(receiverPhone || '').trim()) &&
+    isGuestPhoneValid(receiverPhone) &&
     hasMeaningfulText(provinceCode, 1) &&
     hasMeaningfulText(cityCode, 1) &&
     hasMeaningfulText(districtCode, 1) &&
@@ -168,7 +171,7 @@ export const isMobileManualFormReady = (
       }
 
       if (meaningfulTextTypes.has(field.type)) {
-        return hasMeaningfulText(value, 2)
+        return hasMeaningfulText(value, 1)
       }
 
       return hasMeaningfulText(value, 1)
@@ -188,8 +191,8 @@ export const isMobileBuyerReady = ({
   if (!manualFormsReady) return false
   if (isAuthenticated) return true
   if (checkoutMode !== 'guest') return false
-  if (!phonePattern.test(String(guestPhone || '').trim())) return false
-  if (!hasMeaningfulText(guestPassword, 4)) return false
+  if (!isGuestPhoneValid(guestPhone)) return false
+  if (!String(guestPassword || '').trim()) return false
 
   const trimmedEmail = String(guestEmail || '').trim()
   if (trimmedEmail && !emailPattern.test(trimmedEmail)) return false
@@ -300,8 +303,11 @@ export const buildMobileCheckoutFlow = (
   input: MobileCheckoutFlowInput,
 ): MobileCheckoutFlowState => {
   const visibleSectionKeys: MobileCheckoutSectionKey[] = input.hasShippingSection
-    ? ['items', 'shipping', 'buyer', 'coupon', 'payment']
-    : ['items', 'buyer', 'coupon', 'payment']
+    ? ['items', 'shipping', 'buyer', 'payment']
+    : ['items', 'buyer', 'payment']
+  if (input.showCouponSection !== false) {
+    visibleSectionKeys.splice(visibleSectionKeys.indexOf('payment'), 0, 'coupon')
+  }
 
   const completedSectionKeys = visibleSectionKeys.filter((sectionKey) =>
     sectionIsComplete(sectionKey, input),

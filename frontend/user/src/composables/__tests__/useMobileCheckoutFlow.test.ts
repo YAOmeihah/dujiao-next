@@ -51,6 +51,18 @@ describe('buildMobileCheckoutFlow', () => {
     expect(result.recommendedSectionKey).toBe('payment')
     expect(result.primaryActionKey).toBe('submit')
   })
+
+  it('omits the coupon step when the checkout tenant does not allow coupons', () => {
+    const result = buildMobileCheckoutFlow({
+      hasShippingSection: false,
+      shippingComplete: true,
+      buyerComplete: true,
+      paymentComplete: false,
+      showCouponSection: false,
+    })
+
+    expect(result.visibleSectionKeys).toEqual(['items', 'buyer', 'payment'])
+  })
 })
 
 describe('resolveExpandedMobileSection', () => {
@@ -82,7 +94,7 @@ describe('mobile section readiness', () => {
     const ready = isMobileShippingReady({
       requiresShipping: true,
       receiverName: 'A',
-      receiverPhone: '1',
+      receiverPhone: '13800138000',
       provinceCode: '110000',
       cityCode: '110100',
       districtCode: '110101',
@@ -93,7 +105,7 @@ describe('mobile section readiness', () => {
     expect(ready).toBe(false)
   })
 
-  it('does not treat one-character manual text fields as ready', () => {
+  it('accepts one-character required manual text fields', () => {
     const ready = isMobileManualFormReady(
       [
         {
@@ -115,16 +127,30 @@ describe('mobile section readiness', () => {
       },
     )
 
-    expect(ready).toBe(false)
+    expect(ready).toBe(true)
   })
 
-  it('requires a meaningful guest password before buyer info is ready', () => {
+  it('accepts a non-empty guest password before buyer info is ready', () => {
     const ready = isMobileBuyerReady({
       isAuthenticated: false,
       checkoutMode: 'guest',
       manualFormsReady: true,
       guestPhone: '13800138000',
       guestPassword: '1',
+      guestEmail: '',
+      captchaComplete: true,
+    })
+
+    expect(ready).toBe(true)
+  })
+
+  it('rejects phone values that contain no digits', () => {
+    const ready = isMobileBuyerReady({
+      isAuthenticated: false,
+      checkoutMode: 'guest',
+      manualFormsReady: true,
+      guestPhone: '------',
+      guestPassword: 'valid-password',
       guestEmail: '',
       captchaComplete: true,
     })

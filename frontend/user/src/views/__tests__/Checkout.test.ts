@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Checkout from '../Checkout.vue'
+import VaultCheckout from '../../templates/vault/Checkout.vue'
 import i18n from '../../i18n'
 import { guestOrderAPI, userOrderAPI, walletAPI } from '../../api'
 
@@ -98,6 +99,62 @@ describe('Checkout mobile buy-now flow', () => {
 
   it('loads the fork mobile checkout translations', () => {
     expect(i18n.global.t('checkout.mobile.actionContinueBuyer')).toBe('确认购买信息并继续')
+  })
+
+  it('renders the shared mobile checkout flow in the vault template', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.state.value.app = {
+      config: {
+        wallet_only_payment: false,
+        payment_channels: [],
+      },
+    }
+    pinia.state.value['user-auth'] = {
+      token: 'member-token',
+      user: null,
+      loading: false,
+      challengeToken: '',
+      challengeExpiresAt: '',
+    }
+    pinia.state.value.buyNow = {
+      item: {
+        productId: 1,
+        slug: 'test-product',
+        title: { 'zh-CN': '测试商品' },
+        priceAmount: '10.00',
+        quantity: 1,
+        requiresShippingAddress: false,
+        paymentChannelIds: [],
+      },
+    }
+
+    const wrapper = mount(VaultCheckout, {
+      global: {
+        plugins: [createHead(), pinia, i18n],
+        stubs: {
+          RouterLink: true,
+          VaultCheckoutSteps: true,
+          SmartImage: true,
+          CheckoutManualForm: true,
+          GuestShippingAddressRecallCard: true,
+          RegionSelector: true,
+          ImageCaptcha: true,
+          TurnstileCaptcha: true,
+          CapCaptcha: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await flushPromises()
+    await nextTick()
+
+    expect(wrapper.get('[data-mobile-primary-action]').text()).toBe(
+      i18n.global.t('checkout.mobile.actionContinueBuyer'),
+    )
+
+    wrapper.unmount()
   })
 
   it('submits the order when confirming a ready payment method', async () => {
@@ -197,5 +254,261 @@ describe('Checkout mobile buy-now flow', () => {
 
     wrapper.unmount()
     expect(walletAPI.account).toHaveBeenCalled()
+  })
+
+  it('sends the entered guest phone number when creating an order from the desktop checkout', async () => {
+    localStorage.removeItem('user_token')
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.state.value.app = {
+      config: {
+        wallet_only_payment: false,
+        payment_channels: [
+          {
+            id: 1,
+            name: '支付宝',
+            provider_type: 'alipay',
+            channel_type: 'alipay',
+          },
+        ],
+      },
+    }
+    pinia.state.value['user-auth'] = {
+      token: '',
+      user: null,
+      loading: false,
+      challengeToken: '',
+      challengeExpiresAt: '',
+    }
+    pinia.state.value.buyNow = {
+      item: {
+        productId: 1,
+        slug: 'test-product',
+        title: {
+          'zh-CN': '测试商品',
+        },
+        priceAmount: '10.00',
+        quantity: 1,
+        requiresShippingAddress: false,
+        paymentChannelIds: [1],
+      },
+    }
+    vi.mocked(guestOrderAPI.preview).mockResolvedValue({
+      data: {
+        data: {
+          total_amount: '10.00',
+          currency: 'CNY',
+        },
+      },
+    })
+    vi.mocked(guestOrderAPI.createAndPay).mockResolvedValue({
+      data: {
+        data: {
+          order_no: 'GUEST-1001',
+        },
+      },
+    })
+
+    const wrapper = mount(Checkout, {
+      global: {
+        plugins: [createHead(), pinia, i18n],
+        stubs: {
+          RouterLink: true,
+          CheckoutSteps: true,
+          EmptyState: true,
+          SmartImage: true,
+          CheckoutManualForm: true,
+          GuestShippingAddressRecallCard: true,
+          RegionSelector: true,
+          ImageCaptcha: true,
+          TurnstileCaptcha: true,
+          CapCaptcha: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await flushPromises()
+    const desktopGrid = wrapper.get('.hidden.grid-cols-1.gap-8')
+    await desktopGrid.get('input[autocomplete="tel"]').setValue('13800138000')
+    await desktopGrid.get('input[type="password"]').setValue('guest-password')
+    await desktopGrid.get('.grid.grid-cols-2.gap-2 button').trigger('click')
+    await nextTick()
+
+    const submitButton = desktopGrid.findAll('button').find((button) => button.text() === i18n.global.t('checkout.submitButton'))
+    expect(submitButton).toBeDefined()
+    await submitButton!.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    expect(guestOrderAPI.createAndPay).toHaveBeenCalledWith(expect.objectContaining({
+      phone: '13800138000',
+      order_password: 'guest-password',
+      channel_id: 1,
+    }))
+  })
+
+  it('blocks desktop guest checkout when the phone contains no digits', async () => {
+    localStorage.removeItem('user_token')
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.state.value.app = {
+      config: {
+        wallet_only_payment: false,
+        payment_channels: [
+          {
+            id: 1,
+            name: '支付宝',
+            provider_type: 'alipay',
+            channel_type: 'alipay',
+          },
+        ],
+      },
+    }
+    pinia.state.value['user-auth'] = {
+      token: '',
+      user: null,
+      loading: false,
+      challengeToken: '',
+      challengeExpiresAt: '',
+    }
+    pinia.state.value.buyNow = {
+      item: {
+        productId: 1,
+        slug: 'test-product',
+        title: { 'zh-CN': '测试商品' },
+        priceAmount: '10.00',
+        quantity: 1,
+        requiresShippingAddress: false,
+        paymentChannelIds: [1],
+      },
+    }
+    vi.mocked(guestOrderAPI.preview).mockResolvedValue({
+      data: { data: { total_amount: '10.00', currency: 'CNY' } },
+    })
+    vi.mocked(guestOrderAPI.createAndPay).mockResolvedValue({
+      data: { data: { order_no: 'GUEST-INVALID-PHONE' } },
+    })
+
+    const wrapper = mount(Checkout, {
+      global: {
+        plugins: [createHead(), pinia, i18n],
+        stubs: {
+          RouterLink: true,
+          CheckoutSteps: true,
+          EmptyState: true,
+          SmartImage: true,
+          CheckoutManualForm: true,
+          GuestShippingAddressRecallCard: true,
+          RegionSelector: true,
+          ImageCaptcha: true,
+          TurnstileCaptcha: true,
+          CapCaptcha: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await flushPromises()
+    const desktopGrid = wrapper.get('.hidden.grid-cols-1.gap-8')
+    await desktopGrid.get('input[autocomplete="tel"]').setValue('------')
+    await desktopGrid.get('input[type="password"]').setValue('guest-password')
+    await desktopGrid.get('.grid.grid-cols-2.gap-2 button').trigger('click')
+    await nextTick()
+
+    const submitButton = desktopGrid.findAll('button').find((button) => button.text() === i18n.global.t('checkout.submitButton'))
+    expect(submitButton).toBeDefined()
+    await submitButton!.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    expect(guestOrderAPI.createAndPay).not.toHaveBeenCalled()
+    expect(desktopGrid.text()).toContain(i18n.global.t('error.phone_invalid'))
+  })
+
+  it('normalizes the shipping phone before submitting an address order', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    pinia.state.value.app = {
+      config: {
+        wallet_only_payment: false,
+        payment_channels: [
+          {
+            id: 1,
+            name: '支付宝',
+            provider_type: 'alipay',
+            channel_type: 'alipay',
+          },
+        ],
+      },
+    }
+    pinia.state.value['user-auth'] = {
+      token: 'member-token',
+      user: null,
+      loading: false,
+      challengeToken: '',
+      challengeExpiresAt: '',
+    }
+    pinia.state.value.buyNow = {
+      item: {
+        productId: 1,
+        slug: 'shipping-product',
+        title: { 'zh-CN': '实物商品' },
+        priceAmount: '10.00',
+        quantity: 1,
+        requiresShippingAddress: true,
+        paymentChannelIds: [1],
+      },
+    }
+
+    const wrapper = mount(Checkout, {
+      global: {
+        plugins: [createHead(), pinia, i18n],
+        stubs: {
+          RouterLink: true,
+          CheckoutSteps: true,
+          EmptyState: true,
+          SmartImage: true,
+          CheckoutManualForm: true,
+          GuestShippingAddressRecallCard: true,
+          RegionSelector: true,
+          ImageCaptcha: true,
+          TurnstileCaptcha: true,
+          CapCaptcha: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await flushPromises()
+    const desktopGrid = wrapper.get('.hidden.grid-cols-1.gap-8')
+    await desktopGrid.get('input[autocomplete="name"]').setValue('张三')
+    await desktopGrid.get('input[autocomplete="tel"]').setValue('(138) 0013-8000')
+    await desktopGrid.get('textarea[autocomplete="street-address"]').setValue('中关村大街 1 号')
+    Object.assign((wrapper.vm as any).shippingAddress, {
+      province: '北京市',
+      province_code: '110000',
+      city: '北京市',
+      city_code: '110100',
+      district: '东城区',
+      district_code: '110101',
+      township: '东华门街道',
+      township_code: '110101001',
+    })
+    await nextTick()
+    await flushPromises()
+
+    await desktopGrid.get('.grid.grid-cols-2.gap-2 button').trigger('click')
+    const submitButton = desktopGrid.findAll('button').find((button) => button.text() === i18n.global.t('checkout.submitButton'))
+    expect(submitButton).toBeDefined()
+    await submitButton!.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    expect(userOrderAPI.createAndPay).toHaveBeenCalledWith(expect.objectContaining({
+      shipping_address: expect.objectContaining({
+        receiver_phone: '13800138000',
+      }),
+    }))
   })
 })

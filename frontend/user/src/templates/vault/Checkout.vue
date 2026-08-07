@@ -22,7 +22,10 @@
       <Button as-child class="mt-2 rounded-full" size="sm"><RouterLink to="/products">{{ t('checkout.emptyAction') }}</RouterLink></Button>
     </div>
 
-    <div v-else class="grid items-start gap-7 lg:grid-cols-[1fr_360px]">
+    <div v-else>
+      <CheckoutMobileExperience class="lg:hidden" :checkout="checkout" />
+
+      <div class="hidden items-start gap-7 lg:grid lg:grid-cols-[1fr_360px]">
       <div class="grid gap-[18px]">
         <!-- 商品确认 -->
         <section class="rounded-xl border bg-card p-5">
@@ -242,6 +245,7 @@
           {{ submitting ? t('checkout.submitting') : t('checkout.submitButton') }}
         </Button>
       </aside>
+      </div>
     </div>
   </div>
 </template>
@@ -256,11 +260,14 @@ import ImageCaptcha from '../../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../../components/captcha/TurnstileCaptcha.vue'
 import CapCaptcha from '../../components/captcha/CapCaptcha.vue'
 import CheckoutManualForm from '../../components/checkout/CheckoutManualForm.vue'
+import CheckoutMobileExperience from '../../components/checkout/mobile/CheckoutMobileExperience.vue'
 import RegionSelector from '../../components/checkout/RegionSelector.vue'
 import VaultCheckoutSteps from './components/VaultCheckoutSteps.vue'
 import { useCheckout } from '../../composables/useCheckout'
 
 const { t } = useI18n()
+
+const checkout = useCheckout()
 
 const {
   userAuthStore, getLocalizedText, formatPrice, getImageUrl,
@@ -281,7 +288,7 @@ const {
   requiresOnlineChannel, paymentChannels, selectedChannelId, isChannelDisabledForAmount, channelAmountLimitHint,
   handleSelectChannel, formatChannelFeeRate, formatChannelFixedFee,
   submitting, canSubmit, handleSubmit,
-} = useCheckout()
+} = checkout
 
 // 字符串模板 ref，逻辑在 composable 内，显式标记避免 noUnusedLocals 误报。
 void guestImageCaptchaRef

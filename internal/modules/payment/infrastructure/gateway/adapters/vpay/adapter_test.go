@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -38,6 +39,7 @@ func TestVpayAdapterCreatesRedirectPayment(t *testing.T) {
 		OrderNo:     "PAY-1001",
 		ChannelType: constants.PaymentChannelTypeAlipay,
 		Amount:      money.FromDecimal(decimal.RequireFromString("99.00")),
+		Currency:    "CNY",
 		ReturnURLQuery: map[string]string{
 			"order_no":    "ORDER-1001",
 			"vpay_return": "1",
@@ -52,6 +54,34 @@ func TestVpayAdapterCreatesRedirectPayment(t *testing.T) {
 	}
 	if result.QRCodeURL != "" || result.Payload["really_price"] != "99.01" {
 		t.Fatalf("unexpected VPay payload: %+v", result)
+	}
+}
+
+func TestVpayAdapterRejectsNonCNYPaymentBeforeGatewayRequest(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestCount++
+		_, _ = w.Write([]byte(`{"code":1,"data":{"orderId":"VPAY-1002"}}`))
+	}))
+	defer server.Close()
+
+	_, err := NewVpayAdapter().CreatePayment(context.Background(), jsonmap.JSON{
+		"gateway_url": server.URL,
+		"sign_key":    "secret-key",
+		"notify_url":  "https://api.example.com/api/v1/payments/callback",
+		"return_url":  "https://shop.example.com/pay",
+	}, paymentcontract.GatewayCreateInput{
+		OrderNo:     "PAY-1002",
+		ChannelType: constants.PaymentChannelTypeAlipay,
+		Amount:      money.FromDecimal(decimal.RequireFromString("10.00")),
+		Currency:    "USD",
+		Extra:       map[string]interface{}{"interaction_mode": constants.PaymentInteractionRedirect},
+	})
+	if !errors.Is(err, paymentcontract.ErrGatewayConfigInvalid) {
+		t.Fatalf("CreatePayment error = %v, want ErrGatewayConfigInvalid", err)
+	}
+	if requestCount != 0 {
+		t.Fatalf("VPay gateway received %d requests for unsupported currency", requestCount)
 	}
 }
 

@@ -14,6 +14,7 @@ import { refreshCartStockSnapshots, cartItemPurchaseLimit as itemPurchaseLimit, 
 import { getImageUrl } from '../utils/image'
 import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import { saveGuestOrderAuth } from '../utils/guestOrderAuth'
+import { isGuestPhoneValid, normalizeGuestPhone } from '../utils/phone'
 import type { ShippingAddressFormValue } from '../types/address'
 import {
   clearGuestShippingAddressRecall,
@@ -584,7 +585,10 @@ export function useCheckout() {
     if (missingKey) {
       return { valid: false, message: t('checkout.errors.shippingAddressRequired') }
     }
-    if (!phonePattern.test(shippingAddress.value.receiver_phone.trim())) {
+    if (shippingAddress.value.receiver_name.trim().length < 2 || shippingAddress.value.detail_address.trim().length < 4) {
+      return { valid: false, message: t('checkout.errors.shippingAddressRequired') }
+    }
+    if (!isGuestPhoneValid(shippingAddress.value.receiver_phone)) {
       return { valid: false, message: t('error.phone_invalid') }
     }
     return { valid: true, message: '' }
@@ -594,7 +598,7 @@ export function useCheckout() {
     if (!orderRequiresShippingAddress.value) return undefined
     return {
       receiver_name: shippingAddress.value.receiver_name.trim(),
-      receiver_phone: shippingAddress.value.receiver_phone.trim(),
+      receiver_phone: normalizeGuestPhone(shippingAddress.value.receiver_phone),
       province: shippingAddress.value.province.trim(),
       province_code: shippingAddress.value.province_code.trim(),
       city: shippingAddress.value.city.trim(),
@@ -647,7 +651,7 @@ export function useCheckout() {
   const shouldSyncGuestPhoneFromShipping = computed(() => isGuestCheckout.value && orderRequiresShippingAddress.value && guestPhoneAutoManaged.value)
   const guestPhoneValid = computed(() => {
     if (!isGuestCheckout.value) return true
-    return phonePattern.test(guestPhone.value.trim())
+    return isGuestPhoneValid(guestPhone.value)
   })
   const guestEmailValid = computed(() => {
     if (!isGuestCheckout.value) return true
@@ -961,7 +965,7 @@ export function useCheckout() {
       } else {
         response = await guestOrderAPI.preview({
           ...payload,
-          phone: guestPhone.value.trim(),
+          phone: normalizeGuestPhone(guestPhone.value),
           email: guestEmail.value.trim() || undefined,
           order_password: guestPassword.value,
         })
@@ -1034,14 +1038,14 @@ export function useCheckout() {
       } else {
         const response = await guestOrderAPI.createAndPay({
           ...payload,
-          phone: guestPhone.value.trim(),
+          phone: normalizeGuestPhone(guestPhone.value),
           email: guestEmail.value.trim() || undefined,
           order_password: guestPassword.value,
           captcha_payload: getGuestCaptchaPayload(),
         })
         persistGuestShippingRecallFromCurrentAddress()
         saveGuestOrderAuth({
-          phone: guestPhone.value.trim(),
+          phone: normalizeGuestPhone(guestPhone.value),
           email: guestEmail.value.trim(),
           order_password: guestPassword.value,
         })
