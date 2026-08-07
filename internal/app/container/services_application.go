@@ -89,7 +89,6 @@ func (c *Container) initApplicationServices() {
 	c.AddressService = addressapp.NewService(c.AddressDivisionRepo)
 	c.OrderRiskControlService = orderriskapp.NewService(orderriskapp.Options{
 		Settings:    c.SettingService,
-		Orders:      c.OrderStore,
 		RateLimiter: orderrisklimiter.New(),
 	})
 	orderQueue := orderqueue.New(c.QueueClient)

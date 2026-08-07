@@ -498,9 +498,10 @@ func mapOrderTransportError(err error) error {
 		{orderapp.ErrResellerCouponNotAllowed, ordertransport.ErrResellerCouponNotAllowed},
 		{orderapp.ErrQueueUnavailable, ordertransport.ErrQueueUnavailable},
 		{orderriskcontract.ErrIPBlacklisted, ordertransport.ErrRiskIPBlacklisted},
-		{orderriskcontract.ErrPhoneBlacklisted, ordertransport.ErrRiskPhoneBlacklisted},
-		{orderriskcontract.ErrEmailBlacklisted, ordertransport.ErrRiskEmailBlacklisted},
+		{orderriskcontract.ErrClientIPUnavailable, ordertransport.ErrRiskClientIPUnavailable},
 		{orderriskcontract.ErrTooManyPendingOrders, ordertransport.ErrRiskTooManyPendingOrders},
+		{orderriskcontract.ErrProductQuantityLimit, ordertransport.ErrRiskProductQuantityLimit},
+		{orderriskcontract.ErrPendingProductQuantityLimit, ordertransport.ErrRiskPendingProductLimit},
 		{orderriskcontract.ErrOrderRateLimited, ordertransport.ErrRiskOrderRateLimited},
 	} {
 		if errors.Is(err, mapping.source) {
