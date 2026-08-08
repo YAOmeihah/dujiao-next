@@ -16,6 +16,7 @@ describe('CapCaptcha', () => {
 
     const widget = wrapper.get('cap-widget')
     expect(widget.attributes('data-cap-api-endpoint')).toBe('http://127.0.0.1:3001/site-key/')
+    expect(widget.attributes('style')).toContain('width: 100%')
     expect(widget.attributes()).not.toHaveProperty('data-cap-i18n-initial-state')
     expect(Array.from(document.scripts).some((script) => script.src === 'http://127.0.0.1:3001/assets/widget.js')).toBe(true)
 

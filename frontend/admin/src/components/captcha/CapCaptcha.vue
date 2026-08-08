@@ -79,6 +79,7 @@ defineExpose({
     <cap-widget
       v-if="apiEndpoint"
       :key="widgetKey"
+      style="display: block; width: 100%;"
       :data-cap-api-endpoint="apiEndpoint"
       @solve="handleSolve"
       @reset="emit('update:modelValue', '')"
