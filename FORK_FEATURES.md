@@ -20,6 +20,7 @@
 | F05 | classic/default/vault 模板与二开样式兼容 | 保留 | API 设置、管理端、用户端 |
 | F06 | 移动端分步结算 | 保留，使用薄适配层 | 用户端，复用 API 结算链路 |
 | F07 | Fork 后台一键升级 | 保留，适配 fork 发布源 | API、管理端、GitHub Release、生产部署 |
+| F08 | 内嵌在线客服页面 | 保留，已适配新架构 | API 设置、管理端、用户端 |
 
 ## F01 游客手机号、订单密码与可选邮箱
 
@@ -244,7 +245,7 @@
 ### 功能说明
 
 - 复用官方后台一键升级、自更新校验、二进制原子替换和回滚机制，不维护平行更新流程。
-- 更新源固定为本 fork 仓库 `YAOmeihah/dujiao-next`，禁止从官方 `dujiao-next/dujiao-next` 下载二进制，避免升级后丢失 F01-F07 二开功能。
+- 更新源固定为本 fork 仓库 `YAOmeihah/dujiao-next`，禁止从官方 `dujiao-next/dujiao-next` 下载二进制，避免升级后丢失 F01-F08 二开功能。
 - 自动更新只接受严格符合 `vX.Y.Z-fork.N` 的正式 GitHub Release；同一上游版本递增 `fork.N`，升级上游基线后从 `fork.1` 重新开始。
 - GitHub Actions 使用 GoReleaser 构建内嵌 API、管理端和用户端的单一二进制；后台升级会按当前平台下载 fork Release、校验 checksums 后替换正在运行的可执行文件。
 - 裸二进制生产环境使用稳定路径 `/www/wwwroot/djxy/api/dujiao-next`，Supervisor 不得指向 `releases/<版本>/dujiao-next`，也不得用指向版本目录的软链接代替稳定文件。
@@ -281,6 +282,41 @@
 - 上游若调整附件命名、校验文件、压缩格式、二进制替换、回滚元数据或进程重启机制，必须同步更新 fork 适配和回归测试，确保 GitHub Release 产物仍能被后台更新器识别。
 - 上游若开始自动修改配置文件或附带数据，必须先评估对生产密钥、数据库、上传文件和 F02 区划数据的影响，再决定是否跟进；不得在冲突处理中直接启用。
 
+## F08 内嵌在线客服页面
+
+### 功能说明
+
+- 用户端提供独立 `/support` 客服页面，在站内 iframe 中加载后台配置的 `contact.support_url`。
+- `support_url` 继续复用现有站点设置、公开配置接口和后台设置表单，不新增平行配置、接口或数据库字段。
+- 只有完整的 `http://` 或 `https://` 客服链接才展示导航入口；未配置时隐藏入口，直接访问页面时展示未配置状态；历史脏数据格式无效时展示配置错误状态。
+- 客服 iframe 在同一 SPA 会话内切换到其它页面后保持挂载，返回客服页时不得重新创建 iframe、清空客服会话或重复排队。
+- iframe 加载期间展示等待状态；超过等待时间仍未完成时提供新标签打开入口。外链必须使用 `noopener noreferrer`，iframe 使用严格来源 referrer policy。
+- classic/default 和 vault 模板共享配置解析、页面状态与 iframe 生命周期；两套模板只适配各自现有布局和主题，不复制客服业务逻辑。
+- 桌面导航、移动端导航和 vault 导航都复用现有导航组合逻辑；客服链接留空时各入口同步隐藏。
+
+### 主要代码入口
+
+- 配置规范化：`internal/modules/settings/application/site_normalize.go`
+- 管理端设置：`frontend/admin/src/views/admin/Settings.vue`
+- 用户端页面与挂载：`frontend/user/src/views/Support.vue`、`frontend/user/src/App.vue`
+- 路由与导航：`frontend/user/src/router/index.ts`、`frontend/user/src/composables/useNavConfig.ts`
+- 模板入口：`frontend/user/src/components/Navbar.vue`、`MobileBottomNav.vue`、`frontend/user/src/templates/vault/layout/VaultLayout.vue`
+
+### 回归检查
+
+- 配置有效客服链接时，classic/default 和 vault 的桌面、移动入口均可进入 `/support`；清空配置后入口同步隐藏。
+- `/support` 能加载客服 iframe，切换站内页面再返回后 iframe DOM 和会话保持不变。
+- 未配置、非法链接、加载等待超时分别显示明确状态；超时状态可通过新标签继续访问客服链接。
+- 客服页在桌面与移动端均填满导航和底栏之间的可用高度，不出现双滚动、底栏遮挡或透明背景。
+- 客服页不破坏普通页面的 RouterView、Footer、返回顶部、移动底栏或 vault 外壳行为。
+- 三种语言的客服导航、加载、空配置、非法配置和降级文案完整。
+
+### 上游同步注意
+
+- 上游修改 `App.vue`、RouterView 生命周期、路由 meta、导航 composable 或 vault 外壳时，必须确认客服 iframe 仍为常驻挂载而非普通路由卸载。
+- 上游扩展 `contact`、`nav_config` 或站点模板时，继续复用官方配置链路，只补客服入口适配，不恢复旧仓库的独立配置实现。
+- 不能仅因上游重做导航或页面布局就删除 `/support`；若官方以后提供等价客服页，先比较 iframe 会话保活、配置兼容和模板覆盖，再由维护者决定是否改由上游接管。
+
 ## 已由上游接管
 
 ### 首页公告弹窗
@@ -294,14 +330,14 @@
 
 - SKU 批发价、会员价及相关后台页面。
 - 分销、reseller、站点定制和多站点能力。
-- 上述功能按官方实现处理。只有当本 fork 的七项二开直接破坏这些官方功能时，才作为二开兼容问题处理。
+- 上述功能按官方实现处理。只有当本 fork 的八项二开直接破坏这些官方功能时，才作为二开兼容问题处理。
 
 ## 上游同步与问题归属
 
 每次同步上游后按以下顺序判断问题：
 
 1. 确认官方同步基线和 fork 合并前后的提交范围。
-2. 先查本文档，确认相关行为是否属于 F01-F07、上游已接管或明确非二开。
+2. 先查本文档，确认相关行为是否属于 F01-F08、上游已接管或明确非二开。
 3. 对比官方同版本代码，判断问题在官方基线中是否已经存在。
 4. 只修复二开自身错误，以及二开与上游合并、迁移、接口变化造成的兼容错误。
 5. 上游原本存在且未被二开改动触发的问题只记录结论，不在 fork 中修复。
@@ -320,6 +356,7 @@
 
 | 日期 | 官方基线 | 变更 |
 | --- | --- | --- |
+| 2026-08-08 | `v1.4.3` | 完成 F08 新架构适配；复用现有 `contact.support_url` 配置链路，恢复 `/support`、iframe 会话保活、导航入口、异常降级和 classic/default/vault 模板适配。 |
 | 2026-08-07 | `v1.4.3` | 发布 `v1.4.3-fork.1`；同步官方稳定版 `v1.4.3`，接入上游新版游客/会员订单风控、支付页面修复和微信支付公钥验签，同时保留 F01-F07 的数据、接口、前端与发布链路。旧手机号黑名单和按手机号限制待支付订单未列入确认二开范围，不继续叠加到上游新版 IP/账号/商品占用风控。 |
 | 2026-08-07 | `v1.4.2` | 发布 `v1.4.2-fork.3`；新增 F07：官方后台一键升级适配 fork Release，固定更新源、fork tag 规则、生产二进制路径和上游同步核对要求。 |
 | 2026-08-07 | `v1.4.2` | 明确历史游客订单不做邮箱兼容、VPay 仅支持 CNY；补充地址存储容错、手机号规范化、移动校验边界和 vault 移动结算共享实现。 |

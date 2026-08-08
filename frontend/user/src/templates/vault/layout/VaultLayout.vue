@@ -1,5 +1,8 @@
 <template>
-  <div class="vault-scope">
+  <div
+    class="vault-scope"
+    :class="props.immersive ? 'h-[100dvh] overflow-hidden flex flex-col' : ''"
+  >
     <!-- 顶栏 -->
     <header class="sticky top-0 z-50 border-b bg-[color:var(--bg)]">
       <div class="mx-auto flex h-[70px] w-full max-w-[1180px] items-center gap-3 px-4 sm:gap-5 sm:px-6">
@@ -85,12 +88,12 @@
     </header>
 
     <!-- 页面内容 -->
-    <main class="flex-1">
+    <main :class="props.immersive ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1'">
       <slot />
     </main>
 
     <!-- 页脚 -->
-    <footer class="mt-[var(--gap-block)] border-t bg-[color:var(--bg-warm)]">
+    <footer v-if="!props.immersive" class="mt-[var(--gap-block)] border-t bg-[color:var(--bg-warm)]">
       <div class="mx-auto grid w-full max-w-[1180px] grid-cols-1 gap-[30px] px-6 pb-9 pt-[52px] sm:grid-cols-2 lg:grid-cols-[1.7fr_repeat(3,1fr)]">
         <div>
           <RouterLink class="inline-flex items-center gap-2.5 text-[19px] font-extrabold tracking-[-0.02em] text-foreground" to="/">
@@ -109,6 +112,7 @@
         <div>
           <h4 class="mb-3 text-sm font-bold">{{ t('vault.footer.support') }}</h4>
           <RouterLink v-if="aboutEnabled" to="/about" class="flex items-center gap-[7px] py-[5px] text-[14.5px] text-muted-foreground hover:text-primary"><Info class="h-4 w-4" /> {{ t('nav.about') }}</RouterLink>
+          <RouterLink v-if="supportEnabled" to="/support" class="flex items-center gap-[7px] py-[5px] text-[14.5px] text-muted-foreground hover:text-primary"><MessageCircle class="h-4 w-4" /> {{ t('nav.support') }}</RouterLink>
           <RouterLink to="/guest/orders" class="flex items-center gap-[7px] py-[5px] text-[14.5px] text-muted-foreground hover:text-primary"><ClipboardList class="h-4 w-4" /> {{ t('navbar.guestOrders') }}</RouterLink>
           <a v-if="contact?.telegram" :href="contact.telegram" target="_blank" rel="noopener noreferrer" class="flex items-center gap-[7px] py-[5px] text-[14.5px] text-muted-foreground hover:text-primary"><Send class="h-4 w-4" /> Telegram</a>
           <a v-if="contact?.whatsapp" :href="contact.whatsapp" target="_blank" rel="noopener noreferrer" class="flex items-center gap-[7px] py-[5px] text-[14.5px] text-muted-foreground hover:text-primary"><MessageCircle class="h-4 w-4" /> WhatsApp</a>
@@ -160,6 +164,12 @@ import '@fontsource/nunito-sans/latin-600.css'
 import '@fontsource/nunito-sans/latin-700.css'
 import '../styles/vault.css'
 
+const props = withDefaults(defineProps<{
+  immersive?: boolean
+}>(), {
+  immersive: false,
+})
+
 const { t } = useI18n()
 const appStore = useAppStore()
 const cartStore = useCartStore()
@@ -187,7 +197,7 @@ const brandDescription = computed(() => {
   return ''
 })
 
-const { isListMode, blogEnabled, noticeEnabled, aboutEnabled, secondaryNavItems } = useNavConfig()
+const { isListMode, blogEnabled, noticeEnabled, aboutEnabled, supportEnabled, secondaryNavItems } = useNavConfig()
 
 const menuItems = computed<NavItem[]>(() => {
   const items: NavItem[] = []
@@ -195,7 +205,7 @@ const menuItems = computed<NavItem[]>(() => {
   if (!isListMode.value) {
     items.push({ key: 'products', path: '/products', label: t('products.allCategories'), icon: LayoutGrid, type: 'route', target: '_self' })
   }
-  // 内置（博客/公告/关于）+ 后台自定义导航项
+  // 内置导航项 + 后台自定义导航项
   items.push(...secondaryNavItems.value)
   return items
 })

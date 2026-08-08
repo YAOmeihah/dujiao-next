@@ -50,7 +50,8 @@
     "products": "商品中心",
     "blog": "博客",
     "notice": "公告",
-    "about": "关于"
+    "about": "关于",
+    "support": "客服"
   },
   "vault": {
     "hero": {
@@ -238,8 +239,22 @@
   "bottomNav": {
     "home": "首页",
     "products": "商品",
+    "support": "客服",
     "cart": "购物车",
     "me": "我的"
+  },
+  "support": {
+    "title": "在线客服",
+    "iframeTitle": "在线客服",
+    "openInNewTab": "新标签打开客服",
+    "loadingTitle": "客服页面加载中",
+    "loadingDescription": "正在尝试加载客服站点，请稍候。",
+    "emptyTitle": "暂未配置客服链接",
+    "emptyDescription": "请稍后再试，或联系站点管理员完成客服链接配置。",
+    "invalidTitle": "客服链接配置无效",
+    "invalidDescription": "请联系站点管理员检查客服链接是否为完整的 http(s) 地址。",
+    "fallbackTitle": "当前客服站点无法内嵌",
+    "fallbackDescription": "请使用下方按钮在新标签页中打开客服站点继续咨询。"
   },
   "personalCenter": {
     "title": "个人中心",

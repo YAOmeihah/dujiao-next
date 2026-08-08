@@ -50,7 +50,8 @@
     "products": "商品中心",
     "blog": "部落格",
     "notice": "公告",
-    "about": "關於"
+    "about": "關於",
+    "support": "客服"
   },
   "vault": {
     "hero": {
@@ -285,8 +286,22 @@
   "bottomNav": {
     "home": "首頁",
     "products": "商品",
+    "support": "客服",
     "cart": "購物車",
     "me": "我的"
+  },
+  "support": {
+    "title": "線上客服",
+    "iframeTitle": "線上客服",
+    "openInNewTab": "新分頁開啟客服",
+    "loadingTitle": "客服頁面載入中",
+    "loadingDescription": "正在嘗試載入客服站點，請稍候。",
+    "emptyTitle": "尚未配置客服連結",
+    "emptyDescription": "請稍後再試，或聯絡站點管理員完成客服連結配置。",
+    "invalidTitle": "客服連結配置無效",
+    "invalidDescription": "請聯絡站點管理員檢查客服連結是否為完整的 http(s) 位址。",
+    "fallbackTitle": "目前客服站點無法內嵌",
+    "fallbackDescription": "請使用下方按鈕在新分頁中開啟客服站點繼續諮詢。"
   },
   "personalCenter": {
     "title": "個人中心",
