@@ -50,7 +50,8 @@
     "products": "Products",
     "blog": "Blog",
     "notice": "Notice",
-    "about": "About"
+    "about": "About",
+    "support": "Support"
   },
   "vault": {
     "hero": {
@@ -285,8 +286,22 @@
   "bottomNav": {
     "home": "Home",
     "products": "Products",
+    "support": "Support",
     "cart": "Cart",
     "me": "Me"
+  },
+  "support": {
+    "title": "Support",
+    "iframeTitle": "Support",
+    "openInNewTab": "Open support in a new tab",
+    "loadingTitle": "Loading support page",
+    "loadingDescription": "Attempting to load the support site. Please wait a moment.",
+    "emptyTitle": "Support link is not configured",
+    "emptyDescription": "Please try again later or contact the site administrator.",
+    "invalidTitle": "Support link is invalid",
+    "invalidDescription": "Please contact the site administrator to provide a full http(s) URL.",
+    "fallbackTitle": "This support site cannot be embedded",
+    "fallbackDescription": "Use the button below to continue in a new tab."
   },
   "personalCenter": {
     "title": "Personal Center",

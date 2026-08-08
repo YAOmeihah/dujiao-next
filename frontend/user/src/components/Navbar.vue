@@ -234,8 +234,8 @@ const cartBounce = ref(false)
 
 const menuItems = primaryNavItems
 
-// Mobile drawer only shows items NOT in the bottom nav (Home, Products, Cart, Me are in bottom nav)
-const mobileDrawerItems = secondaryNavItems
+// Mobile drawer only shows items not already exposed by the bottom nav.
+const mobileDrawerItems = computed(() => secondaryNavItems.value.filter((item) => item.key !== 'support'))
 
 const languages = [
   { code: 'zh-CN', name: '简体中文' },

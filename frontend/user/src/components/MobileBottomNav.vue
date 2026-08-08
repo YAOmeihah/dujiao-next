@@ -22,6 +22,8 @@
         </div>
         <!-- Me -->
         <User v-else-if="item.icon === 'me'" class="w-5 h-5" />
+        <!-- Support -->
+        <MessageCircle v-else-if="item.icon === 'support'" class="w-5 h-5" />
         <span>{{ t(item.label) }}</span>
       </router-link>
     </div>
@@ -32,16 +34,18 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Home, LayoutGrid, ShoppingCart, User } from 'lucide-vue-next'
+import { Home, LayoutGrid, MessageCircle, ShoppingCart, User } from 'lucide-vue-next'
 import { useCartStore } from '../stores/cart'
 import { useUserAuthStore } from '../stores/userAuth'
 import { useAppStore } from '../stores/app'
+import { useNavConfig } from '../composables/useNavConfig'
 
 const route = useRoute()
 const { t } = useI18n()
 const cartStore = useCartStore()
 const userAuthStore = useUserAuthStore()
 const appStore = useAppStore()
+const { supportEnabled } = useNavConfig()
 
 const cartCount = computed(() => cartStore.totalItems)
 const isListMode = computed(() => appStore.config?.template_mode === 'list')
@@ -50,6 +54,7 @@ const navItems = computed(() => {
   const items = [
     { path: '/', icon: 'home', label: 'bottomNav.home' },
     ...(!isListMode.value ? [{ path: '/products', icon: 'products', label: 'bottomNav.products' }] : []),
+    ...(supportEnabled.value ? [{ path: '/support', icon: 'support', label: 'bottomNav.support' }] : []),
     { path: '/cart', icon: 'cart', label: 'bottomNav.cart' },
     { path: userAuthStore.isAuthenticated ? '/me' : '/auth/login', icon: 'me', label: 'bottomNav.me' },
   ]

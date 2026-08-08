@@ -279,6 +279,12 @@ const router = createRouter({
             component: templateView('About', () => import('../views/About.vue')),
         },
         {
+            path: '/support',
+            name: 'support',
+            component: () => import('../views/Support.vue'),
+            meta: { hideFooter: true, lockViewport: true },
+        },
+        {
             path: '/terms',
             name: 'terms',
             component: templateView('Legal', () => import('../views/Legal.vue')),
